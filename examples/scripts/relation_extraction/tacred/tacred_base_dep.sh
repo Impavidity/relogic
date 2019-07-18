@@ -1,7 +1,7 @@
 python -u -m relogic.main \
 --task_name rel_extraction \
 --mode train \
---output_dir saves/tacred_base_dep \
+--output_dir saves/relation_extraction/tacred/tacred_base_dep_1 \
 --bert_model bert-base-cased \
 --raw_data_path data/raw_data/rel_extraction/tacred/dep \
 --label_mapping_path data/preprocessed_data/rel_extraction_tacred_label_mapping.pkl \

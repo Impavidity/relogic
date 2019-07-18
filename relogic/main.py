@@ -76,7 +76,6 @@ def main():
   parser = argparse.ArgumentParser()
 
   # IO
-  parser.add_argument("--data_dir", type=str, default="data")
   parser.add_argument(
     "--mode", default=None, choices=["train", "valid", "eval", "finetune"])
   parser.add_argument("--output_dir", type=str, default="data/models")
