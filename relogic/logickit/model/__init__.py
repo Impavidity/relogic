@@ -16,3 +16,5 @@ def get_model(config):
   if "span_gcn_srl" in config.task_names:
     return
   return Model
+
+# from inference.span_gcn_inference import SpanGCNInference

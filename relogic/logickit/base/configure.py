@@ -31,4 +31,4 @@ def configure(config):
   if "rel_extraction" in config.task_names:
     if config.bert_model not in ["bert-base-cased", "bert-large-cased"]:
       raise ValueError("For relation extraction on tacred, the vocab only support bert-base-cased for masking")
-    config.vocab_path = "vocabs/tacred-{}-vocab.txt".format(config.bert_model)
+    config.vocab_path = "relogic/logickit/vocabs/tacred-{}-vocab.txt".format(config.bert_model)

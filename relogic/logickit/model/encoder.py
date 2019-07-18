@@ -3,10 +3,11 @@ from relogic.logickit.model.modeling import BertPreTrainedModel, BertModel
 import torch.nn as nn
 
 class Encoder(BertPreTrainedModel):
-  def __init__(self, config):
+  def __init__(self, config, output_attentions=False):
     super(Encoder, self).__init__(config)
     self._config = config
-    self.bert = BertModel(config, output_attentions=config.output_attention)
+    self.output_attentions = output_attentions
+    self.bert = BertModel(config, output_attentions=output_attentions)
     self.dropout = nn.Dropout(config.hidden_dropout_prob)
     self.apply(self.init_bert_weights)
 
@@ -19,7 +20,7 @@ class Encoder(BertPreTrainedModel):
               selected_non_final_layers=None,
               route_path=None,
               no_dropout=False):
-    attention_map, sequence_output, _ = self.bert(
+    sequence_output, _ = self.bert(
       input_ids=input_ids,
       token_type_ids=token_type_ids,
       attention_mask=attention_mask,
@@ -27,12 +28,17 @@ class Encoder(BertPreTrainedModel):
       token_level_attention_mask=token_level_attention_mask,
       output_all_encoded_layers=output_all_encoded_layers,
       selected_non_final_layers=selected_non_final_layers)
+    if self.output_attentions:
+      attention_map, sequence_output = sequence_output
     if not no_dropout:
       if output_all_encoded_layers or selected_non_final_layers is not None:
         sequence_output = [self.dropout(seq) for seq in sequence_output]
       else:
         sequence_output = self.dropout(sequence_output)
-    return sequence_output, attention_map
+    if self.output_attentions:
+      return sequence_output, attention_map
+    else:
+      return sequence_output
 
 if __name__ == "__main__":
   import torch

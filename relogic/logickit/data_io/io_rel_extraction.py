@@ -241,6 +241,6 @@ def generate_rel_extraction_input(mb, config, device, use_label):
   if hasattr(config, "use_dependency_feature") and config.use_dependency_feature:
     # check argument exists for compatibility
     dependency_feature = torch.tensor([f.dependency_tree_feature.tolist() for f in mb.input_features], dtype=torch.long).to(device)
-    extra_args["token_level_attention_mask"] = [None] * 8 + [dependency_feature] * 4
+    extra_args["token_level_attention_mask"] = [dependency_feature] * 4 +  [None] * 8
   inputs["extra_args"] = extra_args
   return inputs

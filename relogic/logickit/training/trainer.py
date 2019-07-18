@@ -97,7 +97,7 @@ class Trainer(object):
       # batch_preds = self.model.test(mb)
       batch_preds = self.model.test_abstract(mb)
       extra_output = {}
-      if self.config.output_attention:
+      if self.config.output_attentions:
         batch_preds, attention_map = batch_preds
         extra_output["attention_map"] = attention_map
       loss = 0
@@ -137,3 +137,14 @@ class Trainer(object):
       restore_state_dict[key] = self.model.model.state_dict()[key]
     self.model.model.load_state_dict(restore_state_dict)
     utils.log("Model Restored from {}".format(model_path))
+
+  def predict(self, inputs, task_name):
+    # First, according the inputs to create examples, features, and batch
+    batch = []
+    scorer = self.tasks[task_name].get_scorer()
+    # Need to fix the get scorer.
+    # Basically you will recreate a scorer for one `predict` call
+    # You need to reuse
+    for i, mb in enumerate(batch):
+      batch_preds = self.model.test_abstract(mb)
+      scorer.update(batch_preds)

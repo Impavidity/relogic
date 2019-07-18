@@ -1,5 +1,5 @@
-from scripts import squad11_eval
-from scripts import squad20_eval
+from relogic.logickit.scripts import squad11_eval
+from relogic.logickit.scripts import squad20_eval
 
 def squad_eval(dataset):
   if dataset == "squad11":

@@ -3,8 +3,8 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from base import utils
-from dataset.minibatching import UnlabeledDataReader
+from relogic.logickit.base import utils
+from relogic.logickit.dataset.minibatching import UnlabeledDataReader
 import torch
 import json
 

@@ -13,7 +13,7 @@ from relogic.logickit.base.constants import *
 class Inference(nn.Module):
   def __init__(self, config, tasks):
     super(Inference, self).__init__()
-
+    self.config = config
     if config.branching_encoder:
       utils.log("Build Branching Bert Encoder")
       self.encoder = BranchingBertModel.from_pretrained(config.bert_model, encoder_structure=config.branching_structure)
@@ -37,7 +37,7 @@ class Inference(nn.Module):
       token_level_attention_mask=extra_args.get("token_level_attention_mask", None),
       route_path=extra_args.get("route_path", None),
       no_dropout=task_name in READING_COMPREHENSION_TASKS)
-    if self.config.output_attention:
+    if self.config.output_attentions:
       features, attention_map = features
 
     # The feature is a list from all layers
@@ -72,7 +72,7 @@ class Inference(nn.Module):
           loss = self.loss_fct(logits.view(-1, logits.size(-1)), label_ids.view(-1))
         return loss
       else:
-        if self.config.output_attention:
+        if self.config.output_attentions:
           return logits, attention_map
         else:
           return logits

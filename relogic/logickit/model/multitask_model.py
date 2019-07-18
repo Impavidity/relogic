@@ -153,11 +153,11 @@ class Model(BaseModel):
       inputs = self.generate_input(mb, use_label=False)
     with torch.no_grad():
       results = self.model(**inputs)
-    if self.config.output_attention:
+    if self.config.output_attentions:
       results, attention_map = results
       attention_map = torch.cat(attention_map, dim=0).transpose(0, 1)
     # (layer, batch, head, length, length)
-    if self.config.output_attention:
+    if self.config.output_attentions:
       return results, attention_map.cpu().numpy()
     else:
       return results
