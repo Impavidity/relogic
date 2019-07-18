@@ -347,6 +347,8 @@ class BertSelfAttention(nn.Module):
 
     self.dropout = nn.Dropout(config.attention_probs_dropout_prob)
 
+    self.token_level_attention_mask_embedding = nn.Embedding(2, self.all_head_size)
+
   def transpose_for_scores(self, x):
     new_x_shape = x.size()[:-1] + (self.num_attention_heads, self.attention_head_size)
     x = x.view(*new_x_shape)
@@ -362,8 +364,19 @@ class BertSelfAttention(nn.Module):
     mixed_value_layer = self.value(hidden_states)
 
     query_layer = self.transpose_for_scores(mixed_query_layer)
+    # batch_size, num_heads,sent_length, head_size
     key_layer = self.transpose_for_scores(mixed_key_layer)
     value_layer = self.transpose_for_scores(mixed_value_layer)
+
+    if token_level_attention_mask is not None:
+      # token_level_attention_mask = token_level_attention_mask.unsqueeze(1).repeat(1, self.num_attention_heads, 1, 1)
+      # batch_size, sent_length, sent_length
+      token_level_attention_mask_embed = self.token_level_attention_mask_embedding(token_level_attention_mask)
+      # batch_size, sent_length, sent_length, dim
+      new_shape = token_level_attention_mask_embed.size()[:-1] + (self.num_attention_heads, self.attention_head_size)
+      token_level_attention_mask_embed = token_level_attention_mask_embed.view(*new_shape).permute(0, 3, 1, 2, 4)
+      # batch_size, num_heads, sent_length, sent_length, dim
+
 
     # Take the dot product between "query" and "key" to get the raw attention scores.
     attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
@@ -371,16 +384,25 @@ class BertSelfAttention(nn.Module):
     # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
     attention_scores = attention_scores + attention_mask
 
+    if token_level_attention_mask is not None:
+      # A = Q' * K + Q' * M
+      # Q (batch_size, num_heads, sent_length, head_size)
+      # M (batch_size, num_heads, sent_length, sent_length, head_size)
+      token_level_attention_matrix = torch.matmul(
+        query_layer.unsqueeze(3), token_level_attention_mask_embed.transpose(-1, -2)).squeeze(3)
+      attention_scores = attention_scores + token_level_attention_matrix
+
     # Normalize the attention scores to probabilities.
     attention_probs = nn.Softmax(dim=-1)(attention_scores)
 
-    if token_level_attention_mask is not None:
-      # attention_probs (batch_size, head_num, length, length)
-      # token_level_attention_mask (batch_size, length, length)
-      token_level_attention_mask = token_level_attention_mask.to(dtype=next(self.parameters()).dtype)
-      # expand to (batch, head_num, length, length)
-      token_level_attention_mask = token_level_attention_mask.unsqueeze(1).repeat(1, attention_probs.size(1) ,1, 1)
-      attention_probs = nn.Softmax(dim=-1)(attention_probs + token_level_attention_mask)
+    # if token_level_attention_mask is not None:
+    #   print("Using token level attention")
+    #   # attention_probs (batch_size, head_num, length, length)
+    #   # token_level_attention_mask (batch_size, length, length)
+    #   token_level_attention_mask = token_level_attention_mask.to(dtype=next(self.parameters()).dtype)
+    #   # expand to (batch, head_num, length, length)
+    #   token_level_attention_mask = token_level_attention_mask.unsqueeze(1).repeat(1, attention_probs.size(1) ,1, 1)
+    #   attention_probs = nn.Softmax(dim=-1)(attention_probs + token_level_attention_mask)
 
     # This is actually dropping out entire tokens to attend to, which might
     # seem a bit unusual, but is taken from the original Transformer paper.

@@ -44,26 +44,19 @@ class RelationF1Scorer(F1Score):
       self.dump_to_file_handler = open(self.dump_to_file_path, 'w')
       self.need_to_clear_output = False
     n_sents = 0
-    for example, preds, attention_map in zip(mbs.examples, predictions, extra_args["attention_map"]):
+    for example, preds in zip(mbs.examples, predictions):
       self._examples.append(example)
       self._preds.append(preds)
       pred_tag = preds.argmax(-1).item()
       if self.dump_to_file_path:
-        if example.label != self._o:
-          self.dump_to_file_handler.write(
-            json.dumps({
-              "text": example.raw_text,
-              "subject": example.subj_text,
-              "object": example.obj_text,
-              "label": example.label,
-              "predicted": self._inv_label_mapping[pred_tag],
-              "attention_map": attention_map.tolist(),
-              "tokens": example.tokens
-            }) + "\n")
-          self.counter += 1
-          if self.counter == 500:
-            print("Done")
-            exit()
+        self.dump_to_file_handler.write(
+          json.dumps({
+            "text": example.raw_text,
+            "subject": example.subj_text,
+            "object": example.obj_text,
+            "label": example.label,
+            "predicted": self._inv_label_mapping[pred_tag]
+          }) + "\n")
       # self._attn_maps.append(attention_map)
       # do not dumping heavy results on memory
       n_sents += 1
@@ -71,6 +64,7 @@ class RelationF1Scorer(F1Score):
     self._total_sents += n_sents
 
   def _get_results(self):
+    self.need_to_clear_output = True
 
     self._n_correct, self._n_predicted, self._n_gold = 0, 0, 0
     # data_to_dump = []
