@@ -13,7 +13,7 @@ class Pipeline(object):
     self.component_names = component_names
     self.components = {}
 
-  def execute(self, inputs: Structure):
+  def execute(self, inputs: List[Structure]):
     """Execute the pipeline.
     """
     for component_name in self.component_names:
@@ -21,4 +21,12 @@ class Pipeline(object):
       if component is not None:
         component.execute(inputs)
     return inputs
+
+  def __call__(self, inputs):
+    if not isinstance(inputs, List) and isinstance(inputs, Structure):
+      return self.execute([inputs])[0]
+    elif isinstance(inputs, List[Structure]):
+      return self.execute(inputs)
+
+
 
