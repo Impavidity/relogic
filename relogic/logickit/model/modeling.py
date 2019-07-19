@@ -369,6 +369,7 @@ class BertSelfAttention(nn.Module):
     value_layer = self.transpose_for_scores(mixed_value_layer)
 
     if token_level_attention_mask is not None:
+      # query  * key    = (W_q * h) * (W_k * h + W_embeding * m_k[i, j])
       # token_level_attention_mask = token_level_attention_mask.unsqueeze(1).repeat(1, self.num_attention_heads, 1, 1)
       # batch_size, sent_length, sent_length
       token_level_attention_mask_embed = self.token_level_attention_mask_embedding(token_level_attention_mask)
@@ -380,9 +381,6 @@ class BertSelfAttention(nn.Module):
 
     # Take the dot product between "query" and "key" to get the raw attention scores.
     attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
-    attention_scores = attention_scores / math.sqrt(self.attention_head_size)
-    # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
-    attention_scores = attention_scores + attention_mask
 
     if token_level_attention_mask is not None:
       # A = Q' * K + Q' * M
@@ -390,7 +388,23 @@ class BertSelfAttention(nn.Module):
       # M (batch_size, num_heads, sent_length, sent_length, head_size)
       token_level_attention_matrix = torch.matmul(
         query_layer.unsqueeze(3), token_level_attention_mask_embed.transpose(-1, -2)).squeeze(3)
+      # A = [length, length]
+      # Q = [q_1, q_2, q_3]
+      # K = [k_1, k_2, k_3]
+      # a_11 = q_1' * (k_1 + embed[1, 1])
+      # a_12 = q_1' * (k_2 + embed[1, 2])
+      # A_1 = q_1 * embed[1,:]
+      # A = Q' * (K + embed) = Q' K + Q' * embed
+      # Q (batch_size, num_heads, sent_length, 1, head_size)
+      # M (batch_size, num_heads, sent_length, head_size, sent_length)
+      # A (batch_size, num_heads, sent_length, sent_length)
       attention_scores = attention_scores + token_level_attention_matrix
+
+    attention_scores = attention_scores / math.sqrt(self.attention_head_size)
+    # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
+    attention_scores = attention_scores + attention_mask
+
+
 
     # Normalize the attention scores to probabilities.
     attention_probs = nn.Softmax(dim=-1)(attention_scores)

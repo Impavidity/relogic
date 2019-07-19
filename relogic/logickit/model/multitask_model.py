@@ -155,7 +155,8 @@ class Model(BaseModel):
       results = self.model(**inputs)
     if self.config.output_attentions:
       results, attention_map = results
-      attention_map = torch.cat(attention_map, dim=0).transpose(0, 1)
+      # list(batch_size, num_heads, sent_length, sent_length) = layer
+      attention_map = torch.stack(attention_map, dim=0).transpose(0, 1)
     # (layer, batch, head, length, length)
     if self.config.output_attentions:
       return results, attention_map.cpu().numpy()
