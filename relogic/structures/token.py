@@ -5,4 +5,4 @@ from relogic.structures.structure import Structure
 
 @dataclass
 class Token(Structure):
-  text: str
+  text: str = None

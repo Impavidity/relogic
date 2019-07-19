@@ -128,7 +128,9 @@ class SimpleEntityLinker(object):
       without global inference.
     """
     for item in inputs:
-      if isinstance(item, Sentence) or isinstance(item, Document):
+      if isinstance(item, Document):
+        self.link(item.sentences)
+      elif isinstance(item, Sentence):
         for span in item.spans:
           self.entity_retrieval(span, "en")
           self.rank(span)
