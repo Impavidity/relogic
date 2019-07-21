@@ -3,6 +3,7 @@ from relogic.logickit.scorer.sent_level_scorer import SentLevelScorer
 from relogic.logickit.utils.utils import softmax
 import json
 import os
+import numpy as np
 
 
 class F1Score(SentLevelScorer, metaclass=abc.ABCMeta):
@@ -36,6 +37,13 @@ class RelationF1Scorer(F1Score):
     if dump_to_file:
       self.dump_to_file_path = os.path.join(dump_to_file["output_dir"], dump_to_file["task_name"] + "_dump.json")
       self.dump_to_file_handler = open(self.dump_to_file_path, 'w')
+      attention_map_path = os.path.join(dump_to_file["output_dir"], "attn_maps")
+      if not os.path.exists(attention_map_path):
+        os.mkdir(attention_map_path)
+      self.attention_dump_file_path = os.path.join(attention_map_path, dump_to_file["task_name"] + "_attention")
+      # self.attention_dump_file_handler = open(self.attention_dump_file_path, 'wb')
+    self._attn_maps = []
+    self.counter = 0
 
 
   def update(self, mbs, predictions, loss, extra_args):
@@ -44,22 +52,27 @@ class RelationF1Scorer(F1Score):
       self.dump_to_file_handler = open(self.dump_to_file_path, 'w')
       self.need_to_clear_output = False
     n_sents = 0
-    for example, preds in zip(mbs.examples, predictions):
+
+    for idx, (example, preds) in enumerate(zip(mbs.examples, predictions)):
       self._examples.append(example)
       self._preds.append(preds)
       pred_tag = preds.argmax(-1).item()
-      if self.dump_to_file_path:
-        self.dump_to_file_handler.write(
-          json.dumps({
-            "text": example.raw_text,
-            "subject": example.subj_text,
-            "object": example.obj_text,
-            "label": example.label,
-            "predicted": self._inv_label_mapping[pred_tag]
-          }) + "\n")
-      # self._attn_maps.append(attention_map)
+      if example.label != self._o:
+        if self.dump_to_file_path:
+          self.dump_to_file_handler.write(
+            json.dumps({
+              "text": example.raw_text,
+              "subject": example.subj_text,
+              "object": example.obj_text,
+              "label": example.label,
+              "predicted": self._inv_label_mapping[pred_tag]
+            }) + "\n")
+          if "attention_map" in extra_args:
+            np.save(self.attention_dump_file_path + str(self.counter), extra_args["attention_map"][idx])
+            self.counter += 1
       # do not dumping heavy results on memory
       n_sents += 1
+
     self._total_loss += loss * n_sents
     self._total_sents += n_sents
 

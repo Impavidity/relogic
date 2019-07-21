@@ -19,7 +19,7 @@ class Inference(nn.Module):
       self.encoder = BranchingBertModel.from_pretrained(config.bert_model, encoder_structure=config.branching_structure)
     else:
       utils.log("Build Bert Encoder")
-      self.encoder = Encoder.from_pretrained(config.bert_model)
+      self.encoder = Encoder.from_pretrained(config.bert_model, config.output_attentions)
     utils.log("Build Task Modules")
     self.tasks = nn.ModuleDict()
     for task in tasks:
