@@ -117,16 +117,21 @@ class Model(BaseModel):
 
   def train_labeled_abstract(self, mb, step):
     self.model.train()
-    if mb.task_name == "rel_extraction":
+    if mb.task_name == "rel_extraction" or mb.task_name == "srl":
       inputs = generate_input(
         mb=mb,
         config=self.config,
         device=self.device)
+      if inputs["input_ids"].size(0) == 0:
+        utils.log("Zero Batch")
+        return 0
     else:
       # TODO: Slow process to change interfaces for all tasks
       inputs = self.generate_input(mb)
-    if inputs["input_ids"].size(0) == 0:
-      return 0
+      if inputs[0].size(0) == 0:
+        utils.log("Zero Batch")
+        return 0
+
 
     loss = self.model(**inputs)
     if self.config.gradient_accumulation_steps > 1:

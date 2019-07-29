@@ -10,7 +10,7 @@ from relogic.logickit.data_io.io_rel_extraction import get_relextraction_example
   generate_rel_extraction_input
 from relogic.logickit.data_io.io_seq import get_seq_examples, convert_seq_examples_to_features
 from relogic.logickit.data_io.io_singleton import get_singleton_examples, convert_singleton_examples_to_features
-from relogic.logickit.data_io.io_srl import get_srl_examples, convert_srl_examples_to_features
+from relogic.logickit.data_io.io_srl import get_srl_examples, convert_srl_examples_to_features, generate_srl_input
 from relogic.logickit.data_io.io_unlabeled import convert_unlabeled_examples_to_features
 from relogic.logickit.utils.utils import create_tensor
 
@@ -75,6 +75,8 @@ def generate_input(mb, config, device, use_label=True):
     return span_gcn_patching(mb, config, device, use_label)
   if mb.task_name in ["rel_extraction"]:
     return generate_rel_extraction_input(mb, config, device, use_label)
+  if mb.task_name in ["srl"]:
+    return generate_srl_input(mb, config, device, use_label)
   else:
     return patching(mb, config, device, use_label)
 

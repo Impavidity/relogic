@@ -1,4 +1,6 @@
-from relogic.logickit.utils import indicator_vector
+from relogic.logickit.utils import indicator_vector, create_tensor
+import torch
+import json
 
 class SRLExample(object):
   def __init__(self, guid, text,
@@ -48,7 +50,7 @@ class SRLExample(object):
     self.input_ids = tokenizer.convert_tokens_to_ids(self.tokens)
     self.input_mask = [1] * len(self.input_ids)
 
-    if "use_span_annotation":
+    if "use_span_annotation" in extra_args:
       span = list(range(self.head_index[self.predicate_index], self.head_index[self.predicate_index+1]))
       self.is_predicate = indicator_vector(
         index=span,
@@ -98,8 +100,21 @@ class SRLInputFeature(object):
     self.is_predicate = is_predicate
     self.label_ids = label_ids
 
+def get_srl_examples_from_json(path):
+  examples = []
+  with open(path, 'r') as f:
+    for idx, line in enumerate(f):
+      example = json.loads(line)
+      examples.append(SRLExample(
+        guid=idx,
+        text=" ".join(example["tokens"]),
+        label=example["labels"],
+        predicate_text=example["predicate_text"],
+        predicate_index=example["predicate_index"],
+        predicate_window=0))
+  return examples
 
-def get_srl_examples(path):
+def get_srl_examples_from_txt(path):
   sentences = []
   with open(path, 'r') as f:
     sentence, sent_idx, predicate_text, predicate_index = [], None, None, None
@@ -124,6 +139,13 @@ def get_srl_examples(path):
     predicate_index=sentence[4],
     predicate_window=0) for sentence in sentences]
   return examples
+
+
+def get_srl_examples(path):
+  if path.endswith(".txt"):
+    return get_srl_examples_from_txt(path)
+  elif path.endswith(".json"):
+    return get_srl_examples_from_json(path)
 
 def convert_srl_examples_to_features(examples, max_seq_length, extra_args=None):
   features = []
@@ -152,4 +174,18 @@ def convert_srl_examples_to_features(examples, max_seq_length, extra_args=None):
 
   return features
 
-
+def generate_srl_input(mb, config, device, use_label):
+  inputs = {}
+  inputs["task_name"] = mb.task_name
+  inputs["input_ids"] = create_tensor(mb.input_features, "input_ids", torch.long, device)
+  inputs["input_mask"] = create_tensor(mb.input_features, "input_mask", torch.long, device)
+  inputs["segment_ids"] = create_tensor(mb.input_features, "segment_ids", torch.long, device)
+  inputs["input_head"] = create_tensor(mb.input_features, "is_head", torch.long, device)
+  if use_label:
+    inputs["label_ids"] = create_tensor(mb.input_features, "label_ids", torch.long, device)
+  else:
+    inputs["label_ids"] = None
+  extra_args = {}
+  extra_args["is_predicate_id"] = create_tensor(mb.input_features, "is_predicate", torch.long, device)
+  inputs["extra_args"] = extra_args
+  return inputs

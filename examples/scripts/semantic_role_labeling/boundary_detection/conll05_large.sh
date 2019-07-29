@@ -1,0 +1,17 @@
+python -u -m relogic.main  \
+--task_name srl \
+--mode train \
+--output_dir saves/semantic_role_labeling/conll05_large_boundary_1 \
+--bert_model bert-large-cased \
+--raw_data_path data/raw_data/srl/json/conll05/boundary \
+--label_mapping_path data/preprocessed_data/BIO_label_mapping.pkl \
+--model_name default \
+--local_rank $1 \
+--train_batch_size 12 \
+--test_batch_size 12 \
+--learning_rate 5e-5 \
+--epoch_number 3 \
+--eval_dev_every 1000 \
+--hidden_size 1024 \
+--no_bilstm \
+--gradient_accumulation_steps 2 \
