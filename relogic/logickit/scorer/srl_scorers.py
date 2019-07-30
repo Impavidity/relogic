@@ -1,6 +1,7 @@
 from relogic.logickit.scorer.tagging_scorers import F1Score, softmax
 from relogic.logickit.utils.utils import get_span_labels
 import os
+import json
 
 
 class SRLF1Scorer(F1Score):
@@ -10,10 +11,10 @@ class SRLF1Scorer(F1Score):
     self._inv_label_mapping = {v: k for k, v in label_mapping.items()}
     if dump_to_file:
       self.dump_to_file_path = os.path.join(dump_to_file["output_dir"], dump_to_file["task_name"] + "_dump.json")
+      self.dump_to_file_handler = open(self.dump_to_file_path, 'w')
 
   def _get_results(self):
-    if self.dump_to_file_path:
-      self.dump_to_file_handler = open(self.dump_to_file_path, 'w')
+    # The scorer will be cleared after the evaluation is done. 
 
     self._n_correct, self._n_predicted, self._n_gold = 0, 0, 0
     data_to_dump = []
@@ -36,14 +37,22 @@ class SRLF1Scorer(F1Score):
           print(len(sent_labels), sent_labels)
           print(len(pred_labels), pred_labels)
           exit()
-        data_to_dump.append(((int(example.guid), int(example.predicate_index)), example.raw_text, sent_labels, pred_labels, confidences))
+        self.dump_to_file_handler.write(json.dumps({
+          "text": example.raw_text,
+          "predicate_text": example.predicate_text,
+          "predicate_index": example.predicate_index,
+          "label": sent_labels,
+          "predicted": pred_labels,
+          "confidence": confidences
+        }) + "\n")
+        # data_to_dump.append(((int(example.guid), int(example.predicate_index)), example.raw_text, sent_labels, pred_labels, confidences))
 
     if self.dump_to_file_path:
-      data_to_dump = sorted(data_to_dump, key=lambda x: x[0])
-      for idx, raw_text, sent_labels, pred_labels, confidences in data_to_dump:
-        for word, gold, pred, confidence in zip(raw_text, sent_labels, pred_labels, confidences):
-          self.dump_to_file_handler.write("{} {} {} {}\n".format(word, gold, pred, confidence))
-        self.dump_to_file_handler.write("\n")
+      # data_to_dump = sorted(data_to_dump, key=lambda x: x[0])
+      # for idx, raw_text, sent_labels, pred_labels, confidences in data_to_dump:
+      #   for word, gold, pred, confidence in zip(raw_text, sent_labels, pred_labels, confidences):
+      #     self.dump_to_file_handler.write("{} {} {} {}\n".format(word, gold, pred, confidence))
+      #   self.dump_to_file_handler.write("\n")
       self.dump_to_file_handler.close()
 
     return super(SRLF1Scorer, self)._get_results()
