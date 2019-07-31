@@ -4,7 +4,17 @@ import json
 
 class SRLExample(object):
   def __init__(self, guid, text,
-        predicate_text, predicate_index, label, predicate_window=0):
+        predicate_text, predicate_index, label, predicate_window=0, span_candidates=None):
+    """
+      We will keep two sets of annotation here an example. 
+      One set of annotation is token level based. Bascially it is 
+        BIO annotation scheme.
+      The other set of annotation is span level based.
+        predicate span, argument spans, and argument label. (These annotations can be
+        infered from the token level annotation) Currently we put this functionality to
+        scorer.
+        And candidate spans, which are pre-detected and dump into the data files.
+    """
     self.guid = guid
     self.text = text
     self.predicate_index = predicate_index
@@ -17,6 +27,8 @@ class SRLExample(object):
     self.predicate_window = predicate_window
     if predicate_window > 0:
       self.predicate_text = self.expand_predicate(self.raw_text, self.predicate_index, predicate_window)
+    self.span_candidates = span_candidates
+    
 
   def expand_predicate(self, text, index, predicate_window):
     span = []
