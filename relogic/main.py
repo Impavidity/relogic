@@ -100,16 +100,20 @@ def main():
   parser.add_argument("--dump_to_files_dict", default="")
 
   parser.add_argument("--output_attentions", default=False, action="store_true")
+  parser.add_argument("--span_inference", default=False, action="store_true")
 
   # Task related configuration
 
   # Relation Extraction
   parser.add_argument("--no_entity_surface", dest="entity_surface_aware", default=True, action="store_false")
   parser.add_argument("--use_dependency_feature", dest="use_dependency_feature", default=False, action="store_true")
+  parser.add_argument("--rel_extraction_module_type", type=str, default="hybrid")
 
   # Semantic Role Labeling
   parser.add_argument("--no_predicate_surface", dest="predicate_surface_aware", default=True, action="store_false")
   parser.add_argument("--no_span_annotation", dest="use_span_annotation", default=True, action="store_false")
+  parser.add_argument("--use_span_candidates", default=False, action="store_true")
+  parser.add_argument("--srl_module_type", type=str, default="sequence_labeling")
 
   # Reading Comprehension
   parser.add_argument("--null_score_diff_threshold", default=1.0)

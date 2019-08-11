@@ -62,6 +62,7 @@ class RelationF1Scorer(F1Score):
           self.dump_to_file_handler.write(
             json.dumps({
               "text": example.raw_text,
+              "token": example.tokens,
               "subject": example.subj_text,
               "object": example.obj_text,
               "label": example.label,

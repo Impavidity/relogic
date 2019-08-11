@@ -1,7 +1,7 @@
 python -u -m relogic.main \
 --task_name rel_extraction \
 --mode train \
---output_dir saves/relation_extraction/tacred/tacred_base_5 \
+--output_dir saves/relation_extraction/tacred/tacred_base_hybrid_1 \
 --bert_model bert-base-cased \
 --raw_data_path data/raw_data/rel_extraction/tacred/origin \
 --label_mapping_path data/preprocessed_data/rel_extraction_tacred_label_mapping.pkl \
@@ -14,5 +14,4 @@ python -u -m relogic.main \
 --eval_dev_every 1000 \
 --no_entity_surface \
 --no_bilstm \
---rel_extraction_module_type sent_repr \
-# --gradient_accumulation_steps 2 \
+--rel_extraction_module_type hybrid \

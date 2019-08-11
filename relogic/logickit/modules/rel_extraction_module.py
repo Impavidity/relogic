@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch
 from relogic.logickit.modules.rnn import dynamic_rnn
 import torch.nn.functional as F
+from relogic.logickit.modules.span_gcn import select_span
 
 class PredictionModule(nn.Module):
   def __init__(self, config, task_name, n_classes):
@@ -20,7 +21,17 @@ class PredictionModule(nn.Module):
       self.activation = nn.SELU()
       self.attention_W = nn.Linear(2 * config.hidden_size + 20, config.hidden_size, bias=False)
       self.attention_V = nn.Linear(config.hidden_size, 1, bias=False)
-    self.to_logits = nn.Linear(config.hidden_size, self.n_classes)
+    if self.config.rel_extraction_module_type == "entity_span":
+      hidden_size = 2 * config.hidden_size
+    elif self.config.rel_extraction_module_type == "sent_repr":
+      hidden_size = config.hidden_size
+    elif self.config.rel_extraction_module_type == "hybrid":
+      hidden_size = 3 * config.hidden_size
+    else:
+      raise ValueError("rel_extraction_module_type is not in [entity_span, sent_repr, hybrid], {}".format(
+        self.config.rel_extraction_module_type))
+    self.to_logits = nn.Linear(hidden_size, self.n_classes)
+    self.padding = nn.Parameter(torch.zeros(config.hidden_size), requires_grad=False)
 
   def attention_module(self, query, candidate, mask):
     # query = (batch, dim), candidate = (batch, length, dim)
@@ -50,18 +61,45 @@ class PredictionModule(nn.Module):
       projected = self.projection(projected)
       projected = self.activation(projected)
     else:
-      # if "start_of_subject" in extra_args and "start_of_object" in extra_args:
-      #   start_of_subject = extra_args["start_of_subject"]
-      #   start_of_object = extra_args["start_of_object"]
-      #   start_of_subject_repr = input[torch.arange(input.size(0)), start_of_subject]
-      #   start_of_object_repr = input[torch.arange(input.size(0)), start_of_object]
-      #   projected = torch.cat([start_of_subject_repr, start_of_object_repr], dim=1)
-      #   # logits = self.to_logits(torch.cat([start_of_subject_repr, start_of_object_repr], dim=1))
-      # else:
-      #   raise ValueError("Start of Subject is not in extra args")
-      projected = input[:, 0]
+      if self.config.rel_extraction_module_type == "entity_span":
+        if "start_of_subject" in extra_args and "start_of_object" in extra_args:
+          start_of_subject = extra_args["start_of_subject"]
+          start_of_object = extra_args["start_of_object"]
+          start_of_subject_repr = input[torch.arange(input.size(0)), start_of_subject]
+          start_of_object_repr = input[torch.arange(input.size(0)), start_of_object]
+          projected = torch.cat([start_of_subject_repr, start_of_object_repr], dim=1)
+          # logits = self.to_logits(torch.cat([start_of_subject_repr, start_of_object_repr], dim=1))
+        else:
+          raise ValueError("Start of Subject is not in extra args")
+      elif self.config.rel_extraction_module_type == "sent_repr":
+        projected = input[:, 0]
+      elif self.config.rel_extraction_module_type == "hybrid":
+        if ("start_of_subject" in extra_args and
+              "start_of_object" in extra_args and
+              "end_of_subject" in extra_args and
+              "end_of_object" in extra_args):
+          cls_hidden = input[:, 0]
+          start_of_subject = extra_args["start_of_subject"]
+          start_of_object = extra_args["start_of_object"]
+          end_of_subject = extra_args["end_of_subject"]
+          end_of_object = extra_args["end_of_object"]
+          subject_repr = select_span(input, start_index=start_of_subject, end_index=end_of_subject, padding=self.padding)
+          object_repr = select_span(input, start_index=start_of_object, end_index=end_of_object, padding=self.padding)
+          subject_repr = self.agg(subject_repr, end_of_subject-start_of_subject)
+          object_repr = self.agg(object_repr, end_of_object-start_of_object)
+          projected = torch.cat([cls_hidden, subject_repr, object_repr], dim=-1)
+        else:
+          raise ValueError("Start of Subject is not in extra args")
+      else:
+        raise ValueError("rel_extraction_module_type is not in [entity_span, sent_repr, hybrid], {}".format(
+          self.config.rel_extraction_module_type))
     logits = self.to_logits(projected)
     return logits
+
+  def agg(self, embed, lengths):
+    return torch.sum(embed, -2) / lengths.unsqueeze(1).float()
+
+
 
 class RelExtractionModule(nn.Module):
   def __init__(self, config, task_name, n_classes):

@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from relogic.structures.sentence import Sentence
 from relogic.structures.span import Span
@@ -37,7 +37,7 @@ class SimpleEntityLinker(object):
     for name, path in self.paths.items():
       self.retrievers[name] = JSearcher(JString(path))
       
-      # self.retrievers[name].setLanguage()
+      self.retrievers[name].setLanguage(name)
 
   def entity_retrieval(self, mention: Span, name: str, candidate_size: int = 20):
     hits = self.retrievers[name].search(
@@ -76,10 +76,12 @@ class SimpleEntityLinker(object):
       if abs(candidate.score - max_score) < epsilon:
         # Go over the priors
         for uri, count in candidate.prior.items():
-          mention.first_layer_prior[uri] = mention.first_layer_prior.get(uri, 0) + count
+          if uri:
+            mention.first_layer_prior[uri] = mention.first_layer_prior.get(uri, 0) + count
         # Also consider the alias_of
         for uri in candidate.alias_of:
-          mention.first_layer_prior[uri] = mention.first_layer_prior.get(uri, 0) + 1
+          if uri:
+            mention.first_layer_prior[uri] = mention.first_layer_prior.get(uri, 0) + 1
           # TODO: Here 1 is a hyper parameter
 
     # Sorted by the prior
@@ -119,24 +121,34 @@ class SimpleEntityLinker(object):
     pass
 
 
+  def link_span(self, span: Span, name: str):
+    self.entity_retrieval(span, name=name)
+    self.rank(span)
 
-
-  def link(self, inputs: List[Structure]):
+  def link(self, inputs: Union[str, Structure, List[Structure]], name:str = "en"):
     """Linking method.
     If the inputs is Sentence, then two steps linking is operated.
     If the inputs is a Span, then candidate retrieval is operated 
       without global inference.
     """
-    for item in inputs:
-      if isinstance(item, Document):
-        self.link(item.sentences)
-      elif isinstance(item, Sentence):
-        for span in item.spans:
-          self.entity_retrieval(span, "en")
-          self.rank(span)
-        self.global_inference(item)
-      elif isinstance(item, Span):
-        self.entity_retrieval(item, "en")
-        self.rank(item)
+    if isinstance(inputs, str):
+      span = Span(text=inputs)
+      self.link_span(span, name=name)
+      return span
+    elif isinstance(inputs, Structure):
+      if isinstance(inputs, Document):
+        self.link(inputs.sentences, name=name)
+      elif isinstance(inputs, Sentence):
+        for span in inputs.spans:
+          self.link_span(span, name=name)
+        self.global_inference(inputs)
+      elif isinstance(inputs, Span):
+        self.link_span(inputs, name=name)
       else:
-        raise ValueError("Item type {} is not supported".format(type(item)))
+        raise ValueError("Item type {} is not supported".format(type(inputs)))
+    elif isinstance(inputs, List):
+      for item in inputs:
+        self.link(item, name=name)
+    else:
+      raise ValueError("Item type {} is not supported".format(type(inputs)))
+

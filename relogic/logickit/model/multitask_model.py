@@ -37,7 +37,7 @@ class Model(BaseModel):
         size_train_examples += task.train_set.size
 
     config.num_steps_in_one_epoch = size_train_examples // config.train_batch_size
-    config.num_train_optimization_steps = size_train_examples // config.train_batch_size * config.epoch_number \
+    config.num_train_optimization_steps = size_train_examples / config.train_batch_size * config.epoch_number \
       if config.schedule_lr else -1
     utils.log("Optimization steps : {}".format(config.num_train_optimization_steps))
     # adjust to real training batch size
@@ -147,7 +147,7 @@ class Model(BaseModel):
 
   def test_abstract(self, mb):
     self.model.eval()
-    if mb.task_name == "rel_extraction":
+    if mb.task_name == "rel_extraction" or mb.task_name == "srl":
       inputs = generate_input(
         mb=mb,
         config=self.config,

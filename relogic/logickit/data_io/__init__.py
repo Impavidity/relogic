@@ -6,7 +6,7 @@ from relogic.logickit.data_io.io_matching import get_matching_examples, convert_
 from relogic.logickit.data_io.io_pair import get_pair_examples, convert_pair_examples_to_features
 from relogic.logickit.data_io.io_reading_comprehension import get_reading_comprehension_examples, \
   convert_reading_comprehension_examples_to_features
-from relogic.logickit.data_io.io_rel_extraction import get_relextraction_examples, convert_relextraction_examples_to_features, \
+from relogic.logickit.data_io.io_relation import get_relextraction_examples, convert_relextraction_examples_to_features, \
   generate_rel_extraction_input
 from relogic.logickit.data_io.io_seq import get_seq_examples, convert_seq_examples_to_features
 from relogic.logickit.data_io.io_singleton import get_singleton_examples, convert_singleton_examples_to_features

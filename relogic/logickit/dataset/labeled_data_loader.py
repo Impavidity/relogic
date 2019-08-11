@@ -50,6 +50,7 @@ class LabeledDataLoader(object):
       extra_args["entity_surface_aware"] = self.config.entity_surface_aware
     if self.task_name in ["srl"]:
       extra_args["predicate_surface_aware"] = True
+      extra_args["srl_module_type"] = self.config.srl_module_type
     for example in examples:
       example.process(tokenizer=self.tokenizer, extra_args=extra_args)
       # max_query_length, doc_stride are especially for reading comprehension
