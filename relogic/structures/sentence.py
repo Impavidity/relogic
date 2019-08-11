@@ -12,6 +12,11 @@ class Sentence(Structure):
   tokens: List[Token] = field(default_factory=list)
   spans: List[Span] = field(default_factory=list)
 
+  def __post_init__(self):
+    if self.text:
+      # Currently we only use split by tokens
+      self.tokens = [Token(token) for token in self.text.split()]
+
   def add_token(self, token: Union[str, Token]):
     """Append a token into tokens.
     
