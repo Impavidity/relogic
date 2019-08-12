@@ -26,7 +26,7 @@ class SpanGCNInference(nn.Module):
         config.bert_model, encoder_structure=config.branching_structure)
     else:
       utils.log("Build Bert Encoder")
-      self.encoder = Encoder.from_pretrained(config.bert_model, config.output_attentions)
+      self.encoder = Encoder.from_pretrained(config.bert_model)
     utils.log("Build Task Modules")
     self.tasks_modules = nn.ModuleDict()
     for task in tasks:
@@ -36,12 +36,12 @@ class SpanGCNInference(nn.Module):
               task_name,
               input_ids,
               input_mask,
+              input_head,
               segment_ids,
               label_ids,
               extra_args):
 
     output_all_encoded_layers = extra_args.get("output_all_encoded_layers", False)
-    output_final_multi_head_repr = extra_args.get("output_final_multi_head_repr", False)
     route_path = extra_args.get("route_path", None)
     selected_non_final_layers = extra_args.get("selected_non_final_layers", None)
     no_dropout = task_name in READING_COMPREHENSION_TASKS
@@ -51,21 +51,9 @@ class SpanGCNInference(nn.Module):
       token_type_ids=segment_ids,
       attention_mask=input_mask,
       output_all_encoded_layers=output_all_encoded_layers,
-      output_final_multi_head_repr=output_final_multi_head_repr,
       selected_non_final_layers=selected_non_final_layers,
       route_path=route_path,
       no_dropout=no_dropout)
-    if output_final_multi_head_repr:
-      sequence_output, final_multi_head_repr = features
-    else:
-      sequence_output = features
-    if not output_all_encoded_layers and selected_non_final_layers is None:
-      features = sequence_output
-      selected_non_final_layers = None
-    else:
-      features = sequence_output[-1]
-      selected_non_final_layers = sequence_output[:-1]
-    extra_args["selected_non_final_layers"] = selected_non_final_layers
 
     # Semi-supervised Learning is not supported for now
     # There is a lot of semi-supervised learning algorithms,
@@ -85,10 +73,12 @@ class SpanGCNInference(nn.Module):
         task_name=task_name,
         logits=logits,
         label_ids=label_ids,
-        config=self.config)
+        config=self.config,
+        extra_args=extra_args)
       return loss
     else:
       return logits
+
 
 
 
