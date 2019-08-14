@@ -22,5 +22,5 @@ class LinkageCandidate(Structure):
         uri = uri.replace("WikiProject_", "")
         # TODO: We will unified the cleaning process and add it to utils
         prior_table[uri] = prior_table.get(uri, 0) + int(count)
-    alias_of = hit.alias.split("\t")
+    alias_of = [] if not hit.alias else hit.alias.split("\t")
     return cls(text=hit.content, score=hit.score, prior=prior_table, alias_of=alias_of)
