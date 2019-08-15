@@ -1,4 +1,7 @@
 import json
+from relogic.logickit.utils import indicator_vector, create_tensor
+import torch
+
 
 class SeqExample(object):
   def __init__(self, guid, text, label):
@@ -55,7 +58,7 @@ def get_seq_examples(path):
     with open(path, 'r') as f:
       for line in f:
         example = json.loads(line)
-        sentences.append((example["tokens"], example["labels"]))
+        sentences.append((example["tokens"], example["segment_labels"]))
   else:
     with open(path, 'r') as f:
       sentence = []
@@ -102,3 +105,18 @@ def convert_seq_examples_to_features(examples, max_seq_length, extra_args=None):
         is_head=is_head,
         label_ids=label_ids))
   return features
+
+def generate_seq_input(mb, config, device, use_label):
+  inputs = {}
+  inputs["task_name"] = mb.task_name
+  inputs["input_ids"] = create_tensor(mb.input_features, "input_ids", torch.long, device)
+  inputs["input_mask"] = create_tensor(mb.input_features, "input_mask", torch.long, device)
+  inputs["segment_ids"] = create_tensor(mb.input_features, "segment_ids", torch.long, device)
+  inputs["input_head"] = create_tensor(mb.input_features, "is_head", torch.long, device)
+  if use_label:
+    inputs["label_ids"] = create_tensor(mb.input_features, "label_ids", torch.long, device)
+  else:
+    inputs["label_ids"] = None
+  extra_args = {}
+  inputs["extra_args"] = extra_args
+  return inputs

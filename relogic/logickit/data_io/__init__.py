@@ -8,14 +8,14 @@ from relogic.logickit.data_io.io_reading_comprehension import get_reading_compre
   convert_reading_comprehension_examples_to_features
 from relogic.logickit.data_io.io_relation import get_relextraction_examples, convert_relextraction_examples_to_features, \
   generate_rel_extraction_input
-from relogic.logickit.data_io.io_seq import get_seq_examples, convert_seq_examples_to_features
+from relogic.logickit.data_io.io_seq import get_seq_examples, convert_seq_examples_to_features, generate_seq_input
 from relogic.logickit.data_io.io_singleton import get_singleton_examples, convert_singleton_examples_to_features
 from relogic.logickit.data_io.io_srl import get_srl_examples, convert_srl_examples_to_features, generate_srl_input
 from relogic.logickit.data_io.io_unlabeled import convert_unlabeled_examples_to_features
 from relogic.logickit.utils.utils import create_tensor
 
 
-def get_labeled_examples(split, raw_data_path, task):
+def get_labeled_examples(split, raw_data_path, file_name, task):
   """
   Uniform interface of dataset reader
   :param split: train, dev, test
@@ -23,9 +23,7 @@ def get_labeled_examples(split, raw_data_path, task):
   :param task: ner, er, srl
   :return: list of examples
   """
-  path = os.path.join(raw_data_path, split + ".txt")
-  if not os.path.exists(path):
-    path = os.path.join(raw_data_path, split + ".json")
+  path = os.path.join(raw_data_path, file_name)
   if not os.path.exists(path):
     raise ValueError("There is no file in {}".format(raw_data_path))
   if task in ["srl", "srl_conll05", "srl_conll09", "srl_conll12"]:
@@ -77,6 +75,8 @@ def generate_input(mb, config, device, use_label=True):
     return generate_rel_extraction_input(mb, config, device, use_label)
   if mb.task_name in ["srl"]:
     return generate_srl_input(mb, config, device, use_label)
+  if mb.task_name in ["er"]:
+    return generate_seq_input(mb, config, device, use_label)
   else:
     return patching(mb, config, device, use_label)
 
