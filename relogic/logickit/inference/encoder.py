@@ -1,4 +1,4 @@
-from relogic.logickit.model.modeling import BertPreTrainedModel, BertModel
+from relogic.logickit.inference.modeling import BertPreTrainedModel, BertModel
 
 import torch.nn as nn
 

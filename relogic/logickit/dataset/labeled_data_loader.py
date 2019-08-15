@@ -10,6 +10,11 @@ class LabeledDataLoader(object):
     self.task_name = name
     self.raw_data_path = config.tasks[name]["raw_data_path"]
     self.label_mapping_path = config.tasks[name]["label_mapping_path"]
+    self.file_names = {
+      "train": config.tasks[name]["train_file"],
+      "dev": config.tasks[name]["dev_file"],
+      "test": config.tasks[name]["test_file"]
+    }
     self.tokenizer = tokenizer
     # TODO: these code can not support multi-label set dataset.
     # Will fix this in the future.
@@ -20,10 +25,10 @@ class LabeledDataLoader(object):
     self.extra_args = {}
 
   def get_dataset(self, split):
-    if (split == 'train'
-          and (os.path.exists(os.path.join(self.raw_data_path, "train_subset.txt")) or 
-               os.path.exists(os.path.join(self.raw_data_path, "train_subset.json")))):
-      split = 'train_subset'
+    # if (split == 'train'
+    #       and (os.path.exists(os.path.join(self.raw_data_path, "train_subset.txt")) or
+    #            os.path.exists(os.path.join(self.raw_data_path, "train_subset.json")))):
+    #   split = 'train_subset'
     if "train" in split:
       dataset_type = "bucket"
     else:
@@ -39,7 +44,7 @@ class LabeledDataLoader(object):
       extra_args=self.extra_args)
 
   def get_examples(self, split):
-    examples = get_labeled_examples(split=split, raw_data_path=self.raw_data_path, task=self.task_name)
+    examples = get_labeled_examples(split=split, raw_data_path=self.raw_data_path, file_name=self.file_names[split], task=self.task_name)
     extra_args={
         "label_mapping": self.label_mapping,
         "max_seq_length": self.config.max_seq_length}

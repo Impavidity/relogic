@@ -1,9 +1,8 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from relogic.logickit.model.encoder import Encoder
-from relogic.logickit.model.branching_encoder import BranchingBertModel
+from relogic.logickit.inference.encoder import Encoder
+from relogic.logickit.inference.branching_encoder import BranchingBertModel
 from relogic.logickit.base import utils
 from torch.nn import MarginRankingLoss, CrossEntropyLoss, KLDivLoss
 

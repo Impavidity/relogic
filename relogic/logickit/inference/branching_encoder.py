@@ -1,4 +1,4 @@
-from relogic.logickit.model.modeling import PRETRAINED_MODEL_ARCHIVE_MAP, CONFIG_NAME, BertConfig, BertLayerNorm, \
+from relogic.logickit.inference.modeling import PRETRAINED_MODEL_ARCHIVE_MAP, CONFIG_NAME, BertConfig, BertLayerNorm, \
   WEIGHTS_NAME, TF_WEIGHTS_NAME, load_tf_weights_in_bert, BertEmbeddings, BertPooler, BertLayer
 from relogic.logickit.utils.file_utils import cached_path
 import torch

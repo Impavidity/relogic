@@ -1,10 +1,15 @@
 from relogic.logickit.utils import indicator_vector, create_tensor
 import torch
 import json
+from relogic.logickit.tokenizer import FasttextTokenizer
+
+fasttext_tokenizer = FasttextTokenizer.from_pretrained("wiki-news-300d-1M")
 
 class SRLExample(object):
   def __init__(self, guid, text,
-        predicate_text, predicate_index, label, predicate_window=0, span_candidates=None):
+        predicate_text, predicate_index, label,
+        predicate_window=0, span_candidates=None, span_candidates_label=None,
+        predicate_descriptions=None, argument_descriptions=None):
     """
       We will keep two sets of annotation here an example. 
       One set of annotation is token level based. Bascially it is 
@@ -28,7 +33,9 @@ class SRLExample(object):
     if predicate_window > 0:
       self.predicate_text = self.expand_predicate(self.raw_text, self.predicate_index, predicate_window)
     self.span_candidates = span_candidates
-    
+    self.span_candidates_label = span_candidates_label
+    self.predicate_descriptions = predicate_descriptions
+    self.argument_descriptions = argument_descriptions
 
   def expand_predicate(self, text, index, predicate_window):
     span = []
@@ -62,6 +69,9 @@ class SRLExample(object):
     self.input_ids = tokenizer.convert_tokens_to_ids(self.tokens)
     self.input_mask = [1] * len(self.input_ids)
 
+    self.predicate_span_start_index = self.head_index[self.predicate_index]
+    self.predicate_span_end_index = self.head_index[self.predicate_index+1]
+
     if "use_span_annotation" in extra_args:
       span = list(range(self.head_index[self.predicate_index], self.head_index[self.predicate_index+1]))
       self.is_predicate = indicator_vector(
@@ -81,22 +91,55 @@ class SRLExample(object):
     label_mapping = extra_args["label_mapping"]
     self.label_padding_id = label_mapping[self.label_padding]
 
-    # label mapping: str -> int
-    self.label_ids = [self.label_padding_id] * len(self.input_ids)
-    assert len(self.label) == (len(self.head_index) - (1 + self.predicate_window * 2))
-    # extra token for predicate
-    for idx, label in zip(self.head_index[:-(1 + self.predicate_window * 2)], self.label):
-      self.label_ids[idx] = label_mapping[label]
+    if extra_args["srl_module_type"] == "sequence_labeling" or extra_args["srl_module_type"] == "description_aware":
+      # label mapping: str -> int
+      self.label_ids = [self.label_padding_id] * len(self.input_ids)
+      assert len(self.label) == (len(self.head_index) - (1 + self.predicate_window * 2))
+      # extra token for predicate
+      for idx, label in zip(self.head_index[:-(1 + self.predicate_window * 2)], self.label):
+        self.label_ids[idx] = label_mapping[label]
 
-    if "use_span_annotation" in extra_args:
-      use_span_annotation = extra_args["use_span_annotation"]
-      if use_span_annotation:
-        prev_label = None
-        for idx, ind in zip(range(len(self.label_ids)), self.is_head):
-          if ind == 1:
-            prev_label = self.label_ids[idx]
-          elif ind == 0:
-            self.label_ids[idx] = prev_label
+      if "use_span_annotation" in extra_args:
+        use_span_annotation = extra_args["use_span_annotation"]
+        if use_span_annotation:
+          prev_label = None
+          for idx, ind in zip(range(len(self.label_ids)), self.is_head):
+            if ind == 1:
+              prev_label = self.label_ids[idx]
+            elif ind == 0:
+              self.label_ids[idx] = prev_label
+    elif extra_args["srl_module_type"] == "span_gcn" :
+      if self.span_candidates_label is not None:
+        self.label_ids = [label_mapping[label] for label in self.span_candidates_label]
+      else:
+        self.label_ids = None
+
+    if self.span_candidates is not None:
+      self.span_candidates_start_index = [self.head_index[span[0]] for span in self.span_candidates]
+      self.span_candidates_end_index = [self.head_index[span[1]+1] for span in self.span_candidates]
+    else:
+      self.span_candidates_start_index = None
+      self.span_candidates_end_index = None
+
+    if self.predicate_descriptions is not None:
+      self.predicate_descriptions_tokens = [fasttext_tokenizer.tokenize(text)
+                                            for text in self.predicate_descriptions]
+      self.predicate_descriptions_ids = [fasttext_tokenizer.convert_tokens_to_ids(tokens)
+                                         for tokens in self.predicate_descriptions_tokens]
+    else:
+      self.predicate_descriptions_tokens = None
+      self.predicate_descriptions_ids = None
+
+    if self.argument_descriptions is not None:
+      self.argument_descriptions_tokens = [
+        [fasttext_tokenizer.tokenize(text) for text in args] for args in self.argument_descriptions]
+      self.argument_descriptions_ids = [
+        [fasttext_tokenizer.convert_tokens_to_ids(tokens) for tokens in args]
+                                        for args in self.argument_descriptions_tokens]
+    else:
+      self.argument_descriptions_tokens = None
+      self.argument_descriptions_ids = None
+
 
   @property
   def len(self):
@@ -104,13 +147,22 @@ class SRLExample(object):
 
 
 class SRLInputFeature(object):
-  def __init__(self, input_ids, input_mask, segment_ids, is_head, is_predicate, label_ids):
+  def __init__(self, input_ids, input_mask, segment_ids, is_head, is_predicate, label_ids,
+               predicate_span_start_index, predicate_span_end_index,
+               span_candidates_start_index=None, span_candidates_end_index=None,
+               predicate_descriptions_ids=None, argument_descriptions_ids=None):
     self.input_ids = input_ids
     self.input_mask = input_mask
     self.segment_ids = segment_ids
     self.is_head = is_head
     self.is_predicate = is_predicate
     self.label_ids = label_ids
+    self.predicate_span_start_index = predicate_span_start_index
+    self.predicate_span_end_index = predicate_span_end_index
+    self.span_candidates_start_index = span_candidates_start_index
+    self.span_candidates_end_index = span_candidates_end_index
+    self.predicate_descriptions_ids = predicate_descriptions_ids
+    self.argument_descriptions_ids = argument_descriptions_ids
 
 def get_srl_examples_from_json(path):
   examples = []
@@ -123,6 +175,10 @@ def get_srl_examples_from_json(path):
         label=example["labels"],
         predicate_text=example["predicate_text"],
         predicate_index=example["predicate_index"],
+        span_candidates=example.get("span_candidates", None),
+        span_candidates_label=example.get("span_candidates_label", None),
+        predicate_descriptions=example.get("predicate_descriptions", None),
+        argument_descriptions=example.get("argument_descriptions", None),
         predicate_window=0))
   return examples
 
@@ -162,9 +218,34 @@ def get_srl_examples(path):
 def convert_srl_examples_to_features(examples, max_seq_length, extra_args=None):
   features = []
   max_length = max([example.len for example in examples])
+  if examples[0].label_ids is not None:
+    max_label_length = max([len(example.label_ids) for example in examples])
+  max_span_candidates_length = 0
+  if examples[0].span_candidates_start_index is not None:
+    max_span_candidates_length = max([len(example.span_candidates_start_index) for example in examples])
   if max_length > max_seq_length:
     raise ValueError("For SRL task, we do not want to truncate. "
                      "The sequence length {} is larger than max_seq_length {}".format(max_length, max_seq_length))
+
+  if examples[0].predicate_descriptions_ids is not None:
+    max_predicate_sense_length = max([len(example.predicate_descriptions_ids) for example in examples])
+    max_predicate_description_length = max(
+      [max([len(description) for description in example.predicate_descriptions_ids]) for example in examples])
+
+
+  if examples[0].argument_descriptions_ids is not None:
+    max_argument_description_length = 0
+    max_argument_sense_length = 0
+    label_set_size = 0
+    for example in examples:
+      if len(example.argument_descriptions_ids) > max_argument_sense_length:
+        max_argument_sense_length = len(example.argument_descriptions_ids)
+      label_set_size = len(example.argument_descriptions_ids[0])
+      for desc_in_roleset in example.argument_descriptions_ids:
+        for desc in desc_in_roleset:
+          if len(desc) > max_argument_description_length:
+            max_argument_description_length = len(desc)
+
 
   for idx, example in enumerate(examples):
     padding = [0] * (max_length - example.len)
@@ -173,7 +254,40 @@ def convert_srl_examples_to_features(examples, max_seq_length, extra_args=None):
     segment_ids = example.segment_ids + padding
     is_head = example.is_head + [2] * (max_length - example.len)
     is_predicate = example.is_predicate + padding
-    label_ids = example.label_ids + [example.label_padding_id] * (max_length - example.len)
+    if example.label_ids is not None:
+      label_ids = example.label_ids + [example.label_padding_id] * (max_label_length - len(example.label_ids))
+    else:
+      label_ids = None
+    if max_span_candidates_length > 0:
+      span_candidates_start_index = example.span_candidates_start_index + [-1] * (
+            max_span_candidates_length - len(example.span_candidates_start_index))
+      span_candidates_end_index = example.span_candidates_end_index + [-1] * (
+            max_span_candidates_length - len(example.span_candidates_end_index))
+    else:
+      span_candidates_start_index = None
+      span_candidates_end_index = None
+
+    if example.predicate_descriptions_ids is not None:
+      predicate_description_ids = []
+      for description in example.predicate_descriptions_ids:
+        predicate_description_ids.append(description + [0] * (max_predicate_description_length - len(description)))
+      while len(predicate_description_ids) < max_predicate_sense_length:
+        predicate_description_ids.append([0] * max_predicate_description_length)
+    else:
+      predicate_description_ids = None
+
+
+    if example.argument_descriptions_ids is not None:
+      argument_descriptions_ids = []
+      for arg_desc_in_roleset in example.argument_descriptions_ids:
+        arg_desc_in_roleset_ids = []
+        for desc in arg_desc_in_roleset:
+          arg_desc_in_roleset_ids.append(desc + [0] * (max_argument_description_length - len(desc)))
+        argument_descriptions_ids.append(arg_desc_in_roleset_ids)
+      while len(argument_descriptions_ids) < max_argument_sense_length:
+        argument_descriptions_ids.append([[0] * max_argument_description_length] * label_set_size)
+    else:
+      argument_descriptions_ids = None
 
     features.append(
       SRLInputFeature(
@@ -182,7 +296,13 @@ def convert_srl_examples_to_features(examples, max_seq_length, extra_args=None):
         segment_ids = segment_ids,
         is_head = is_head,
         is_predicate=is_predicate,
-        label_ids=label_ids))
+        label_ids=label_ids,
+        span_candidates_start_index=span_candidates_start_index,
+        span_candidates_end_index=span_candidates_end_index,
+        predicate_span_start_index=example.predicate_span_start_index,
+        predicate_span_end_index=example.predicate_span_end_index,
+        predicate_descriptions_ids=predicate_description_ids,
+        argument_descriptions_ids=argument_descriptions_ids))
 
   return features
 
@@ -199,5 +319,19 @@ def generate_srl_input(mb, config, device, use_label):
     inputs["label_ids"] = None
   extra_args = {}
   extra_args["is_predicate_id"] = create_tensor(mb.input_features, "is_predicate", torch.long, device)
+  if config.use_span_candidates:
+    extra_args["span_candidates"] = (
+      create_tensor(mb.input_features, "span_candidates_start_index", torch.long, device),
+      create_tensor(mb.input_features, "span_candidates_end_index", torch.long, device)
+    )
+    extra_args["predicate_span"] = (
+      create_tensor(mb.input_features, "predicate_span_start_index", torch.long, device),
+      create_tensor(mb.input_features, "predicate_span_end_index", torch.long, device)
+    )
+  if config.use_description:
+    extra_args["predicate_descriptions_ids"] = create_tensor(mb.input_features,
+                                "predicate_descriptions_ids", torch.long, device)
+    extra_args["argument_descriptions_ids"] = create_tensor(mb.input_features,
+                                "argument_descriptions_ids", torch.long, device)
   inputs["extra_args"] = extra_args
   return inputs

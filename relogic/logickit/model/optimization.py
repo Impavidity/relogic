@@ -340,16 +340,52 @@ class BertAdam(Optimizer):
     return loss
 
 class MultipleOptimizer(object):
-  def __init__(self, optim):
+  def __init__(self, optim, optim_type):
     self.optimizers = optim
+    self.min_loss_step = -1
+    self.min_loss = 100000
+    self.current_step = -1
+    self.optim_type = optim_type
+    self.stage_two = False
 
   def zero_grad(self):
-    for n, op in self.optimizers.items():
-      op.zero_grad()
+    if self.optim_type != "two_stage_optim":
+      for n, op in self.optimizers.items():
+        op.zero_grad()
+    else:
+      if self.stage_two:
+        for n, op in self.optimizers.items():
+          op.zero_grad()
+      else:
+        for n, op in self.optimizers.items():
+          if n == "bert_optimizer":
+            continue
+          op.zero_grad()
 
   def step(self):
-    for n, op in self.optimizers.items():
-      op.step()
+    if self.optim_type != "two_stage_optim":
+      for n, op in self.optimizers.items():
+        op.step()
+    else:
+      if self.stage_two:
+        for n, op in self.optimizers.items():
+          op.step()
+      else:
+        for n, op in self.optimizers.items():
+          if n == "bert_optimizer":
+            continue
+          op.step()
+
+  def update_loss(self, loss):
+    self.current_step += 1
+    if loss < self.min_loss:
+      self.min_loss = loss
+      self.min_loss_step = self.current_step
+    if not self.stage_two and self.optim_type == "two_stage_optim" and self.current_step > self.min_loss_step + 5:
+      self.stage_two = True
+      print("Into stage two")
+
+
 
 def adjust_learning_rate(optimizer, config, epoch):
   """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""

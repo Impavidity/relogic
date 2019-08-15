@@ -1,31 +1,30 @@
 import torch
 import torch.nn as nn
 
-
 class SpanGCNModule(nn.Module):
   """
   SpanGCN firstly extract span from text, and then label each span based
     on the learned representation of GCN
   """
-  def __init__(self, config, task_name, span_n_classes, label_n_classes):
+  def __init__(self, config, task_name, boundary_n_classes=None, label_n_classes=None):
     super(SpanGCNModule, self).__init__()
     self.config = config
     self.task_name = task_name
-    self.span_n_classes = span_n_classes
+    self.boundary_n_classes = boundary_n_classes
     self.label_n_classes = label_n_classes
-    self.to_span_logits = nn.Linear(config.hidden_size, self.span_n_classes)
-    self.to_label_logits = nn.Linear(config.hidden_size, self.label_n_classes)
+    if boundary_n_classes:
+      self.to_boundary_logits = nn.Linear(config.hidden_size, self.boundary_n_classes)
+    if label_n_classes:
+      self.to_label_logits = nn.Linear(config.hidden_size * 2, self.label_n_classes)
     if config.use_gcn:
       pass
     else:
       pass
-    self.padding = torch.zeros(config.hidden_size)
+    self.padding = nn.Parameter(torch.zeros(config.hidden_size), requires_grad=False)
+    self.ones = nn.Parameter(torch.ones(1, 1), requires_grad=False)
 
   def forward(self,
-              input,
-              predicate_hidden,
-              input_mask,
-              predicate_length,
+              input, predicate_span=None,
               bio_hidden=None, span_candidates=None, extra_args=None):
     """
     Before this module, there is another module info aggregation
@@ -75,21 +74,25 @@ class SpanGCNModule(nn.Module):
       assert "label_mapping" in extra_args, "label_mapping does not in extra_args"
       span_candidates = get_candidate_span(bio_logits, extra_args["label_mapping"])
     start_index, end_index = span_candidates
-    max_span_num = len(span_candidates[0])
+    # start_index, end_index = (batch, max_span_num)
+    predicate_start_index, predicate_end_index = predicate_span
+    # predicate_start_index, predicate_end_index = (batch)
+    max_span_num = len(start_index[0])
     # input (batch, sentence, dim) -> (batch, max_span_num, sentence, dim)
-    expanded_input = input.unsqueeze(1).expand(input.size(0), max_span_num, input.size(1), input.size(2))
+    expanded_input = input.unsqueeze(1).repeat(1, max_span_num, 1, 1)
     start_index_ = start_index.view(-1)
     end_index_ = end_index.view(-1)
 
-    span_hidden = select_span(expanded_input, start_index_, end_index_, self.padding)
+    span_hidden = select_span(expanded_input.view(-1, expanded_input.size(-2), expanded_input.size(-1)), start_index_, end_index_, self.padding)
+    predicate_hidden = select_span(input, predicate_start_index, predicate_end_index, self.padding)
 
     span_repr = self.aggregate(span_hidden, end_index_-start_index_)
-    predicate_repr = self.aggregate(predicate_hidden, predicate_length)
-
-    concat = torch.cat([span_repr, predicate_repr], dim=-1)
+    predicate_repr = self.aggregate(predicate_hidden, predicate_end_index-predicate_start_index)
+    # (batch, dim)
+    concat = torch.cat([span_repr, predicate_repr.unsqueeze(1).repeat(1, max_span_num, 1).view(-1, predicate_repr.size(-1))], dim=-1)
     label_logits = self.to_label_logits(concat)
 
-    return label_logits
+    return label_logits.view(input.size(0), max_span_num, self.label_n_classes)
 
   def aggregate(self, hidden, lengths):
     """
@@ -98,7 +101,8 @@ class SpanGCNModule(nn.Module):
     :param lengths: (batch)
     :return:
     """
-    return torch.sum(hidden, 1) / lengths.unsqueeze(1).float()
+    return torch.sum(hidden, 1) / torch.max(
+      self.ones.repeat(lengths.size(0), 1).float(), lengths.unsqueeze(1).float())
 
 def select_span(input, start_index, end_index, padding):
   """
@@ -112,11 +116,12 @@ def select_span(input, start_index, end_index, padding):
   padded_tensor = []
 
   max_span_size = torch.max(end_index - start_index)
-  for idx, start, end in enumerate(zip(start_index, end_index)):
+  for idx, (start, end) in enumerate(zip(start_index, end_index)):
     padded_tensor.append(
       torch.cat(
-        [torch.narrow(input[idx], 0, start, (end-start)),
-         padding.unsqueeze(0).expand(max_span_size-(end-start), 1)], dim=0))
+        [torch.narrow(input[idx], 0, start, (end-start))] +
+        ([padding.unsqueeze(0).repeat(max_span_size-(end-start), 1)] if max_span_size != (end-start)
+        else []), dim=0))
     # list of (max_span_size, dim)
   return torch.stack(padded_tensor)
 

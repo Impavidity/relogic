@@ -5,9 +5,12 @@ import json
 def merge(gold_examples, predicted_examples):
   assert len(gold_examples) == len(predicted_examples)
   for gold_example, predicted_example in zip(gold_examples, predicted_examples):
-    predicted_spans, labels = get_span_labels(predicted_example["label"])
-    predicted_spans = [(span[0], span[1]) for span in sorted(predicted_spans, key=lambda span: span[0], reverse=False)]
+    predicted_spans, labels = get_span_labels(predicted_example["labels"])
+    sorted_spans = sorted(predicted_spans, key=lambda span: span[0], reverse=False)
+    predicted_spans = [(span[0], span[1]) for span in sorted_spans]
+    predicted_spans_label = [span[2] for span in sorted_spans]
     gold_example["span_candidates"] = predicted_spans
+    gold_example["span_candidates_label"] = predicted_spans_label
 
 
 if __name__ == "__main__":

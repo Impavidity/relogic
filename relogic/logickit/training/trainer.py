@@ -56,6 +56,10 @@ class Trainer(object):
       if self.model.global_step_labeled % self.config.print_every == 0 \
             and self.model.global_step_unlabeled % self.config.print_every == 0 \
             and not progress.log_in_step(self.model.global_step_labeled):
+        # a quick patch here
+        # TODO: organize better
+        self.model.optimizer.update_loss(supervised_loss_total / max(1, supervised_loss_count))
+
         utils.log(
           "step supervised {:} - "
           "step unsupervised {:} - "

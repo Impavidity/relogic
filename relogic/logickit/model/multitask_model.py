@@ -37,19 +37,21 @@ class Model(BaseModel):
         size_train_examples += task.train_set.size
 
     config.num_steps_in_one_epoch = size_train_examples // config.train_batch_size
-    config.num_train_optimization_steps = size_train_examples / config.train_batch_size * config.epoch_number \
+    config.num_train_optimization_steps = size_train_examples // config.train_batch_size * config.epoch_number \
       if config.schedule_lr else -1
     utils.log("Optimization steps : {}".format(config.num_train_optimization_steps))
     # adjust to real training batch size
     config.train_batch_size = config.train_batch_size // config.gradient_accumulation_steps
+    utils.log("Training batch size: {}".format(config.train_batch_size))
     config.test_batch_size = config.test_batch_size // config.gradient_accumulation_steps
 
     # Optimization
     no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
     param_optimizer = list(self.model.named_parameters())
     optimizers = {}
+    optim_type = ""
     if config.sep_optim:
-      utils.log("Optimizing the model using two different optimizer ..")
+      utils.log("Optimizing the module using Adam optimizer ..")
       modules_parameters = [p for n, p in param_optimizer if "bert" not in n]
       bert_optimizer_grouped_parameters = [
         {'params': [p for n, p in param_optimizer if ("bert" in n) and (not any(nd in n for nd in no_decay))],
@@ -58,19 +60,43 @@ class Model(BaseModel):
          'weight_decay': 0.0}
       ]
       optimizers["module_optimizer"] = Adam(params=modules_parameters, lr=config.adam_learning_rate)
+      optimizers["bert_optimizer"] = BertAdam(bert_optimizer_grouped_parameters,
+                                              lr=config.learning_rate,
+                                              warmup=config.warmup_proportion,
+                                              schedule=config.schedule_method,
+                                              t_total=config.num_train_optimization_steps)
+      optim_type = "sep_optim"
+    elif config.two_stage_optim:
+      utils.log("Optimizing the module with two stage")
+      modules_parameters = [p for n, p in param_optimizer if "bert" not in n]
+      bert_optimizer_grouped_parameters = [
+        {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
+        {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}]
+      optimizers["module_optimizer"] = Adam(params=modules_parameters, lr=config.adam_learning_rate)
+      optimizers["bert_optimizer"] = BertAdam(bert_optimizer_grouped_parameters,
+                                              lr=config.learning_rate,
+                                              warmup=config.warmup_proportion,
+                                              schedule=config.schedule_method,
+                                              t_total=config.num_train_optimization_steps)
+      optim_type = "two_stage_optim"
+    elif config.fix_bert:
+      utils.log("Optimizing the module using Adam optimizer ..")
+      modules_parameters = [p for n, p in param_optimizer if "bert" not in n]
+      optimizers["module_optimizer"] = Adam(params=modules_parameters, lr=config.adam_learning_rate)
+      optim_type = "fix_bert"
     else:
       utils.log("Optimizing the model using one optimizer")
       bert_optimizer_grouped_parameters = [
         {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
         {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}]
+      optimizers["bert_optimizer"] = BertAdam(bert_optimizer_grouped_parameters,
+                                lr=config.learning_rate,
+                                warmup=config.warmup_proportion,
+                                schedule=config.schedule_method,
+                                t_total=config.num_train_optimization_steps)
+      optim_type = "normal"
 
-    optimizers["bert_optimizer"] = BertAdam(bert_optimizer_grouped_parameters,
-                              lr=config.learning_rate,
-                              warmup=config.warmup_proportion,
-                              schedule=config.schedule_method,
-                              t_total=config.num_train_optimization_steps)
-
-    self.optimizer = MultipleOptimizer(optim=optimizers)
+    self.optimizer = MultipleOptimizer(optim=optimizers, optim_type=optim_type)
 
     self.global_step_labeled = 0
     self.global_step_unlabeled = 0
@@ -117,7 +143,7 @@ class Model(BaseModel):
 
   def train_labeled_abstract(self, mb, step):
     self.model.train()
-    if mb.task_name == "rel_extraction" or mb.task_name == "srl":
+    if mb.task_name in ["rel_extraction", "srl", "er"]:
       inputs = generate_input(
         mb=mb,
         config=self.config,
@@ -134,6 +160,7 @@ class Model(BaseModel):
 
 
     loss = self.model(**inputs)
+
     if self.config.gradient_accumulation_steps > 1:
       loss = loss / self.config.gradient_accumulation_steps
     loss.backward()
@@ -147,7 +174,7 @@ class Model(BaseModel):
 
   def test_abstract(self, mb):
     self.model.eval()
-    if mb.task_name == "rel_extraction" or mb.task_name == "srl":
+    if mb.task_name in ["rel_extraction", "srl", "er"]:
       inputs = generate_input(
         mb=mb,
         config=self.config,

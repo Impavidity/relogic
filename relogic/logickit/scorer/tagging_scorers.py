@@ -3,6 +3,7 @@ import abc
 from relogic.logickit.scorer.word_level_scorer import WordLevelScorer
 from relogic.logickit.utils.utils import get_span_labels, softmax, filter_head_prediction
 import os
+import json
 
 
 
@@ -104,14 +105,11 @@ class EntityLevelF1Scorer(F1Score):
           print(len(sent_labels), sent_labels)
           print(len(pred_labels), pred_labels)
           exit()
-        data_to_dump.append((int(example.guid), example.raw_text, sent_labels, pred_labels, confidences))
-
-    if self.dump_to_file_path:
-      data_to_dump = sorted(data_to_dump, key=lambda x: x[0])
-      for idx, raw_text, sent_labels, pred_labels, confidences in data_to_dump:
-        for word, gold, pred, confidence in zip(raw_text, sent_labels, pred_labels, confidences):
-          self.dump_to_file_handler.write("{} {} {} {}\n".format(word, gold, pred, confidence))
-        self.dump_to_file_handler.write("\n")
+        self.dump_to_file_handler.write(
+          json.dumps({
+            "tokens": example.raw_text,
+            "labels": sent_labels,
+            "predicted_labels": pred_labels}) + "\n")
 
     if self.dump_to_file_path:
       self.dump_to_file_handler.close()

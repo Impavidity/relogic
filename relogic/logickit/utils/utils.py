@@ -60,15 +60,16 @@ def get_span_labels(sentence_tags, is_head=None, segment_id=None, inv_label_mapp
   last = 'O'
   start = -1
   for i, tag in enumerate(sentence_tags):
-    pos, _ = (None, 'O') if tag == 'O' else tag.split('-', 1)
+    items = (None, 'O') if tag == 'O' else tag.split('-', 1)
+    pos, _ = items if len(items) == 2 else (items[0], None)
     if (pos == 'S' or pos == 'B' or tag == 'O') and last != 'O':
-      span_labels.append((start, i - 1, last.split('-', 1)[-1]))
+      span_labels.append((start, i - 1, None if len(last.split('-', 1)) else last.split('-', 1)[-1]))
     if pos == 'B' or pos == 'S' or last == 'O':
       start = i
     last = tag
   if sentence_tags[-1] != 'O':
     span_labels.append((start, len(sentence_tags) - 1,
-                        sentence_tags[-1].split('-', 1)[-1]))
+                        None if len(last.split('-', 1)) else last.split('-', 1)[-1]))
   for item in span_labels:
     if item[2] in ignore_label:
       span_labels.remove(item)
