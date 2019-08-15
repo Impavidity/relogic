@@ -57,20 +57,19 @@ class RelationF1Scorer(F1Score):
       self._examples.append(example)
       self._preds.append(preds)
       pred_tag = preds.argmax(-1).item()
-      if example.label != self._o:
-        if self.dump_to_file_path:
-          self.dump_to_file_handler.write(
-            json.dumps({
-              "text": example.raw_text,
-              "token": example.tokens,
-              "subject": example.subj_text,
-              "object": example.obj_text,
-              "label": example.label,
-              "predicted": self._inv_label_mapping[pred_tag]
-            }) + "\n")
-          if "attention_map" in extra_args:
-            np.save(self.attention_dump_file_path + str(self.counter), extra_args["attention_map"][idx])
-            self.counter += 1
+      if self.dump_to_file_path:
+        self.dump_to_file_handler.write(
+          json.dumps({
+            "text": example.raw_text,
+            "token": example.tokens,
+            "subject": example.subj_text,
+            "object": example.obj_text,
+            "label": example.label,
+            "predicted": self._inv_label_mapping[pred_tag]
+          }) + "\n")
+        if "attention_map" in extra_args:
+          np.save(self.attention_dump_file_path + str(self.counter), extra_args["attention_map"][idx])
+          self.counter += 1
       # do not dumping heavy results on memory
       n_sents += 1
 
