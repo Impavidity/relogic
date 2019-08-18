@@ -42,5 +42,40 @@ linker.link("Obama", "en_wikipedia").ranked_uris
 linker.link("范冰冰", "zh_baike").ranked_uris
 ```
 
+## Documentation
+
+- What is the docsting style to follow?
+  Refer to https://sphinxcontrib-napoleon.readthedocs.io/en/latest/#
+  or https://learn-rst.readthedocs.io/zh_CN/latest/Sphinx简单入门.html
+  
+- How to generate the documentation?
+
+```bash
+cd docs
+make html
+# Open html file for checking
+open _build/html/index.html
+```
+
+- How to publish the documentation to website?
+
+I host the pages in another repo instead of another branch to make the code repo clean.
+
+```
+git clone https://github.com/Impavidity/relogic-docs.git
+```
+
+And just copy the generated file in `_build/html` into the repo and commit.
+
+```
+cp -r relogic/docs/_build/html/* relogic-docs
+cd relogic-docs
+git add *
+git commit -m "Update the pages"
+git push
+```
+
+And you can check the website here https://impavidity.github.io/relogic-docs
+
 ## Citation
 If you use this package, please cite. 
