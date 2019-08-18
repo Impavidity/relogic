@@ -6,7 +6,7 @@ This toolkit is for developing the Natural Language Processing (NLP) pipelines, 
 
 ## Preparation
 
-```
+```bash
 # clone the repo.
 git clone https://github.com/Impavidity/relogic.git
 # create data/raw_data folder, where raw datasets are stored.
@@ -35,7 +35,7 @@ The entity linking model is based on the Wikipedia and Baidu Baike anchors.
 
 #### How to use
 
-```
+```python
 from relogic.graphkit.linking.simple_entity_linker import SimpleEntityLinker
 linker = SimpleEntityLinker(["en_wikipedia", "zh_baike"])
 linker.link("Obama", "en_wikipedia").ranked_uris
