@@ -50,56 +50,56 @@ linker.link("范冰冰", "zh_baike").ranked_uris
   
 - How to generate the documentation?
 
-```bash
-cd docs
-make html
-# Open html file for checking
-open _build/html/index.html
-```
+  ```bash
+  cd docs
+  make html
+  # Open html file for checking
+  open _build/html/index.html
+  ```
 
 - How to publish the documentation to website?
 
-I host the pages in another repo instead of another branch to make the code repo clean.
+  I host the pages in another repo instead of another branch to make the code repo clean.
 
-```bash
-git clone https://github.com/Impavidity/relogic-docs.git
-```
+  ```bash
+  git clone https://github.com/Impavidity/relogic-docs.git
+  ```
 
-And just copy the generated file in `_build/html` into the repo and commit.
+  And just copy the generated file in `_build/html` into the repo and commit.
 
-```bash
-cp -r relogic/docs/_build/html/* relogic-docs
-cd relogic-docs
-git add *
-git commit -m "Update the pages"
-git push
-```
+  ```bash
+  cp -r relogic/docs/_build/html/* relogic-docs
+  cd relogic-docs
+  git add *
+  git commit -m "Update the pages"
+  git push
+  ```
 
-And you can check the website here https://impavidity.github.io/relogic-docs
+  And you can check the website here https://impavidity.github.io/relogic-docs
 
 ## Publish the code
 
 - How to publish the code to support `pip install`?
 
-Refer to https://packaging.python.org/tutorials/packaging-projects/.
+  Refer to https://packaging.python.org/tutorials/packaging-projects/.
 
-Here is the example to publish the package to test environment.
+  Here is the example to publish the package to test environment.
 
-```bash
-# Generage dist directory.
-python setup.py sdist bdist_wheel
-# Distribute the package to test environment.
-python -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-# Install newly uploaded package
-python -m pip install --index-url https://test.pypi.org/simple/ --no-deps relogic
-```
+  ```bash
+  # Generage dist directory.
+  python setup.py sdist bdist_wheel
+  # Distribute the package to test environment.
+  python -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+  # Install newly uploaded package
+  python -m pip install --index-url https://test.pypi.org/simple/ --no-deps relogic
+  ```
 
-To publish to permanent storage
+  To publish to permanent storage
 
-```bash
-python -m twine upload dist/*
-pyhton -m pip install relogic
-```
+  ```bash
+  python -m twine upload dist/*
+  pyhton -m pip install relogic
+  ```
 
 ## Citation
 If you use this package, please cite. 
