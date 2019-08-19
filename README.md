@@ -1,5 +1,8 @@
 # relogic
 
+[![Build Status](https://travis-ci.org/Impavidity/relogic.svg?branch=master)](https://travis-ci.org/Impavidity/relogic)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## Introduction
 
 This toolkit is for developing the Natural Language Processing (NLP) pipelines, including model design and development, model deployment and distributed computing.
