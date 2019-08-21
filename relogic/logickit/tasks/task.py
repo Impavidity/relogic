@@ -1,4 +1,5 @@
 import abc
+from relogic.logickit.dataflow import DataFlow
 
 
 class Task(object, metaclass=abc.ABCMeta):
@@ -10,8 +11,12 @@ class Task(object, metaclass=abc.ABCMeta):
       self.train_set = self.loader.get_dataset("train")
     else:
       self.train_set = None
-    self.val_set = self.loader.get_dataset("dev" if (
-          config.mode == 'train' or config.mode == 'valid' or config.mode == "finetune") else "test")
+    if config.mode != "deployment":
+      self.val_set = self.loader.get_dataset("dev" if (
+            config.mode == 'train' or config.mode == 'valid' or config.mode == "finetune") else "test")
+    else:
+      self.val_set = None
+    self.dataset: DataFlow = self.loader.get_dataflow()
 
   @abc.abstractmethod
   def get_module(self):
@@ -20,4 +25,6 @@ class Task(object, metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def get_scorer(self, dump_to_file=None):
     pass
+
+
 

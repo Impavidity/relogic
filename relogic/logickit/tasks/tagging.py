@@ -2,8 +2,9 @@ from relogic.logickit.tasks.task import Task
 from relogic.logickit.modules.srl_module import SRLModule
 from relogic.logickit.modules.tagging_module import TaggingModule
 from relogic.logickit.modules.predicate_sense_module import PredicateSenseModule
+from relogic.logickit.modules.joint_srl_module import JointSRLModule
 from relogic.logickit.scorer.tagging_scorers import EntityLevelF1Scorer, AccuracyScorer
-from relogic.logickit.scorer.srl_scorers import SRLF1Scorer, SpanSRLF1Scorer
+from relogic.logickit.scorer.srl_scorers import SRLF1Scorer, SpanSRLF1Scorer, JointSpanSRLF1Scorer
 from relogic.logickit.dataset.labeled_data_loader import LabeledDataLoader
 
 class Tagging(Task):
@@ -18,6 +19,8 @@ class Tagging(Task):
       # if not self.config.predicate_surface_aware:
       #   return
       return SRLModule(self.config, self.name, self.n_classes)
+    if self.name in ["joint_srl"]:
+      return JointSRLModule(self.config, self.name, self.n_classes)
     elif self.name in ['predicate_sense']:
       return PredicateSenseModule(self.config, self.name, self.n_classes)
     else:
@@ -31,5 +34,7 @@ class Tagging(Task):
         return SpanSRLF1Scorer(label_mapping=self.loader.label_mapping, dump_to_file=dump_to_file)
       else:
         return SRLF1Scorer(label_mapping=self.loader.label_mapping, dump_to_file=dump_to_file)
+    if self.name in ["joint_srl"]:
+      return JointSpanSRLF1Scorer(label_mapping=self.loader.label_mapping, dump_to_file=dump_to_file)
     if self.name in ["predicate_sense"]:
       return AccuracyScorer(ignore_list=['O'], label_mapping=self.loader.label_mapping, dump_to_file=dump_to_file)

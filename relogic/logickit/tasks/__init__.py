@@ -8,7 +8,7 @@ def get_task(config, name, tokenizer):
   elif name in ["chunk", "ner",
                 "er", "nestedner", "srl",
                 "srl_conll05", "srl_conll09",
-                "srl_conll12", "predicate_sense"]:
+                "srl_conll12", "predicate_sense", "joint_srl"]:
     return Tagging(config, name, False, tokenizer)
   elif name in ["matching", "rel_extraction", "pair_matching"]:
     return Classification(config, name, tokenizer)
