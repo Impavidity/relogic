@@ -1,0 +1,15 @@
+python -u -m relogic.main \
+--task_name er \
+--mode train \
+--output_dir saves/semantic_role_labeling/conll05_large_segmentation_4 \
+--bert_model bert-base-cased \
+--raw_data_path data/raw_data/srl/json/conll05/segmentation \
+--label_mapping_path data/preprocessed_data/segmentation_BI_label_mapping.pkl \
+--model_name default \
+--local_rank $1 \
+--train_batch_size 12 \
+--test_batch_size 12 \
+--learning_rate 5e-5 \
+--eval_dev_every 1000 \
+--epoch_number 3 \
+--no_bilstm \
