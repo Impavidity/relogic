@@ -14,6 +14,8 @@ from relogic.logickit.base.configure import configure
 from relogic.logickit.training import trainer, training_progress
 from relogic.logickit.serving import Server
 
+import relogic.utils.crash_on_ipy
+
 
 def train(config):
   model_trainer = trainer.Trainer(config)
@@ -85,9 +87,9 @@ def main():
   parser.add_argument("--do_lower_case", default=False, action="store_true")
   parser.add_argument("--model_name", type=str)
   parser.add_argument("--restore_path", type=str)
-  parser.add_argument("--train_file", type=str, default="train.txt")
-  parser.add_argument("--dev_file", type=str, default="dev.txt")
-  parser.add_argument("--test_file", type=str, default="test.txt")
+  parser.add_argument("--train_file", type=str, default="train.json")
+  parser.add_argument("--dev_file", type=str, default="dev.json")
+  parser.add_argument("--test_file", type=str, default="test.json")
 
   # Task Definition
   parser.add_argument("--task_names", type=str)
@@ -114,6 +116,13 @@ def main():
   parser.add_argument("--no_span_annotation", dest="use_span_annotation", default=True, action="store_false")
   parser.add_argument("--use_span_candidates", default=False, action="store_true")
   parser.add_argument("--srl_module_type", type=str, default="sequence_labeling")
+  parser.add_argument("--label_embed_dim", type=int, default=100)
+  parser.add_argument("--external_vocab_embed_dim", type=int, default=300)
+  parser.add_argument("--external_embeddings", type=str)
+  parser.add_argument("--use_description", default=False, action="store_true")
+  parser.add_argument("--srl_label_format", default="srl_label_span_based", type=str)
+  parser.add_argument("--num_width_embeddings", default=300)
+  parser.add_argument("--span_width_embedding_dim", default=100)
 
   # Reading Comprehension
   parser.add_argument("--null_score_diff_threshold", default=1.0)
@@ -170,6 +179,8 @@ def main():
   parser.add_argument("--sep_optim", dest="sep_optim", default=False, action="store_true")
   parser.add_argument("--multi_gpu", dest="multi_gpu", default=False, action="store_true")
   parser.add_argument("--ignore_parameters", default="", type=str)
+  parser.add_argument("--fix_bert", default=False, action="store_true")
+  parser.add_argument("--two_stage_optim", default=False, action="store_true")
   # Need to combine to CUDA_VISIBLE_DEVICES
 
   args = parser.parse_args()

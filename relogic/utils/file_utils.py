@@ -31,6 +31,10 @@ except ImportError:
             os.getenv('XDG_CACHE_HOME', '~/.cache'), 'torch')))
 default_cache_path = os.path.join(torch_cache_home, 'pytorch_pretrained_bert')
 
+relogic_cache_home = os.path.expanduser(
+    os.getenv('TORCH_HOME',  os.getenv('XDG_CACHE_HOME', '~/.cache')))
+relogic_default_cache_path = os.path.join(relogic_cache_home, 'relogic')
+
 try:
     from urllib.parse import urlparse
 except ImportError:
@@ -40,12 +44,20 @@ try:
     from pathlib import Path
     PYTORCH_PRETRAINED_BERT_CACHE = Path(
         os.getenv('PYTORCH_PRETRAINED_BERT_CACHE', default_cache_path))
+    RELOGIC_CACHE = Path(
+        os.getenv('RELOGIC_CACHE', relogic_default_cache_path))
 except (AttributeError, ImportError):
     PYTORCH_PRETRAINED_BERT_CACHE = os.getenv('PYTORCH_PRETRAINED_BERT_CACHE',
                                               default_cache_path)
+    RELOGIC_CACHE = os.getenv('RELOGIC_CACHE',
+                              relogic_default_cache_path)
 
 CONFIG_NAME = "config.json"
 WEIGHTS_NAME = "pytorch_model.bin"
+
+
+
+
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -189,7 +201,11 @@ def get_from_cache(url, cache_dir=None):
     """
     Given a URL, look for the corresponding dataset in the local cache.
     If it's not there, download it. Then return the path to the cached file.
+
+    Peng Shi: url can be
     """
+
+
     if cache_dir is None:
         cache_dir = PYTORCH_PRETRAINED_BERT_CACHE
     if sys.version_info[0] == 3 and isinstance(cache_dir, Path):
