@@ -1,10 +1,55 @@
 from relogic.logickit.base.constants import *
 
 import torch.nn.functional as F
+import torch
 
-def get_loss(task_name, logits, label_ids, config, extra_args):
-  span_boundary, logits = logits
-  return F.cross_entropy(logits.view(-1, logits.size(-1)), label_ids.view(-1))
+def get_loss(task_name, logits, label_ids, config, extra_args, **kwargs):
+  if task_name in ["joint_srl"]:
+    batch_size = label_ids.size(0)
+    key = label_ids[:, :, :4]
+    batch_id = torch.arange(0, batch_size).unsqueeze(1).unsqueeze(1).repeat(1, key.size(1), 1).to(key.device)
+    expanded_key = torch.cat([batch_id, key], dim=-1)
+    v = label_ids[:, :, 4]
+    # batch_id = torch.arange(0, v.size(0)).unsqueeze(1).repeat(1, v.size(1)).to(key.device)
+    # expanded_v = torch.cat([batch_id.unsqueeze(-1), v.unsqueeze(-1)], dim=-1)
+    flatten_key = expanded_key.view(-1, 5)
+    flatten_v = v.view(-1)
+
+    srl_scores, top_pred_spans, top_arg_spans = logits
+    # (batch_size, max_pred_num, 2), (batch_size, max_arg_num, 2)
+    max_pred_num = top_pred_spans.size(1)
+    max_arg_num = top_arg_spans.size(1)
+    expanded_top_pred_spans = top_pred_spans.unsqueeze(2).repeat(1, 1, max_arg_num, 1)
+    expanded_top_arg_spans = top_arg_spans.unsqueeze(1).repeat(1, max_pred_num, 1, 1)
+    indices = torch.cat([expanded_top_pred_spans, expanded_top_arg_spans], dim=-1)
+    batch_id = torch.arange(0, batch_size).unsqueeze(1).unsqueeze(1).unsqueeze(1).repeat(1, *indices.size()[1:3], 1).to(
+      indices.device)
+    expanded_indices = torch.cat([batch_id, indices], dim=-1)
+    flatten_expanded_indices = expanded_indices.view(-1, 5)
+
+    # build dictionary
+    d = {}
+    for key, value in zip(flatten_key.cpu().numpy(), flatten_v.cpu().numpy()):
+      d[tuple(key)] = value
+
+    label_list = []
+    for index in flatten_expanded_indices.cpu().numpy():
+      label_list.append(d.get(tuple(index), 0))
+
+    # arg_boundary = max(torch.max(top_arg_spans).item(), torch.max(key[:,:,2:]).item()) + 1
+    # pred_boundary= max(torch.max(top_pred_spans).item(), torch.max(key[:,:,:2]).item()) + 1
+    # size = (batch_size, pred_boundary, pred_boundary, arg_boundary, arg_boundary)
+    #
+    # dense_label = torch.sparse.LongTensor(flatten_key.t(), flatten_v, size).to(key.device)
+    #
+    # selected_label = dense_label.masked_select(expanded_indices)
+
+    selected_label = torch.LongTensor(label_list).to(label_ids.device)
+    return F.cross_entropy(srl_scores.view(-1, srl_scores.size(-1)), selected_label)
+
+  else:
+    span_boundary, logits = logits
+    return F.cross_entropy(logits.view(-1, logits.size(-1)), label_ids.view(-1))
 
 # def get_loss(task_name, logits, label_ids, config, extra_args):
 #   if task_name in AUTO_SPAN:
