@@ -39,6 +39,6 @@ Config = namedtuple('Config', ['use_dependency_feature'])
 config = Config(use_dependency_feature=False)
 for example in batch.examples:
   print(example.tokens)
-input = generate_rel_extraction_input(batch, config, torch.device("cuda:6"),
+input = generate_rel_extraction_input(batch, config, torch.device("cuda:0"),
                                       True)
 print(input)
