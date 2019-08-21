@@ -1,0 +1,2 @@
+from relogic.structures.structure import Structure
+from relogic.structures.structure_utils.span_utils import enumerate_spans
