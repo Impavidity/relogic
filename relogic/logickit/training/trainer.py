@@ -12,6 +12,7 @@ from relogic.logickit.tokenizer.tokenization import BertTokenizer
 from relogic.logickit.tasks import get_task
 from relogic.logickit.model import get_model
 from relogic.logickit.training.training_progress import TrainingProgress
+from relogic.logickit.dataflow import MiniBatch
 
 
 
@@ -35,19 +36,24 @@ class Trainer(object):
     unsupervised_loss_total, unsupervised_loss_count = 0, 0
     supervised_loss_total, supervised_loss_count = 0, 0
     step = 0
-    # self.evaluate_all_tasks(progress.history)
+    self.evaluate_all_tasks(progress.history)
 
     for mb in self.get_training_mbs(progress.unlabeled_data_reader):
-      if mb.task_name != "unlabeled":
+      if isinstance(mb, MiniBatch):
         loss = self.model.train_labeled_abstract(mb, step)
         supervised_loss_total += loss
         supervised_loss_count += 1
-      if mb.task_name == 'unlabeled':
-        self.model.run_teacher(mb)
-        loss = self.model.train_unlabeled(mb, step)
-        unsupervised_loss_total += loss
-        unsupervised_loss_count += 1
-        mb.teacher_predictions.clear()
+      else:
+        if mb.task_name != "unlabeled":
+          loss = self.model.train_labeled_abstract(mb, step)
+          supervised_loss_total += loss
+          supervised_loss_count += 1
+        if mb.task_name == 'unlabeled':
+          self.model.run_teacher(mb)
+          loss = self.model.train_unlabeled(mb, step)
+          unsupervised_loss_total += loss
+          unsupervised_loss_count += 1
+          mb.teacher_predictions.clear()
 
       step += 1
       trained_on_sentences += mb.size
@@ -141,14 +147,3 @@ class Trainer(object):
       restore_state_dict[key] = self.model.model.state_dict()[key]
     self.model.model.load_state_dict(restore_state_dict)
     utils.log("Model Restored from {}".format(model_path))
-
-  def predict(self, inputs, task_name):
-    # First, according the inputs to create examples, features, and batch
-    batch = []
-    scorer = self.tasks[task_name].get_scorer()
-    # Need to fix the get scorer.
-    # Basically you will recreate a scorer for one `predict` call
-    # You need to reuse
-    for i, mb in enumerate(batch):
-      batch_preds = self.model.test_abstract(mb)
-      scorer.update(batch_preds)

@@ -8,6 +8,7 @@ from relogic.logickit.model.optimization import BertAdam, MultipleOptimizer
 import numpy as np
 from relogic.logickit.data_io import generate_input
 from relogic.logickit.inference import get_inference
+from relogic.logickit.dataflow import MiniBatch
 
 
 class Model(BaseModel):
@@ -143,20 +144,26 @@ class Model(BaseModel):
 
   def train_labeled_abstract(self, mb, step):
     self.model.train()
-    if mb.task_name in ["rel_extraction", "srl", "er"]:
-      inputs = generate_input(
-        mb=mb,
-        config=self.config,
-        device=self.device)
+    if isinstance(mb, MiniBatch):
+      inputs = mb.generate_input(device=self.device, use_label=True)
       if inputs["input_ids"].size(0) == 0:
         utils.log("Zero Batch")
         return 0
     else:
-      # TODO: Slow process to change interfaces for all tasks
-      inputs = self.generate_input(mb)
-      if inputs[0].size(0) == 0:
-        utils.log("Zero Batch")
-        return 0
+      if mb.task_name in ["rel_extraction", "srl", "er"]:
+        inputs = generate_input(
+          mb=mb,
+          config=self.config,
+          device=self.device)
+        if inputs["input_ids"].size(0) == 0:
+          utils.log("Zero Batch")
+          return 0
+      else:
+        # TODO: Slow process to change interfaces for all tasks
+        inputs = self.generate_input(mb)
+        if inputs[0].size(0) == 0:
+          utils.log("Zero Batch")
+          return 0
 
 
     loss = self.model(**inputs)
@@ -165,7 +172,8 @@ class Model(BaseModel):
       loss = loss / self.config.gradient_accumulation_steps
     loss.backward()
     if (step + 1) % self.config.gradient_accumulation_steps == 0:
-      if mb.task_name not in ["squad11", "squad20"]:
+      # TODO: a quick fix
+      if not hasattr(mb, "task_name") or mb.task_name not in ["squad11", "squad20"]:
         nn.utils.clip_grad_norm_(self.model.parameters(), self.config.grad_clip)
       self.optimizer.step()
       self.optimizer.zero_grad()
@@ -174,15 +182,18 @@ class Model(BaseModel):
 
   def test_abstract(self, mb):
     self.model.eval()
-    if mb.task_name in ["rel_extraction", "srl", "er"]:
-      inputs = generate_input(
-        mb=mb,
-        config=self.config,
-        device=self.device,
-        use_label=False)
+    if isinstance(mb, MiniBatch):
+      inputs = mb.generate_input(self.device, use_label=False)
     else:
-      # TODO: Slow process to change interfaces for all tasks
-      inputs = self.generate_input(mb, use_label=False)
+      if mb.task_name in ["rel_extraction", "srl", "er"]:
+        inputs = generate_input(
+          mb=mb,
+          config=self.config,
+          device=self.device,
+          use_label=False)
+      else:
+        # TODO: Slow process to change interfaces for all tasks
+        inputs = self.generate_input(mb, use_label=False)
     with torch.no_grad():
       results = self.model(**inputs)
     if self.config.output_attentions:
