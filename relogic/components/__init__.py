@@ -1,0 +1,1 @@
+from relogic.components.component import Component

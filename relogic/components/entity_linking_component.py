@@ -1,14 +1,15 @@
 from relogic.components.component import Component
 from relogic.structures.structure import Structure
+from typing import List
 
 class EntityLinkingComponent(Component):
   """For given entity mention, this component is to 
   link the mention to a given knowledge graph.
   """
-  def __init__(self):
-    pass
+  def __init__(self, config, predictor):
+    super(EntityLinkingComponent, self).__init__(config, predictor)
   
-  def execute(self, inputs: Structure):
+  def execute(self, inputs: List[Structure]):
     """All entity mentions in the inputs are given.
     Retrieve a candidate list regarding each mention.
     Then the global inference is operated to decide the top
