@@ -8,3 +8,7 @@ NEVER_SPLIT = ("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]",
               '[CRIMINAL_CHARGE-OBJ]', '[RELIGION-OBJ]',
               '[DURATION-OBJ]', '[URL-OBJ]', '[STATE_OR_PROVINCE-OBJ]',
               '[IDEOLOGY-OBJ]', '[CAUSE_OF_DEATH-OBJ]')
+
+SRL_TASK = "joint_srl"
+SRL_LABEL_SPAN_BASED = "srl_label_span_based"
+SRL_LABEL_SEQ_BASED = "srl_label_seq_based"
