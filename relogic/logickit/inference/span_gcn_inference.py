@@ -30,16 +30,24 @@ class SpanGCNInference(nn.Module):
     self.tasks_modules = nn.ModuleDict()
     for task in tasks:
       self.tasks_modules.update([(task.name, task.get_module())])
+    self.task_dict = dict([(task.name, task) for task in self.tasks])
 
-  def forward(self,
-              task_name,
-              input_ids,
-              input_mask,
-              input_head,
-              segment_ids,
-              label_ids,
-              extra_args):
-
+  # def forward(self,
+  #             task_name,
+  #             input_ids,
+  #             input_mask,
+  #             input_head,
+  #             segment_ids,
+  #             label_ids,
+  #             extra_args):
+  def forward(self, *inputs, **kwargs):
+    task_name = kwargs.pop("task_name")
+    input_ids = kwargs.pop("input_ids")
+    input_mask = kwargs.pop("input_mask")
+    input_head = kwargs.pop("input_head")
+    segment_ids = kwargs.pop("segment_ids")
+    label_ids = kwargs.pop("label_ids")
+    extra_args = kwargs.pop("extra_args", {})
     output_all_encoded_layers = extra_args.get("output_all_encoded_layers", False)
     route_path = extra_args.get("route_path", None)
     selected_non_final_layers = extra_args.get("selected_non_final_layers", None)
@@ -62,18 +70,23 @@ class SpanGCNInference(nn.Module):
     # For each task, the interface is static
     #  including input_features, input_mask, segment_ids and extra_args
     logits = self.tasks_modules[task_name](
-      features,
+      features = features,
       input_mask=input_mask,
       segment_ids=segment_ids,
-      extra_args=extra_args)
+      extra_args=extra_args,
+      **kwargs)
 
     if label_ids is not None:
+      # if task_name in ["joint_srl"]:
+      #   loss = self.task_dict[task_name].compute_loss()
+      # else:
       loss = get_loss(
         task_name=task_name,
         logits=logits,
         label_ids=label_ids,
         config=self.config,
-        extra_args=extra_args)
+        extra_args=extra_args,
+        **kwargs)
       return loss
     else:
       return logits
