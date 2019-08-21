@@ -15,23 +15,31 @@
 import mock
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../infrastructure/src/main/python'))
+sys.path.insert(0, os.path.abspath('../../'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'pbase'
-copyright = '2018, Peng Shi'
+project = 'relogic'
+copyright = '2019, Peng Shi'
 author = 'Peng Shi'
 
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = '0.1.0'
+release = '0.0.1'
 
 
 MOCK_MODULES = [
+    'botocore',
+    'botocore.exceptions',
+    'boto3',
     'tensorflow',
     'torch',
+    'torch.nn',
+    'torch.nn.functional',
+    'torch.optim',
+    'torch.optim.optimizer',
+    'torch.nn.utils',
     'spicy.misc']
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
@@ -119,7 +127,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'pbasedoc'
+htmlhelp_basename = 'relogicdoc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -146,7 +154,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'pbase.tex', 'pbase Documentation',
+    (master_doc, 'relogic.tex', 'relogic Documentation',
      'Peng Shi', 'manual'),
 ]
 
@@ -156,7 +164,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'pbase', 'pbase Documentation',
+    (master_doc, 'relogic', 'relogic Documentation',
      [author], 1)
 ]
 
@@ -167,8 +175,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'pbase', 'pbase Documentation',
-     author, 'pbase', 'One line description of project.',
+    (master_doc, 'relogic', 'relogic Documentation',
+     author, 'relogic', 'One line description of project.',
      'Miscellaneous'),
 ]
 

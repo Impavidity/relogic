@@ -1,5 +1,5 @@
-Install Pallas
-=============
+Install relogic
+===============
 
 Install from source
 -------------------
@@ -8,5 +8,11 @@ Install from source
 
     python setup.py install
 
+Install with pip
+----------------
+
+.. code:: bash
+
+    pip install relogic
 
 
