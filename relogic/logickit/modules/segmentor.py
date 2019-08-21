@@ -12,7 +12,7 @@ class Segmentor(nn.Module):
 
   def forward(self,
               input,
-              extra_args=None):
+              extra_args=None, **kwargs):
     # pooling/average to get the word representation
 
     # to logits

@@ -45,7 +45,7 @@ class PredictionModule(nn.Module):
     a = F.softmax(u, dim=-1)
     return a
 
-  def forward(self, input, subj_indicator_embed, obj_indicator_embed, input_lengths, input_mask, extra_args):
+  def forward(self, input, subj_indicator_embed, obj_indicator_embed, input_lengths, input_mask, extra_args, **kwargs):
     if self.config.use_bilstm:
       # input_concat = torch.cat([input, subj_indicator_embed, obj_indicator_embed], dim=-1)
       output, (ht, ct) = dynamic_rnn(self.bilstm, input, input_lengths)

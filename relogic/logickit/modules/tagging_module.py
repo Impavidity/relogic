@@ -115,7 +115,8 @@ class TaggingModule(nn.Module):
               final_multi_head_repr=None,
               input_mask=None,
               segment_ids=None,
-              extra_args=None):
+              extra_args=None,
+              **kwargs):
     # print(input_mask)
     input_lengths = (input_mask == 1).sum(-1)
     if self.config.use_bilstm:

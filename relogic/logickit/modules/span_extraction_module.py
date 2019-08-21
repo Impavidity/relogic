@@ -20,7 +20,7 @@ class SpanExtractionModule(nn.Module):
       module.bias.data.zero_()
 
 
-  def forward(self, input_feature, input_mask=None, segment_ids=None, extra_args=None):
+  def forward(self, input_feature, input_mask=None, segment_ids=None, extra_args=None, **kwargs):
     logits = self.to_logits(input_feature)
     # (batch_size, sentence_length, 2)
     start_logits, end_logits = logits.split(1, dim=-1)

@@ -208,7 +208,8 @@ class SRLModule(nn.Module):
               final_multi_head_repr=None,
               input_mask=None,
               segment_ids=None,
-              extra_args=None):
+              extra_args=None,
+              **kwargs):
     if self.config.srl_module_type == "sequence_labeling":
       if view_type == "primary":
         input_lengths = (segment_ids == 0).sum(-1)

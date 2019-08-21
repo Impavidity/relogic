@@ -13,7 +13,8 @@ class PredicateSenseModule(nn.Module):
               final_multi_head_repr=None,
               input_mask=None,
               segment_ids=None,
-              extra_args=None):
+              extra_args=None,
+              **kwargs):
     # hard code
     predicate_indicator = extra_args["is_predicate_id"].long()
     predicate_ind_embed = self.predicate_indicator_embedding(predicate_indicator)

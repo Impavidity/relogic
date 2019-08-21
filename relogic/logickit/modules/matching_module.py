@@ -9,6 +9,6 @@ class MatchingModule(nn.Module):
     self.n_classes = n_classes
     self.to_logits = nn.Linear(config.hidden_size, self.n_classes)
 
-  def forward(self, input, input_mask=None, segment_ids=None, extra_args=None):
+  def forward(self, input, input_mask=None, segment_ids=None, extra_args=None, **kwargs):
     logits = self.to_logits(input[:,0])
     return logits

@@ -10,6 +10,6 @@ class RepresentationModule(nn.Module):
     self.to_repr = nn.Linear(config.hidden_size, self.repr_size)
 
 
-  def forward(self, input, input_mask=None, segment_ids=None, extra_args=None):
+  def forward(self, input, input_mask=None, segment_ids=None, extra_args=None, **kwargs):
     logits = self.to_repr(input[:, 0])
     return logits

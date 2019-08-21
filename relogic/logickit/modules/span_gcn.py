@@ -25,7 +25,7 @@ class SpanGCNModule(nn.Module):
 
   def forward(self,
               input, predicate_span=None,
-              bio_hidden=None, span_candidates=None, extra_args=None):
+              bio_hidden=None, span_candidates=None, extra_args=None, **kwargs):
     """
     Before this module, there is another module info aggregation
     :param input: Sentence Only, in batch
