@@ -58,7 +58,7 @@ def get_seq_examples(path):
     with open(path, 'r') as f:
       for line in f:
         example = json.loads(line)
-        sentences.append((example["tokens"], example["segment_labels"]))
+        sentences.append((example["tokens"], example["labels"]))
   else:
     with open(path, 'r') as f:
       sentence = []

@@ -75,7 +75,7 @@ def generate_input(mb, config, device, use_label=True):
     return generate_rel_extraction_input(mb, config, device, use_label)
   if mb.task_name in ["srl"]:
     return generate_srl_input(mb, config, device, use_label)
-  if mb.task_name in ["er"]:
+  if mb.task_name in ["er", "ner"]:
     return generate_seq_input(mb, config, device, use_label)
   else:
     return patching(mb, config, device, use_label)
