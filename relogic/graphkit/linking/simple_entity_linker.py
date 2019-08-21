@@ -7,22 +7,33 @@ from relogic.structures.document import Document
 from relogic.structures.linkage_candidate import LinkageCandidate
 
 from relogic.graphkit.utils.similarity_function import jaccard_similarity
+from relogic.utils.file_utils import cached_path, RELOGIC_CACHE
+import os
+from zipfile import ZipFile
+import logging
+
+logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 """
 A quick hack
 """
-import os
-os.environ['JAVA_HOME'] = "/usr/lib/jvm/java-8-openjdk-amd64/"
-import jnius_config
-jnius_config.set_classpath("/data/lctan/Nesoi/Anserini/target/anserini-0.6.0-SNAPSHOT-fatjar.jar")
-
 from jnius import autoclass
 JString = autoclass('java.lang.String')
 JSearcher = autoclass('io.anserini.search.KGSearcher')
+
 """
 End of quick hack
 """
 
+INDEX_PATHS = {
+  "en_wikipedia": "https://git.uwaterloo.ca/p8shi/data-server/raw/master/entity_linking_index_en.zip",
+  "zh_baike": "https://git.uwaterloo.ca/p8shi/data-server/raw/master/entity_linking_index_zh.zip"
+}
+
+INDEX_LANGUAGE = {
+  "en_wikipedia": "en",
+  "zh_baike": "zh"
+}
 
 class SimpleEntityLinker(object):
   """Two step linking.
@@ -31,13 +42,25 @@ class SimpleEntityLinker(object):
     paths (Dict): The key is the name for the retriever, and value is the directory path to
       the Lucene index.
   """
-  def __init__(self, paths: Dict):
-    self.paths = paths
+  def __init__(self, index_names: List, index_paths: Dict = None, index_language: Dict = None):
+
+    self.index_names = index_names
     self.retrievers = {}
-    for name, path in self.paths.items():
-      self.retrievers[name] = JSearcher(JString(path))
-      
-      self.retrievers[name].setLanguage(name)
+    if index_paths is not None and index_language is not None:
+      INDEX_PATHS.update(index_paths)
+      INDEX_LANGUAGE.update(index_language)
+    for index_name in index_names:
+      index_zip_or_dir_path = cached_path(INDEX_PATHS[index_name], cache_dir=RELOGIC_CACHE)
+      if os.path.isdir(index_zip_or_dir_path):
+        index_path = index_zip_or_dir_path
+      else:
+        index_path = index_zip_or_dir_path + "." + index_name
+      if not os.path.exists(index_path):
+        with ZipFile(index_zip_or_dir_path, 'r') as zipObj:
+          zipObj.extractall(index_path)
+          logger.info("Extract Index {} to {}".format(INDEX_PATHS[index_name], index_path))
+      self.retrievers[index_name] = JSearcher(JString(index_path))
+      self.retrievers[index_name].setLanguage(INDEX_LANGUAGE[index_name])
 
   def entity_retrieval(self, mention: Span, name: str, candidate_size: int = 20):
     hits = self.retrievers[name].search(
@@ -125,7 +148,7 @@ class SimpleEntityLinker(object):
     self.entity_retrieval(span, name=name)
     self.rank(span)
 
-  def link(self, inputs: Union[str, Structure, List[Structure]], name:str = "en"):
+  def link(self, inputs: Union[str, Structure, List[Structure]], name:str):
     """Linking method.
     If the inputs is Sentence, then two steps linking is operated.
     If the inputs is a Span, then candidate retrieval is operated 
