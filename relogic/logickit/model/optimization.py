@@ -369,21 +369,28 @@ class MultipleOptimizer(object):
     else:
       if self.stage_two:
         for n, op in self.optimizers.items():
-          op.step()
+          if n == "bert_optimizer":
+            op.step()
       else:
         for n, op in self.optimizers.items():
           if n == "bert_optimizer":
             continue
           op.step()
+        self.current_step += 1
+        if self.current_step == 3000:
+          print("Into Stage Two")
+          self.stage_two = True
 
   def update_loss(self, loss):
-    self.current_step += 1
-    if loss < self.min_loss:
-      self.min_loss = loss
-      self.min_loss_step = self.current_step
-    if not self.stage_two and self.optim_type == "two_stage_optim" and self.current_step > self.min_loss_step + 5:
+
+    # if loss < self.min_loss:
+    #   self.min_loss = loss
+    #   self.min_loss_step = self.current_step
+    # if not self.stage_two and self.optim_type == "two_stage_optim" and self.current_step > self.min_loss_step + 5:
+    #   self.stage_two = True
+    #   print("Into stage two")
+    if self.current_step == 2000:
       self.stage_two = True
-      print("Into stage two")
 
 
 

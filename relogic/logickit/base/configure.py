@@ -3,7 +3,7 @@ import json
 from relogic.logickit.base.constants import NEVER_SPLIT
 
 def configure(config):
-  config.buckets = [(0, 15), (15, 40), (40, config.max_seq_length)]
+  config.buckets = [(0, 40), (40, 80), (80, config.max_seq_length)]
   if config.task_names:
     config.task_names = config.task_names.split(',')
     config.raw_data_path = config.raw_data_path.split(',')

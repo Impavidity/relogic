@@ -36,7 +36,7 @@ class JointSRLModule(nn.Module):
       nn.Linear(in_features=config.hidden_size * 5 + config.span_width_embedding_dim,
                 out_features=config.hidden_size),
       nn.ReLU(),
-      nn.Linear(in_features=config.hidden_size, out_features=self.n_classes))
+      nn.Linear(in_features=config.hidden_size, out_features=self.n_classes-1))
 
   def forward(self, *inputs, **kwargs):
     features = kwargs.pop("features")
@@ -59,11 +59,12 @@ class JointSRLModule(nn.Module):
 
     arg_embeddings = torch.cat([endpoint_span_embeddings, attended_span_embeddings], -1)
 
-    num_spans_to_keep = 40 # quick fix
+    num_spans_to_keep = 30 # quick fix
 
     (top_arg_span_embeddings, top_arg_span_mask,
      top_arg_span_indices, top_arg_span_mention_scores) = self.mention_pruner(
       arg_embeddings, arg_mask, num_spans_to_keep)
+    # top_arg_span_mask = (batch_size, max_arg_to_keep)
 
     pred_embeddings = self.endpoint_predicate_span_extractor(
       sequence_tensor=features, span_indices=predicate_candidates, span_indices_mask=predicate_mask)
@@ -118,7 +119,10 @@ class JointSRLModule(nn.Module):
     num_arg_to_keep = top_arg_span_mention_scores.size(1)
     expanded_top_pred_span_mention_scores = top_pred_span_mention_scores.unsqueeze(2).repeat(1, 1, num_arg_to_keep, 1)
     expanded_top_arg_span_mention_scores = top_arg_span_mention_scores.unsqueeze(1).repeat(1, num_pred_to_keep, 1, 1)
-    return scores + expanded_top_arg_span_mention_scores + expanded_top_pred_span_mention_scores
+    dummy_scores = torch.zeros(scores.size()[:-1] + (1,)).to(pairwise_embeddings.device)
+    scores = scores + expanded_top_arg_span_mention_scores + expanded_top_pred_span_mention_scores
+    scores = torch.cat([dummy_scores, scores], dim=-1)
+    return scores
 
 
 

@@ -158,6 +158,8 @@ class JointSpanSRLF1Scorer(Scorer):
                     pred_start, pred_end, arg_start, arg_end, label_id in example.label_ids])
       example: SRLExample
       span_preds = set(preds)
+      sent_spans = set(filter(lambda item: item[4] != 'V', sent_spans))
+      span_preds = set(filter(lambda item: item[4] != 'V', span_preds))
       self._n_correct += len(sent_spans & span_preds)
       self._n_gold += len(sent_spans)
       self._n_predicted += len(span_preds)

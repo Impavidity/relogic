@@ -36,7 +36,7 @@ class Trainer(object):
     unsupervised_loss_total, unsupervised_loss_count = 0, 0
     supervised_loss_total, supervised_loss_count = 0, 0
     step = 0
-    self.evaluate_all_tasks(progress.history)
+    # self.evaluate_all_tasks(progress.history)
 
     for mb in self.get_training_mbs(progress.unlabeled_data_reader):
       if isinstance(mb, MiniBatch):
