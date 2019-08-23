@@ -191,7 +191,9 @@ SCHEDULES = {
   "none": ConstantLR,
   "warmup_cosine": WarmupCosineSchedule,
   "warmup_constant": WarmupConstantSchedule,
-  "warmup_linear": WarmupLinearSchedule
+  "warmup_linear": WarmupLinearSchedule,
+  "warmup_cosine_warmup_restarts": WarmupCosineWithWarmupRestartsSchedule,
+  "warmup_cosine_hard_restarts": WarmupCosineWithHardRestartsSchedule
 }
 
 
@@ -381,17 +383,18 @@ class MultipleOptimizer(object):
       #   else:
       #     op.step()
       # self.current_step += 1
-      if self.stage_three:
+      # if self.stage_three:
+      #   for n, op in self.optimizers.items():
+      #     if n != "ber_optimizer":
+      #       continue
+      #     op.step()
+      if self.stage_two:
         for n, op in self.optimizers.items():
-          if n != "ber_optimizer":
-            continue
-          op.step()
-      elif self.stage_two:
-        for n, op in self.optimizers.items():
-          op.step()
-        if self.current_step == 6000:
-          print("Into Stage Three")
-          self.stage_three = True
+          if n == "bert_optimizer":
+            op.step()
+        # if self.current_step == 6000:
+        #   print("Into Stage Three")
+        #   self.stage_three = True
       else:
         for n, op in self.optimizers.items():
           if n == "bert_optimizer":
