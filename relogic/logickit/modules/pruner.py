@@ -18,7 +18,7 @@ class Pruner(nn.Module):
               embeddings: torch.FloatTensor,
               mask: torch.LongTensor,
               num_items_to_keep: Union[int, torch.LongTensor]) -> Tuple[torch.FloatTensor,
-      torch.LongTensor, torch.LongTensor, torch.FloatTensor]:
+      torch.LongTensor, torch.LongTensor, torch.FloatTensor, torch.FloatTensor]:
     """
 
     Args:
@@ -78,7 +78,7 @@ class Pruner(nn.Module):
     # Shape: (batch_size, max_num_items_to_keep, 1)
     top_scores = utils.batched_index_select(scores, top_indices, flat_top_indices)
 
-    return top_embeddings, top_mask, top_indices, top_scores
+    return top_embeddings, top_mask, top_indices, top_scores, scores
 
 
 

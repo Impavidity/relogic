@@ -81,7 +81,7 @@ class SpanGCNInference(nn.Module):
       #   loss = self.task_dict[task_name].compute_loss()
       # else:
       loss = get_loss(
-        task_name=task_name,
+        task=self.task_dict[task_name],
         logits=logits,
         label_ids=label_ids,
         config=self.config,

@@ -1,10 +1,13 @@
 from relogic.logickit.base.constants import *
+from relogic.logickit.tasks.task import Task
 
 import torch.nn.functional as F
 import torch
 
-def get_loss(task_name, logits, label_ids, config, extra_args, **kwargs):
-  if task_name in ["joint_srl"]:
+def get_loss(task: Task, logits, label_ids, config, extra_args, **kwargs):
+  if task.name in ["joint_srl"]:
+    if isinstance(label_ids, tuple):
+      label_ids, pred_span_label, arg_span_label = label_ids
     batch_size = label_ids.size(0)
     key = label_ids[:, :, :4]
     batch_id = torch.arange(0, batch_size).unsqueeze(1).unsqueeze(1).repeat(1, key.size(1), 1).to(key.device)
@@ -15,7 +18,9 @@ def get_loss(task_name, logits, label_ids, config, extra_args, **kwargs):
     flatten_key = expanded_key.view(-1, 5)
     flatten_v = v.view(-1)
 
-    srl_scores, top_pred_spans, top_arg_spans = logits
+    (srl_scores, top_pred_spans,
+     top_arg_spans, top_pred_span_mask, top_arg_span_mask,
+     pred_span_mention_full_scores, arg_span_mention_full_scores) = logits
     # (batch_size, max_pred_num, 2), (batch_size, max_arg_num, 2)
     max_pred_num = top_pred_spans.size(1)
     max_arg_num = top_arg_spans.size(1)
@@ -26,6 +31,13 @@ def get_loss(task_name, logits, label_ids, config, extra_args, **kwargs):
       indices.device)
     expanded_indices = torch.cat([batch_id, indices], dim=-1)
     flatten_expanded_indices = expanded_indices.view(-1, 5)
+
+    # Generate Loss Mask
+    flatten_expanded_top_pred_span_mask = top_pred_span_mask.unsqueeze(2).repeat(1, 1, max_arg_num).view(-1)
+    # (batch_size, max_pred_to_keep)
+    flatten_expanded_top_arg_span_mask = top_arg_span_mask.unsqueeze(2).repeat(1, max_pred_num, 1).view(-1)
+    # (batch_size, max_arg_to_keep)
+    merged_mask = flatten_expanded_top_pred_span_mask & flatten_expanded_top_arg_span_mask
 
     # build dictionary
     d = {}
@@ -45,7 +57,21 @@ def get_loss(task_name, logits, label_ids, config, extra_args, **kwargs):
     # selected_label = dense_label.masked_select(expanded_indices)
 
     selected_label = torch.LongTensor(label_list).to(label_ids.device)
-    return F.cross_entropy(srl_scores.view(-1, srl_scores.size(-1)), selected_label)
+
+    label_loss = F.cross_entropy(srl_scores.view(-1, srl_scores.size(-1))[merged_mask == 1], selected_label[merged_mask == 1])
+
+    # Compute the unary scorer loss
+    if hasattr(task.config, "srl_candidate_loss") and task.config.srl_candidate_loss:
+      flatten_pred_span_mention_full_scores = F.sigmoid(pred_span_mention_full_scores).view(-1)
+      flatten_arg_span_mention_full_scores = F.sigmoid(arg_span_mention_full_scores).view(-1)
+      flatten_pred_span_label = pred_span_label.view(-1).float()
+      flatten_arg_span_label = arg_span_label.view(-1).float()
+      srl_pred_candidate_loss = F.binary_cross_entropy(flatten_pred_span_mention_full_scores, flatten_pred_span_label)
+      srl_arg_candidate_loss = F.binary_cross_entropy(flatten_arg_span_mention_full_scores, flatten_arg_span_label)
+      candidate_loss = srl_pred_candidate_loss + srl_arg_candidate_loss
+      return candidate_loss + label_loss
+
+    return label_loss
 
   else:
     span_boundary, logits = logits

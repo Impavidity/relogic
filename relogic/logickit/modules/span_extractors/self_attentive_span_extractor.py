@@ -17,16 +17,18 @@ class SelfAttentiveSpanExtractor(nn.Module):
     # Shape (batch_size, num_spans, 1)
     span_starts, span_ends = span_indices.split(1, dim=-1)
 
+    span_ends = span_ends - 1
+
     span_widths = span_ends - span_starts
 
-    max_batch_span_width = span_widths.max().item()
+    max_batch_span_width = span_widths.max().item() + 1
 
     global_attention_logits = self._global_attention(sequence_tensor)
 
     # Shape: (1, 1, max_batch_span_width)
     max_span_range_indices = utils.get_range_vector(max_batch_span_width,
                                                     sequence_tensor.device).view(1, 1, -1)
-    span_mask = (max_span_range_indices < span_widths).float()
+    span_mask = (max_span_range_indices <= span_widths).float()
     raw_span_indices = span_ends - max_span_range_indices
     span_mask = span_mask * (raw_span_indices >= 0).float()
     span_indices = torch.relu(raw_span_indices.float()).long()

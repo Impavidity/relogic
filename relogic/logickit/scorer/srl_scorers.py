@@ -120,7 +120,7 @@ class JointSpanSRLF1Scorer(Scorer):
 
   def update(self, mbs, predictions, loss, extra_args):
     # predictions = srl_scores, top_pred_spans, top_arg_spans
-    srl_scores, top_pred_spans, top_arg_spans = predictions
+    srl_scores, top_pred_spans, top_arg_spans, _, _, _, _ = predictions
 
     batch_size = top_pred_spans.size(0)
 

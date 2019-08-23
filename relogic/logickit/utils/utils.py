@@ -87,7 +87,10 @@ def filter_head_prediction(sentence_tags, is_head):
   return filtered_sentence_tag
 
 def create_tensor(features, attribute, dtype, device):
-  return torch.tensor([getattr(f, attribute) for f in features], dtype=dtype).to(device)
+  try:
+    return torch.tensor([getattr(f, attribute) for f in features], dtype=dtype).to(device)
+  except:
+    return None
 
 def get_range_vector(size: int, device) -> torch.Tensor:
   """

@@ -2,10 +2,11 @@ import torch.nn as nn
 import torch
 from relogic.logickit.modules.span_extractors.endpoint_span_extractor import EndpointSpanExtractor
 from relogic.logickit.modules.span_extractors.self_attentive_span_extractor import SelfAttentiveSpanExtractor
+from relogic.logickit.modules.span_extractors.average_span_extractor import AverageSpanExtractor
 from relogic.logickit.modules.pruner import Pruner
 from relogic.logickit.inference.modeling import gelu
 from relogic.logickit.utils import utils
-
+from relogic.logickit.base.constants import SPAN_REPR_KENTON_LEE, SPAN_REPR_AVE_MAX, SPAN_REPR_AVE
 
 class JointSRLModule(nn.Module):
 
@@ -21,22 +22,43 @@ class JointSRLModule(nn.Module):
     self.endpoint_predicate_span_extractor = EndpointSpanExtractor(
       input_dim=config.hidden_size)
     self.attentive_span_extractor = SelfAttentiveSpanExtractor(input_dim=config.hidden_size)
+    # self.average_span_extractor = AverageSpanExtractor(input_dim=config.hidden_size)
+    if self.config.srl_arg_span_repr == SPAN_REPR_AVE:
+      arg_span_dim = config.hidden_size
+    elif self.config.srl_arg_span_repr == SPAN_REPR_AVE_MAX:
+      arg_span_dim = config.hidden_size * 2
+    elif self.config.srl_arg_span_repr == SPAN_REPR_KENTON_LEE:
+      arg_span_dim = config.hidden_size * 3 + config.span_width_embedding_dim
+    else:
+      raise ValueError("The span repr is not defined {}".format(self.config.srl_arg_span_repr))
+
+    if self.config.srl_pred_span_repr == SPAN_REPR_AVE:
+      pred_span_dim = config.hidden_size
+    elif self.config.srl_pred_span_repr == SPAN_REPR_AVE_MAX:
+      pred_span_dim = config.hidden_size * 2
+    elif self.config.srl_pred_span_repr == SPAN_REPR_KENTON_LEE:
+      pred_span_dim = config.hidden_size * 2
+    else:
+      raise ValueError("The span repr is not defined {}".format(self.config.srl_pred_span_repr))
+
     arg_feedforward_scorer = nn.Sequential(
-      nn.Linear(in_features=config.hidden_size * 3 + config.span_width_embedding_dim,
+      nn.Linear(in_features=arg_span_dim,
                 out_features=config.hidden_size),
       nn.ReLU(),
       nn.Linear(in_features=config.hidden_size, out_features=1))
     self.mention_pruner = Pruner(arg_feedforward_scorer)
     predicate_feedforward_scorer = nn.Sequential(
-      nn.Linear(in_features=config.hidden_size * 2, out_features=config.hidden_size),
+      nn.Linear(in_features=pred_span_dim, out_features=config.hidden_size),
       nn.ReLU(),
       nn.Linear(in_features=config.hidden_size, out_features=1))
     self.predicate_pruner = Pruner(predicate_feedforward_scorer)
     self.semantic_role_predictor = nn.Sequential(
-      nn.Linear(in_features=config.hidden_size * 5 + config.span_width_embedding_dim,
+      nn.Linear(in_features=arg_span_dim + pred_span_dim,
                 out_features=config.hidden_size),
       nn.ReLU(),
       nn.Linear(in_features=config.hidden_size, out_features=self.n_classes-1))
+    self.constant_pred = nn.Parameter(torch.LongTensor([15]), requires_grad=False)
+    self.constant_arg = nn.Parameter(torch.LongTensor([30]), requires_grad=False)
 
   def forward(self, *inputs, **kwargs):
     features = kwargs.pop("features")
@@ -51,27 +73,61 @@ class JointSRLModule(nn.Module):
     arg_mask = (arg_candidates[:, :, 1] > 0).float()
     predicate_mask = (predicate_candidates[:, :, 1] > 0).float()
 
-    endpoint_span_embeddings = self.endpoint_span_extractor(
-      sequence_tensor=features, span_indices=arg_candidates, span_indices_mask=arg_mask)
+    if self.config.srl_arg_span_repr == SPAN_REPR_KENTON_LEE:
+      endpoint_span_embeddings = self.endpoint_span_extractor(
+        sequence_tensor=features, span_indices=arg_candidates, span_indices_mask=arg_mask)
 
-    attended_span_embeddings = self.attentive_span_extractor(
-      sequence_tensor=features, span_indices=arg_candidates, span_indices_mask=arg_mask)
+      attended_span_embeddings = self.attentive_span_extractor(
+        sequence_tensor=features, span_indices=arg_candidates, span_indices_mask=arg_mask)
 
-    arg_embeddings = torch.cat([endpoint_span_embeddings, attended_span_embeddings], -1)
+      arg_embeddings = torch.cat([endpoint_span_embeddings, attended_span_embeddings], -1)
+    elif self.config.srl_arg_span_repr == SPAN_REPR_AVE_MAX:
+      average_span_embeddings = self.average_span_extractor(
+        sequence_tensor=features, span_indices=arg_candidates, span_indices_mask=arg_mask
+      )
+      max_pooled_span_embedding = self.max_pooling_extractor(
 
-    num_spans_to_keep = 30 # quick fix
+      )
+      arg_embeddings = torch.cat([average_span_embeddings, max_pooled_span_embedding], -1)
+    elif self.config.srl_arg_span_repr == SPAN_REPR_AVE:
+      arg_embeddings = self.average_span_extractor(
+        sequence_tensor=features, span_indices=arg_candidates, span_indices_mask=arg_mask
+      )
+    else:
+      raise ValueError("The span repr is not defined {}".format(self.config.srl_arg_span_repr))
+
+    num_spans_to_keep = (torch.sum(arg_mask, dim=-1) * 0.8).long()
+    num_spans_to_keep = torch.min(num_spans_to_keep, self.constant_arg) # quick fix
 
     (top_arg_span_embeddings, top_arg_span_mask,
-     top_arg_span_indices, top_arg_span_mention_scores) = self.mention_pruner(
+     top_arg_span_indices, top_arg_span_mention_scores,
+     arg_span_mention_full_scores) = self.mention_pruner(
       arg_embeddings, arg_mask, num_spans_to_keep)
     # top_arg_span_mask = (batch_size, max_arg_to_keep)
 
-    pred_embeddings = self.endpoint_predicate_span_extractor(
-      sequence_tensor=features, span_indices=predicate_candidates, span_indices_mask=predicate_mask)
+    if self.config.srl_pred_span_repr == SPAN_REPR_KENTON_LEE:
+      pred_embeddings = self.endpoint_predicate_span_extractor(
+        sequence_tensor=features, span_indices=predicate_candidates, span_indices_mask=predicate_mask)
+    elif self.config.srl_pred_span_repr == SPAN_REPR_AVE_MAX:
+      average_pred_embeddings = self.average_sapn_extractor(
+        sequence_tensor=features, span_indices=predicate_candidates, span_indices_mask=predicate_mask)
+      max_pooled_pred_embeddings = self.max_pooling_extractor(
 
-    num_preds_to_keep = 10
+      )
+      pred_embeddings = torch.cat([average_pred_embeddings, max_pooled_pred_embeddings], -1)
+    elif self.config.srl_pred_span_repr == SPAN_REPR_AVE:
+      pred_embeddings = self.average_span_extractor(
+        sequence_tensor=features, span_indices=predicate_candidates, span_indices_mask=predicate_mask)
+    else:
+      raise ValueError("The span repr is not defined {}".format(self.config.srl_pred_span_repr))
+
+
+    num_preds_to_keep = (torch.sum(predicate_mask, dim=-1) * 0.4).long()
+    num_preds_to_keep = torch.min(num_preds_to_keep, self.constant_pred)
+
     (top_pred_span_embeddings, top_pred_span_mask,
-     top_pred_span_indices, top_pred_span_mention_scores) = self.predicate_pruner(
+     top_pred_span_indices, top_pred_span_mention_scores,
+     pred_span_mention_full_scores) = self.predicate_pruner(
       pred_embeddings, predicate_mask, num_preds_to_keep)
 
     # top_arg_span_mask = top_arg_span_mask.unsqueeze(-1)
@@ -95,7 +151,9 @@ class JointSRLModule(nn.Module):
     srl_scores = self.compute_srl_scores(span_pair_embeddings,
                                          top_pred_span_mention_scores,
                                          top_arg_span_mention_scores)
-    return srl_scores, top_pred_spans, top_arg_spans
+    return (srl_scores, top_pred_spans,
+            top_arg_spans, top_pred_span_mask, top_arg_span_mask,
+            pred_span_mention_full_scores, arg_span_mention_full_scores)
 
   def compute_span_pair_embeddings(self,
                                    top_pred_span_embeddings: torch.FloatTensor,

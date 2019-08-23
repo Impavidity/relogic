@@ -83,6 +83,10 @@ class SRLExample(Example):
 
         if label_format == SRL_LABEL_SPAN_BASED:
           self.label_ids = []
+          self.pred_span_label_dict = dict([(item, 0)
+                                            for item in self.predicate_candidates])
+          self.arg_span_label_dict = dict([(item, 0)
+                                           for item in self.enumerated_span_candidates])
 
           for label in self.labels:
             (predicate_start, predicate_end, predicate_text,
@@ -93,6 +97,11 @@ class SRLExample(Example):
                            self.head_index[arg_start],
                            self.head_index[arg_end], label_mapping[arg_label])
             self.label_ids.append(label_tuple)
+            self.pred_span_label_dict[(self.head_index[predicate_start], self.head_index[predicate_end])] = 1
+            self.arg_span_label_dict[(self.head_index[arg_start], self.head_index[arg_end])] = 1
+
+          self.pred_span_label_ids = [self.pred_span_label_dict[item] for item in self.predicate_candidates]
+          self.arg_span_label_ids = [self.arg_span_label_dict[item] for item in self.enumerated_span_candidates]
 
         elif label_format == SRL_LABEL_SEQ_BASED:
           pass
@@ -147,6 +156,8 @@ class SRLFeature(Feature):
     self.label_ids = kwargs.pop("label_ids")
     self.arg_candidates = kwargs.pop("arg_candidates")
     self.predicate_candidates = kwargs.pop("predicate_candidates")
+    self.arg_candidate_label_ids = kwargs.pop("arg_candidate_label_ids")
+    self.predicate_candidate_label_ids = kwargs.pop("predicate_candidate_label_ids")
 
 
 class SRLMiniBatch(MiniBatch):
@@ -170,8 +181,16 @@ class SRLMiniBatch(MiniBatch):
     inputs["input_head"] = create_tensor(self.input_features, "is_head",
                                          torch.long, device)
     if use_label:
-      inputs["label_ids"] = create_tensor(self.input_features, "label_ids",
+      label_ids = create_tensor(self.input_features, "label_ids",
                                           torch.long, device)
+      predicate_candidate_label_ids = create_tensor(self.input_features, "predicate_candidate_label_ids",
+                                           torch.long, device)
+      arg_candidate_label_ids = create_tensor(self.input_features, "arg_candidate_label_ids",
+                                           torch.long, device)
+      if predicate_candidate_label_ids is None or arg_candidate_label_ids is None:
+        inputs["label_ids"] = label_ids
+      else:
+        inputs["label_ids"] = (label_ids, predicate_candidate_label_ids, arg_candidate_label_ids)
     else:
       inputs["label_ids"] = None
     inputs["arg_candidates"] = create_tensor(
@@ -241,20 +260,33 @@ class SRLDataFlow(DataFlow):
           (1, 0)
       ] * (max_predicate_candidate_length - len(example.predicate_candidates))
 
+
+
       # For label processing, there are three choice
       # 1. None if it is for prediction
       # 2. Sequence Labeling format, then it is just List[str]. This is predicate based.
       # 3. Span format, then it is List[Tuple[int, int, int, int, int]]
       if label_format is None:
         label_ids = None
+        arg_candidate_label_ids = None
+        predicate_candidate_label_ids = None
       elif label_format == SRL_LABEL_SPAN_BASED:
         # span (1, 0) is a invalid span. We use that as padding
         label_ids = example.label_ids + [
             (1, 0, 1, 0, example.label_padding_id)
         ] * (max_label_length - example.label_len)
+
+        arg_candidate_label_ids = example.arg_span_label_ids + [
+          0] * (max_arg_candidate_length - len(example.enumerated_span_candidates))
+        predicate_candidate_label_ids = example.pred_span_label_ids + [
+          0] * (max_predicate_candidate_length - len(example.predicate_candidates))
+
+
       elif label_format == SRL_LABEL_SEQ_BASED:
         label_ids = example.label_ids + [example.label_padding_id] * (
             max_label_length - example.label_len)
+        arg_candidate_label_ids = None
+        predicate_candidate_label_ids = None
       else:
         raise ValueError(
             "The label format {} is not supported. Choice: {} | {}".format(
@@ -267,5 +299,7 @@ class SRLDataFlow(DataFlow):
                      is_head=is_head,
                      label_ids=label_ids,
                      arg_candidates=arg_candidates,
-                     predicate_candidates=predicate_candidates))
+                     predicate_candidates=predicate_candidates,
+                     arg_candidate_label_ids = arg_candidate_label_ids,
+                     predicate_candidate_label_ids = predicate_candidate_label_ids))
     return features

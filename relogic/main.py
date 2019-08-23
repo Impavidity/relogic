@@ -123,6 +123,9 @@ def main():
   parser.add_argument("--srl_label_format", default="srl_label_span_based", type=str)
   parser.add_argument("--num_width_embeddings", default=300)
   parser.add_argument("--span_width_embedding_dim", default=100)
+  parser.add_argument("--srl_candidate_loss", default=False, action="store_true")
+  parser.add_argument("--srl_arg_span_repr", default="ave")
+  parser.add_argument("--srl_pred_span_repr", default="ave")
 
   # Reading Comprehension
   parser.add_argument("--null_score_diff_threshold", default=1.0)
@@ -175,7 +178,7 @@ def main():
   parser.add_argument("--max_margin", type=float, default=3)
   parser.add_argument("--warmup_epoch_number", type=int, default=0)
   parser.add_argument("--sgd_learning_rate", type=float, default=0.1)
-  parser.add_argument("--adam_learning_rate", type=float, default=0.0001)
+  parser.add_argument("--adam_learning_rate", type=float, default=0.001)
   parser.add_argument("--sep_optim", dest="sep_optim", default=False, action="store_true")
   parser.add_argument("--multi_gpu", dest="multi_gpu", default=False, action="store_true")
   parser.add_argument("--ignore_parameters", default="", type=str)

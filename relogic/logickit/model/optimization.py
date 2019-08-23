@@ -347,30 +347,51 @@ class MultipleOptimizer(object):
     self.current_step = -1
     self.optim_type = optim_type
     self.stage_two = False
+    self.stage_three = False
 
   def zero_grad(self):
-    if self.optim_type != "two_stage_optim":
-      for n, op in self.optimizers.items():
-        op.zero_grad()
-    else:
-      if self.stage_two:
-        for n, op in self.optimizers.items():
-          op.zero_grad()
-      else:
-        for n, op in self.optimizers.items():
-          if n == "bert_optimizer":
-            continue
-          op.zero_grad()
+    # if self.optim_type != "two_stage_optim":
+    #   for n, op in self.optimizers.items():
+    #     op.zero_grad()
+    # else:
+    #   if self.stage_two:
+    #     for n, op in self.optimizers.items():
+    #       op.zero_grad()
+    #   else:
+    #     for n, op in self.optimizers.items():
+    #       if n == "bert_optimizer":
+    #         continue
+    #       op.zero_grad()
+      # for n, op in self.optimizers.items():
+      #   if n == "bert_optimizer":
+      #     op.zero_grad()
+      #   else:
+      #     op.zero_grad()
+    for n, op in self.optimizers.items():
+       op.zero_grad()
 
   def step(self):
     if self.optim_type != "two_stage_optim":
       for n, op in self.optimizers.items():
         op.step()
     else:
-      if self.stage_two:
+      # for n, op in self.optimizers.items():
+      #   if n == "bert_optimizer":
+      #     op.step()
+      #   else:
+      #     op.step()
+      # self.current_step += 1
+      if self.stage_three:
         for n, op in self.optimizers.items():
-          if n == "bert_optimizer":
-            op.step()
+          if n != "ber_optimizer":
+            continue
+          op.step()
+      elif self.stage_two:
+        for n, op in self.optimizers.items():
+          op.step()
+        if self.current_step == 6000:
+          print("Into Stage Three")
+          self.stage_three = True
       else:
         for n, op in self.optimizers.items():
           if n == "bert_optimizer":
@@ -380,6 +401,7 @@ class MultipleOptimizer(object):
         if self.current_step == 3000:
           print("Into Stage Two")
           self.stage_two = True
+
 
   def update_loss(self, loss):
 
