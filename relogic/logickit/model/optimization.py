@@ -143,6 +143,7 @@ class WarmupCosineWithWarmupRestartsSchedule(
     Every part follows a schedule with the first `warmup` fraction of the training steps linearly increasing from 0. to 1.,
     followed by a learning rate decreasing from 1. to 0. following a cosine curve.
     """
+  warn_t_total = False
 
   def __init__(self, warmup=0.002, t_total=-1, cycles=1., **kw):
     assert (warmup * cycles < 1.)
@@ -183,7 +184,7 @@ class WarmupLinearSchedule(_LRSchedule):
   def get_lr_(self, progress):
     if progress < self.warmup:
       return progress / self.warmup
-    return max((progress - 1.) / (self.warmup - 1.), 0.1)
+    return max((progress - 1.) / (self.warmup - 1.), 0.2)
 
 
 SCHEDULES = {

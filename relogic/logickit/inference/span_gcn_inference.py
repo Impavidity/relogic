@@ -3,10 +3,13 @@ import torch.nn as nn
 from relogic.logickit.base import utils
 from relogic.logickit.inference.encoder import Encoder
 from relogic.logickit.inference.branching_encoder import BranchingBertModel
+from relogic.logickit.modules.contextualizers.highway_lstm import HighwayLSTM
 
 from relogic.logickit.base.constants import *
 
 from relogic.logickit.loss_func import get_loss
+import numpy as np
+import torch
 
 class SpanGCNInference(nn.Module):
   """
@@ -26,11 +29,18 @@ class SpanGCNInference(nn.Module):
     else:
       utils.log("Build Bert Encoder")
       self.encoder = Encoder.from_pretrained(config.bert_model)
+
+
     utils.log("Build Task Modules")
     self.tasks_modules = nn.ModuleDict()
     for task in tasks:
       self.tasks_modules.update([(task.name, task.get_module())])
     self.task_dict = dict([(task.name, task) for task in self.tasks])
+
+    # self.encoder = HighwayLSTM(num_layers=3, input_size=300, hidden_size=200, layer_dropout=0.2)
+    # self.word_embedding = nn.Embedding(self.config.external_vocab_size, self.config.external_vocab_embed_size)
+    # self.word_embedding.weight.data.copy_(torch.from_numpy(np.load(config.external_embeddings)))
+    # print("Loading embedding from {}".format(config.external_embeddings))
 
   # def forward(self,
   #             task_name,
@@ -53,6 +63,7 @@ class SpanGCNInference(nn.Module):
     selected_non_final_layers = extra_args.get("selected_non_final_layers", None)
     no_dropout = task_name in READING_COMPREHENSION_TASKS
 
+    # BERT encoding
     features = self.encoder(
       input_ids=input_ids,
       token_type_ids=segment_ids,
@@ -61,6 +72,12 @@ class SpanGCNInference(nn.Module):
       selected_non_final_layers=selected_non_final_layers,
       route_path=route_path,
       no_dropout=no_dropout)
+
+    # # LSTM encoder
+    # input_token_ids = self.word_embedding(kwargs.pop("_input_token_ids"))
+    # token_lengths = kwargs.pop("_token_length")
+    # label_ids = kwargs.pop("_label_ids")
+    # features = self.encoder(input_token_ids, token_lengths)
 
     # Semi-supervised Learning is not supported for now
     # There is a lot of semi-supervised learning algorithms,
@@ -87,7 +104,7 @@ class SpanGCNInference(nn.Module):
         config=self.config,
         extra_args=extra_args,
         **kwargs)
-      return loss
+      return loss, logits
     else:
       return logits
 

@@ -23,7 +23,7 @@ python -u -m relogic.main  \
 --adam_learning_rate 0.005 \
 --srl_arg_span_repr kenton_lee \
 --srl_pred_span_repr kenton_lee \
---schedule_method warmup_cosine_warmup_restarts \
 --two_stage_optim \
+# --schedule_method warmup_cosine_warmup_restarts \
 # --external_embeddings data/embeddings/wiki-news-300d-1M.npy \
 # --use_span_candidates \

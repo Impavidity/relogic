@@ -3,6 +3,7 @@ import torch
 from relogic.logickit.modules.span_extractors.endpoint_span_extractor import EndpointSpanExtractor
 from relogic.logickit.modules.span_extractors.self_attentive_span_extractor import SelfAttentiveSpanExtractor
 from relogic.logickit.modules.span_extractors.average_span_extractor import AverageSpanExtractor
+from relogic.logickit.modules.span_extractors.attentive_span_extractor import AttentiveSpanExtractor
 from relogic.logickit.modules.pruner import Pruner
 from relogic.logickit.inference.modeling import gelu
 from relogic.logickit.utils import utils
@@ -21,7 +22,8 @@ class JointSRLModule(nn.Module):
       span_width_embedding_dim=config.span_width_embedding_dim)
     self.endpoint_predicate_span_extractor = EndpointSpanExtractor(
       input_dim=config.hidden_size)
-    self.attentive_span_extractor = SelfAttentiveSpanExtractor(input_dim=config.hidden_size)
+    self.attentive_span_extractor = AttentiveSpanExtractor(input_dim=config.hidden_size)
+    # SelfAttentiveSpanExtractor(input_dim=config.hidden_size)
     # self.average_span_extractor = AverageSpanExtractor(input_dim=config.hidden_size)
     if self.config.srl_arg_span_repr == SPAN_REPR_AVE:
       arg_span_dim = config.hidden_size
@@ -62,6 +64,10 @@ class JointSRLModule(nn.Module):
 
   def forward(self, *inputs, **kwargs):
     features = kwargs.pop("features")
+    pred_features = features[0]
+    arg_features = features[1]
+    features = features[2]
+    # TODO : quick fix for lstm testing
     arg_candidates = kwargs.pop("arg_candidates")
     predicate_candidates = kwargs.pop("predicate_candidates")
 
@@ -78,7 +84,7 @@ class JointSRLModule(nn.Module):
         sequence_tensor=features, span_indices=arg_candidates, span_indices_mask=arg_mask)
 
       attended_span_embeddings = self.attentive_span_extractor(
-        sequence_tensor=features, span_indices=arg_candidates, span_indices_mask=arg_mask)
+        sequence_tensor=features, value_tensor=arg_features, span_indices=arg_candidates, span_indices_mask=arg_mask)
 
       arg_embeddings = torch.cat([endpoint_span_embeddings, attended_span_embeddings], -1)
     elif self.config.srl_arg_span_repr == SPAN_REPR_AVE_MAX:
@@ -107,7 +113,7 @@ class JointSRLModule(nn.Module):
 
     if self.config.srl_pred_span_repr == SPAN_REPR_KENTON_LEE:
       pred_embeddings = self.endpoint_predicate_span_extractor(
-        sequence_tensor=features, span_indices=predicate_candidates, span_indices_mask=predicate_mask)
+        sequence_tensor=pred_features, span_indices=predicate_candidates, span_indices_mask=predicate_mask)
     elif self.config.srl_pred_span_repr == SPAN_REPR_AVE_MAX:
       average_pred_embeddings = self.average_sapn_extractor(
         sequence_tensor=features, span_indices=predicate_candidates, span_indices_mask=predicate_mask)

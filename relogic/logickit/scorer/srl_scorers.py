@@ -154,8 +154,11 @@ class JointSpanSRLF1Scorer(Scorer):
   def _get_results(self):
     assert len(self._examples) == len(self._predictions)
     for example, preds in zip(self._examples, self._predictions):
+      # sent_spans = set([(pred_start, pred_end, arg_start, arg_end, self._inv_label_mapping[label_id]) for
+      #               pred_start, pred_end, arg_start, arg_end, label_id in example.label_ids])
+      # TODO: fix for LSTM
       sent_spans = set([(pred_start, pred_end, arg_start, arg_end, self._inv_label_mapping[label_id]) for
-                    pred_start, pred_end, arg_start, arg_end, label_id in example.label_ids])
+                        pred_start, pred_end, arg_start, arg_end, label_id in example.label_ids])
       example: SRLExample
       span_preds = set(preds)
       sent_spans = set(filter(lambda item: item[4] != 'V', sent_spans))
@@ -169,6 +172,7 @@ class JointSpanSRLF1Scorer(Scorer):
         span_preds = [(int(s[0]), int(s[1]), int(s[2]), int(s[3]), s[4]) for s in span_preds]
         self.dump_to_file_handler.write(json.dumps({
           "text": example.raw_tokens,
+          "BPE_tokens": example.text_tokens,
           "span_preds": list(span_preds),
           "sent_spans": list(sent_spans)}) + "\n")
     if self.dump_to_file_path:
@@ -192,8 +196,3 @@ class JointSpanSRLF1Scorer(Scorer):
 
   def get_loss(self):
     return 0
-
-
-
-
-
