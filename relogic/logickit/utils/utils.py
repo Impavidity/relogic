@@ -1,6 +1,23 @@
 import numpy as np
 import torch
 from typing import Optional
+from relogic.logickit.base import utils
+
+
+def print_2d_tensor(tensor):
+  """ Print a 2D tensor """
+  utils.log("lv, h >\t" + "\t".join(f"{x + 1}" for x in range(len(tensor))))
+  for row in range(len(tensor)):
+    if tensor.dtype != torch.long:
+      utils.log(f"layer {row + 1}:\t" + "\t".join(f"{x:.5f}" for x in tensor[row].cpu().data))
+    else:
+      utils.log(f"layer {row + 1}:\t" + "\t".join(f"{x:d}" for x in tensor[row].cpu().data))
+
+def entropy(p):
+  """Compute the entropy of a probability distribution"""
+  plogp = p * torch.log(p)
+  plogp[p == 0] = 0
+  return -plogp.sum(dim=-1)
 
 def softmax(x):
   """Compute softmax values for each sets of scores in x."""

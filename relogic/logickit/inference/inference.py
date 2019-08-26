@@ -28,10 +28,12 @@ class Inference(nn.Module):
     self.softmax = nn.Softmax(-1)
 
   def forward(self, task_name, input_ids, input_mask, input_head, segment_ids, label_ids, extra_args):
+    # TODO: This interface only works for normal Encoder
     features = self.encoder(
       input_ids=input_ids,
       token_type_ids=segment_ids,
       attention_mask=input_mask,
+      head_mask=extra_args.get("head_mask", None),
       output_all_encoded_layers=False,
       token_level_attention_mask=extra_args.get("token_level_attention_mask", None),
       route_path=extra_args.get("route_path", None),
@@ -69,7 +71,10 @@ class Inference(nn.Module):
           loss = (start_loss + end_loss) / 2
         else:
           loss = self.loss_fct(logits.view(-1, logits.size(-1)), label_ids.view(-1))
-        return loss
+        if self.config.output_attentions:
+          return loss, logits, attention_map
+        else:
+          return loss, logits
       else:
         if self.config.output_attentions:
           return logits, attention_map

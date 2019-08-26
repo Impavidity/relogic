@@ -15,6 +15,7 @@ class Encoder(BertPreTrainedModel):
               input_ids,
               token_type_ids=None,
               attention_mask=None,
+              head_mask=None,
               output_all_encoded_layers=False,
               token_level_attention_mask=None,
               selected_non_final_layers=None,
@@ -24,7 +25,7 @@ class Encoder(BertPreTrainedModel):
       input_ids=input_ids,
       token_type_ids=token_type_ids,
       attention_mask=attention_mask,
-      head_mask=None,
+      head_mask=head_mask,
       token_level_attention_mask=token_level_attention_mask,
       output_all_encoded_layers=output_all_encoded_layers,
       selected_non_final_layers=selected_non_final_layers)

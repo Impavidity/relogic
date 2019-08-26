@@ -13,14 +13,16 @@ from relogic.logickit.base import utils
 from relogic.logickit.base.configure import configure
 from relogic.logickit.training import trainer, training_progress
 from relogic.logickit.serving import Server
+from relogic.logickit.analyzer.heads_importance import compute_heads_importance
 
 import relogic.utils.crash_on_ipy
 
 
 def train(config):
   model_trainer = trainer.Trainer(config)
+  # A quick fix for version migration
   progress = training_progress.TrainingProgress(
-    config=config, tokenizer=model_trainer.tokenizer)
+    config=config, tokenizer=model_trainer.tokenizer["BPE"])
   model_trainer.train(progress)
 
 def finetune(config):
@@ -69,8 +71,13 @@ def eval(config):
   if config.mode == "serving":
     server = Server(model_trainer)
     server.start()
+  elif config.mode == "analysis":
+    analyze(config, model_trainer)
   else:
     model_trainer.evaluate_all_tasks()
+
+def analyze(config, model_trainer):
+  compute_heads_importance(config, model_trainer)
 
 
 def main():
@@ -79,7 +86,7 @@ def main():
 
   # IO
   parser.add_argument(
-    "--mode", default=None, choices=["train", "valid", "eval", "finetune"])
+    "--mode", default=None, choices=["train", "valid", "eval", "finetune", "analysis"])
   parser.add_argument("--output_dir", type=str, default="data/models")
   parser.add_argument("--max_seq_length", type=int, default=450)
   parser.add_argument("--max_query_length", type=int, default=64)
@@ -225,6 +232,8 @@ def main():
   elif args.mode == "finetune":
     finetune(args)
   elif args.mode == "serving":
+    eval(args)
+  elif args.mode == "analysis":
     eval(args)
 
 

@@ -9,7 +9,7 @@ import numpy as np
 from relogic.logickit.data_io import generate_input
 from relogic.logickit.inference import get_inference
 from relogic.logickit.dataflow import MiniBatch
-
+from relogic.logickit.utils.utils import entropy
 
 class Model(BaseModel):
   def __init__(self, config, tasks):
@@ -166,7 +166,11 @@ class Model(BaseModel):
           return 0
 
 
-    loss = self.model(**inputs)
+    outputs = self.model(**inputs)
+    if self.config.output_attentions:
+      loss, _, _ = outputs
+    else:
+      loss, _ = outputs
 
     if self.config.gradient_accumulation_steps > 1:
       loss = loss / self.config.gradient_accumulation_steps
@@ -206,6 +210,34 @@ class Model(BaseModel):
     else:
       return results
 
+  def analyze(self, mb, head_mask, params):
+    if isinstance(mb, MiniBatch):
+      inputs = mb.generate_input(self.device, use_label=False)
+    else:
+      if mb.task_name in ["rel_extraction", "srl", "er"]:
+        inputs = generate_input(
+          mb=mb,
+          config=self.config,
+          device=self.device,
+          use_label=True)
+      else:
+        # TODO: Slow process to change interfaces for all tasks
+        inputs = self.generate_input(mb, use_label=False)
+    inputs["extra_args"]["head_mask"] = head_mask
+    outputs = self.model(**inputs)
+    # We assume here is loss, logits, and attention_map
+    loss, logits, all_attentions = outputs
+    loss.backward()  # Backpropagate to populate the gradients in the head mask
+    # Compute Entropy
+
+    for layer, attn in enumerate(all_attentions):
+      masked_entropy = entropy(attn.detach()) * inputs["input_mask"].float().unsqueeze(1)
+      params["attn_entropy"][layer] += masked_entropy.sum(-1).sum(0).detach()
+
+    params["head_importance"] += head_mask.grad.abs().detach()
+    params["total_token"] += inputs["input_mask"].float().detach().sum().data
+
+    return logits, torch.stack(all_attentions, dim=0).transpose(0, 1).detach().data.cpu().numpy()
 
   def train_labeled(self, mb, step):
     self.model.train()

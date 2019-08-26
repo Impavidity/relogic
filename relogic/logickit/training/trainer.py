@@ -7,23 +7,30 @@ import numpy as np
 
 import torch
 from relogic.logickit.base import utils
-
 from relogic.logickit.tokenizer.tokenization import BertTokenizer
+from relogic.logickit.tokenizer.fasttext_tokenization import FasttextTokenizer
 from relogic.logickit.tasks import get_task
 from relogic.logickit.model import get_model
 from relogic.logickit.training.training_progress import TrainingProgress
 from relogic.logickit.dataflow import MiniBatch
-
+import os
+from relogic.logickit.utils.utils import print_2d_tensor
 
 
 class Trainer(object):
   def __init__(self, config):
     self.config = config
-    self.tokenizer = BertTokenizer.from_pretrained(
-      config.vocab_path, do_lower_case=config.do_lower_case,
-      never_split=config.never_split, lang=config.lang)
+    self.tokenizer = {
+      "BPE" : BertTokenizer.from_pretrained(
+        config.vocab_path, do_lower_case=config.do_lower_case,
+        never_split=config.never_split, lang=config.lang),
+      "Fasttext": FasttextTokenizer.from_pretrained("wiki-news-300d-1M")
+    }
+
+    # A quick fix for version migration
     self.tasks = [
-      get_task(self.config, task_name, self.tokenizer)
+      get_task(self.config, task_name, self.tokenizer
+          if task_name in ["joint_srl"] else self.tokenizer["BPE"])
       for task_name in self.config.task_names
     ]
     self.model = get_model(config)(config=self.config, tasks=self.tasks)
@@ -117,6 +124,44 @@ class Trainer(object):
     results = scorer.get_results()
     utils.log(task.name.upper() + ": " + scorer.results_str())
     return results
+
+  def analyze_task(self, task, head_mask,
+                   head_importance, attn_entropy):
+    scorer = task.get_scorer(dump_to_file={"output_dir": self.config.output_dir,
+                                           "task_name": task.name})
+    params = {
+      "head_importance": head_importance,
+      "attn_entropy": attn_entropy,
+      "total_token": 0.0
+    }
+    data = task.val_set
+    # The output of the model is logits and attention_map
+    for i, mb in enumerate(data.get_minibatches(self.config.test_batch_size)):
+      batch_preds, attention_map = self.model.analyze(mb, head_mask, params=params)
+      extra_output = {}
+      extra_output["attention_map"] = attention_map
+      loss = 0
+      scorer.update(mb, batch_preds, loss, extra_output)
+      if i % 100 == 0:
+        utils.log("{} batch processed.".format(i))
+    results = scorer.get_results()
+    utils.log(task.name.upper() + ": " + scorer.results_str())
+
+    params["attn_entropy"] /= params["total_token"]
+    params["head_importance"] /= params["total_token"]
+    np.save(os.path.join(self.config.output_dir, 'attn_entropy.npy'), attn_entropy.detach().cpu().numpy())
+    np.save(os.path.join(self.config.output_dir, 'head_importance.npy'), head_importance.detach().cpu().numpy())
+
+    utils.log("Attention entropies")
+    print_2d_tensor(attn_entropy)
+    utils.log("Head importance scores")
+    print_2d_tensor(head_importance)
+    utils.log("Head ranked by importance scores")
+    head_ranks = torch.zeros(head_importance.numel(), dtype=torch.long, device=self.model.device)
+    head_ranks[head_importance.view(-1).sort(descending=True)[1]] = torch.arange(head_importance.numel(),
+                                                                                 device=self.model.device)
+    head_ranks = head_ranks.view_as(head_importance)
+    print_2d_tensor(head_ranks)
 
   def get_training_mbs(self, unlabeled_data_reader):
     datasets = [task.train_set for task in self.tasks]
