@@ -31,7 +31,8 @@ class PredictionModule(nn.Module):
       raise ValueError("rel_extraction_module_type is not in [entity_span, sent_repr, hybrid], {}".format(
         self.config.rel_extraction_module_type))
     self.to_logits = nn.Linear(hidden_size, self.n_classes)
-    self.padding = nn.Parameter(torch.zeros(config.hidden_size), requires_grad=False)
+    if self.config.rel_extraction_module_type == "hybrid":
+      self.padding = nn.Parameter(torch.zeros(config.hidden_size), requires_grad=False)
 
   def attention_module(self, query, candidate, mask):
     # query = (batch, dim), candidate = (batch, length, dim)
