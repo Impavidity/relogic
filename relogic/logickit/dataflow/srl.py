@@ -9,6 +9,7 @@ import torch
 from relogic.logickit.base.constants import SRL_LABEL_SEQ_BASED, SRL_LABEL_SPAN_BASED
 from relogic.logickit.dataflow import DataFlow, Example, Feature, MiniBatch
 from relogic.logickit.tokenizer.tokenization import BertTokenizer
+from relogic.logickit.tokenizer.fasttext_tokenization import FasttextTokenizer
 from relogic.logickit.utils import create_tensor
 from relogic.structures import enumerate_spans
 
@@ -31,85 +32,128 @@ class SRLExample(Example):
     # Hard code here
     self.label_padding = 'X'
 
-  def process(self, tokenizer, *inputs, **kwargs):
+  def process(self, tokenizers, *inputs, **kwargs):
     """Process the SRL example.
 
     This process requires the tokenizer. Furthermore, if this example is for
      training and evaluation, the label_format and label_mapping are required.
     """
+    for tokenizer in tokenizers.values():
+      if isinstance(tokenizer, BertTokenizer):
+        # BERT process part
+        self.text_tokens, self.text_is_head = tokenizer.tokenize(self.text)
+        self.tokens = ["[CLS]"] + self.text_tokens + ["[SEP]"]
+        self.segment_ids = [0] * (len(self.text_tokens) + 2)
+        self.is_head = [2] + self.text_is_head + [2]
+        self.head_index = [
+            idx for idx, value in enumerate(self.is_head) if value == 1
+        ] + [len(self.is_head) - 1]
+        # index of [SEP] is len(self.is_head) - 1.
+        # Assume we have sentence [A, B, C]. After processing,
+        # it becomes [[CLS], A, B, C, [SEP]]
+        # length of head_index is 3, that is [1, 2, 3].
+        # We pad it with len(self.is_head) - 1, which is 4.
+        # Assume we have span (2, 3) = C, exclusive.
+        # self.head_index[2] =  3, self.head_index[3] = 4.
+        # So the span for tokenized sentence is (3, 4) = C
 
-    if isinstance(tokenizer, BertTokenizer):
-      # BERT process part
-      self.text_tokens, self.text_is_head = tokenizer.tokenize(self.text)
-      self.tokens = ["[CLS]"] + self.text_tokens + ["[SEP]"]
-      self.segment_ids = [0] * (len(self.text_tokens) + 2)
-      self.is_head = [2] + self.text_is_head + [2]
-      self.head_index = [
-          idx for idx, value in enumerate(self.is_head) if value == 1
-      ] + [len(self.is_head) - 1]
-      # index of [SEP] is len(self.is_head) - 1.
-      # Assume we have sentence [A, B, C]. After processing,
-      # it becomes [[CLS], A, B, C, [SEP]]
-      # length of head_index is 3, that is [1, 2, 3].
-      # We pad it with len(self.is_head) - 1, which is 4.
-      # Assume we have span (2, 3) = C, exclusive.
-      # self.head_index[2] =  3, self.head_index[3] = 4.
-      # So the span for tokenized sentence is (3, 4) = C
+        self.input_ids = tokenizer.convert_tokens_to_ids(self.tokens)
+        self.input_mask = [1] * len(self.input_ids)
 
-      self.input_ids = tokenizer.convert_tokens_to_ids(self.tokens)
-      self.input_mask = [1] * len(self.input_ids)
+        # Enumerate the span and map the spans into sub-token level
+        spans = enumerate_spans(sentence=self.raw_tokens, max_span_width=30)
 
-      # Enumerate the span and map the spans into sub-token level
-      spans = enumerate_spans(sentence=self.raw_tokens, max_span_width=20)
+        self.enumerated_span_candidates: List[Tuple[int, int]] = []
+        for span in spans:
+          self.enumerated_span_candidates.append(
+              (self.head_index[span[0]], self.head_index[span[1]]))
 
-      self.enumerated_span_candidates: List[Tuple[int, int]] = []
-      for span in spans:
-        self.enumerated_span_candidates.append(
-            (self.head_index[span[0]], self.head_index[span[1]]))
+        # Currently we assume that the predicate length is 1
+        spans = enumerate_spans(sentence=self.raw_tokens, max_span_width=1)
+        self.predicate_candidates: List[Tuple[int, int]] = []
+        for span in spans:
+          self.predicate_candidates.append(
+              (self.head_index[span[0]], self.head_index[span[1]]))
 
-      # Currently we assume that the predicate length is 1
-      spans = enumerate_spans(sentence=self.raw_tokens, max_span_width=1)
-      self.predicate_candidates: List[Tuple[int, int]] = []
-      for span in spans:
-        self.predicate_candidates.append(
-            (self.head_index[span[0]], self.head_index[span[1]]))
+        # If this is for model development, then self.labels is not None
+        # If this is for deployment, then self.labels is None
+        if self.labels is not None:
+          label_mapping = kwargs.get("label_mapping")
+          self.label_padding_id = label_mapping[self.label_padding]
+          label_format = kwargs.get("label_format")
 
-      # If this is for model development, then self.labels is not None
-      # If this is for deployment, then self.labels is None
-      if self.labels is not None:
-        label_mapping = kwargs.pop("label_mapping")
-        self.label_padding_id = label_mapping[self.label_padding]
-        label_format = kwargs.pop("label_format")
+          if label_format == SRL_LABEL_SPAN_BASED:
+            self.label_ids = []
+            self.pred_span_label_dict = dict([(item, 0)
+                                              for item in self.predicate_candidates])
+            self.arg_span_label_dict = dict([(item, 0)
+                                             for item in self.enumerated_span_candidates])
 
-        if label_format == SRL_LABEL_SPAN_BASED:
-          self.label_ids = []
-          self.pred_span_label_dict = dict([(item, 0)
-                                            for item in self.predicate_candidates])
-          self.arg_span_label_dict = dict([(item, 0)
-                                           for item in self.enumerated_span_candidates])
+            for label in self.labels:
+              (predicate_start, predicate_end, predicate_text,
+               arg_start, arg_end, argument_text, arg_label) = label
 
-          for label in self.labels:
-            (predicate_start, predicate_end, predicate_text,
-             arg_start, arg_end, argument_text, arg_label) = label
+              label_tuple = (self.head_index[predicate_start],
+                             self.head_index[predicate_end],
+                             self.head_index[arg_start],
+                             self.head_index[arg_end], label_mapping[arg_label])
+              self.label_ids.append(label_tuple)
+              self.pred_span_label_dict[(self.head_index[predicate_start], self.head_index[predicate_end])] = 1
+              self.arg_span_label_dict[(self.head_index[arg_start], self.head_index[arg_end])] = 1
 
-            label_tuple = (self.head_index[predicate_start],
-                           self.head_index[predicate_end],
-                           self.head_index[arg_start],
-                           self.head_index[arg_end], label_mapping[arg_label])
-            self.label_ids.append(label_tuple)
-            self.pred_span_label_dict[(self.head_index[predicate_start], self.head_index[predicate_end])] = 1
-            self.arg_span_label_dict[(self.head_index[arg_start], self.head_index[arg_end])] = 1
+            self.pred_span_label_ids = [self.pred_span_label_dict[item] for item in self.predicate_candidates]
+            self.arg_span_label_ids = [self.arg_span_label_dict[item] for item in self.enumerated_span_candidates]
 
-          self.pred_span_label_ids = [self.pred_span_label_dict[item] for item in self.predicate_candidates]
-          self.arg_span_label_ids = [self.arg_span_label_dict[item] for item in self.enumerated_span_candidates]
+          elif label_format == SRL_LABEL_SEQ_BASED:
+            pass
+          else:
+            raise ValueError()
 
-        elif label_format == SRL_LABEL_SEQ_BASED:
-          pass
-        else:
-          raise ValueError()
-    else:
-      # Traditional process part
-      pass
+      elif isinstance(tokenizer, FasttextTokenizer):
+        # Traditional process part
+        self._text_tokens = tokenizer.tokenize(self.text)
+        # self._text_tokens, self._char_tokens = tokenizer.tokenize(self.text)
+        self._input_token_ids = tokenizer.convert_tokens_to_ids(self._text_tokens)
+        # self._input_char_ids = tokenizer.convert_char_to_ids(self._char_tokens)
+
+        spans = enumerate_spans(sentence=self._text_tokens, max_span_width=20)
+
+        self._enumerated_span_candidates: List[Tuple[int, int]] = []
+        for span in spans:
+          self._enumerated_span_candidates.append(span)
+
+        spans = enumerate_spans(sentence=self._text_tokens, max_span_width=1)
+        self._predicate_candidates: List[Tuple[int, int]] = []
+        for span in spans:
+          self._predicate_candidates.append(span)
+
+        if self.labels is not None:
+          label_mapping = kwargs.get("label_mapping")
+          self.label_padding_id = label_mapping[self.label_padding]
+          label_format = kwargs.get("label_format")
+
+          if label_format == SRL_LABEL_SPAN_BASED:
+            self._label_ids = []
+            self._pred_span_label_dict = dict([(item, 0)
+                                               for item in self._predicate_candidates])
+            self._arg_span_label_dict = dict([(item, 0)
+                                              for item in self._enumerated_span_candidates])
+            for label in self.labels:
+              (predicate_start, predicate_end, predicate_text,
+               arg_start, arg_end, argument_text, arg_label) = label
+
+              label_tuple = (predicate_start, predicate_end,
+                             arg_start, arg_end, label_mapping[arg_label])
+              self._label_ids.append(label_tuple)
+              self._pred_span_label_dict[(predicate_start, predicate_end)] = 1
+              self._arg_span_label_dict[(arg_start, arg_end)] = 1
+
+            self._pred_span_label_ids = [self._pred_span_label_dict[item] for item in self._predicate_candidates]
+            self._arg_span_label_ids = [self._arg_span_label_dict[item] for item in self._enumerated_span_candidates]
+          elif label_format == SRL_LABEL_SEQ_BASED:
+            pass
+          else:
+            raise ValueError
 
   @classmethod
   def from_structure(cls, structure):
@@ -134,11 +178,24 @@ class SRLExample(Example):
     return len(self.tokens)
 
   @property
+  def _len(self):
+    """SRL example classical token length"""
+
+    return len(self._input_token_ids)
+
+  @property
   def label_len(self):
     """SRL example label length (after all preprocessing). Can be span-based or sequence-based"""
 
     if hasattr(self, "label_ids"):
       return len(self.label_ids)
+    return 0
+
+  @property
+  def _label_len(self):
+    """SRL example classical label length."""
+    if hasattr(self, "_label_ids"):
+      return len(self._label_ids)
     return 0
 
 
@@ -149,6 +206,7 @@ class SRLFeature(Feature):
   """
   def __init__(self, *inputs, **kwargs):
     super(SRLFeature, self).__init__()
+    # Bert based feature
     self.input_ids = kwargs.pop("input_ids")
     self.input_mask = kwargs.pop("input_mask")
     self.segment_ids = kwargs.pop("segment_ids")
@@ -158,6 +216,12 @@ class SRLFeature(Feature):
     self.predicate_candidates = kwargs.pop("predicate_candidates")
     self.arg_candidate_label_ids = kwargs.pop("arg_candidate_label_ids")
     self.predicate_candidate_label_ids = kwargs.pop("predicate_candidate_label_ids")
+
+    # Classical feature
+    self._input_token_ids = kwargs.pop("_input_token_ids")
+    self._label_ids = kwargs.pop("_label_ids")
+    self._arg_candidates = kwargs.pop("_arg_candidates")
+    self._predicate_candidates = kwargs.pop("_predicate_candidates")
 
 
 class SRLMiniBatch(MiniBatch):
@@ -169,7 +233,7 @@ class SRLMiniBatch(MiniBatch):
 
   def generate_input(self, device, use_label):
     """Generate tensors based on SRL Features."""
-
+    # BERT based features
     inputs = {}
     inputs["task_name"] = self.task_name
     inputs["input_ids"] = create_tensor(self.input_features, "input_ids",
@@ -197,13 +261,40 @@ class SRLMiniBatch(MiniBatch):
         self.input_features, "arg_candidates", torch.long, device)
     inputs["predicate_candidates"] = create_tensor(
         self.input_features, "predicate_candidates", torch.long, device)
+
+    # Classical features
+    inputs["_input_token_ids"] = create_tensor(self.input_features, "_input_token_ids",
+                                               torch.long, device)
+    inputs["_token_length"] = create_tensor(self.input_features, "_token_length",
+                                            torch.long, device)
+    if use_label:
+      _label_ids = create_tensor(self.input_features, "_label_ids",
+                                          torch.long, device)
+      _predicate_candidate_label_ids = create_tensor(self.input_features, "_predicate_candidate_label_ids",
+                                           torch.long, device)
+      _arg_candidate_label_ids = create_tensor(self.input_features, "_arg_candidate_label_ids",
+                                           torch.long, device)
+      if _predicate_candidate_label_ids is None or _arg_candidate_label_ids is None:
+        inputs["_label_ids"] = _label_ids
+      else:
+        inputs["_label_ids"] = (_label_ids, _predicate_candidate_label_ids, _arg_candidate_label_ids)
+    else:
+      inputs["_label_ids"] = None
+    inputs["_arg_candidates"] = create_tensor(
+        self.input_features, "_arg_candidates", torch.long, device)
+    inputs["_predicate_candidates"] = create_tensor(
+      self.input_features, "_predicate_candidates", torch.long, device)
+    inputs["extra_args"] = {
+      "selected_non_final_layers": [14, 18]
+    }
+
     return inputs
 
 
 class SRLDataFlow(DataFlow):
   """DataFlow implementation based on SRL task."""
-  def __init__(self, config, task_name, tokenizer, label_mapping):
-    super(SRLDataFlow, self).__init__(config, task_name, tokenizer, label_mapping)
+  def __init__(self, config, task_name, tokenizers, label_mapping):
+    super(SRLDataFlow, self).__init__(config, task_name, tokenizers, label_mapping)
 
   @property
   def example_class(self):
@@ -222,7 +313,7 @@ class SRLDataFlow(DataFlow):
     Including label_mapping and srl_label_format
 
     """
-    example.process(tokenizer=self.tokenizer,
+    example.process(tokenizers=self.tokenizers,
                     label_mapping=self.label_mapping,
                     label_format=self.config.srl_label_format)
 
@@ -235,6 +326,8 @@ class SRLDataFlow(DataFlow):
     examples: List[SRLExample]
     label_format = self.config.srl_label_format
     features = []
+
+    # BERT based variables
     max_token_length = max([example.len for example in examples])
     if label_format is not None:
       max_label_length = max([example.label_len for example in examples])
@@ -246,7 +339,20 @@ class SRLDataFlow(DataFlow):
     max_predicate_candidate_length = max(
         [len(example.predicate_candidates) for example in examples])
 
+    # Classical based variable
+    _max_token_length = max([example._len for example in examples])
+    if label_format is not None:
+      _max_label_length = max([example._label_len for example in examples])
+    else:
+      _max_label_length = None
+
+    _max_arg_candidate_length = max([
+      len(example._enumerated_span_candidates) for example in examples])
+    _max_predicate_candidate_length = max(
+      [len(example._predicate_candidates) for example in examples])
+
     for idx, example in enumerate(examples):
+      # Bert based feature process
       padding = [0] * (max_token_length - example.len)
       input_ids = example.input_ids + padding
       input_mask = example.input_mask + padding
@@ -292,6 +398,32 @@ class SRLDataFlow(DataFlow):
             "The label format {} is not supported. Choice: {} | {}".format(
                 label_format, SRL_LABEL_SEQ_BASED, SRL_LABEL_SPAN_BASED))
 
+
+      # Classical based feature process
+      _input_token_ids = example._input_token_ids + [0] * (_max_token_length - example._len)
+      _arg_candidates = example._enumerated_span_candidates + [
+        (1, 0)
+      ] * (_max_arg_candidate_length - len(example._enumerated_span_candidates))
+      _predicate_candidates = example._predicate_candidates + [
+        (1, 0)
+      ]* (_max_predicate_candidate_length - len(example._predicate_candidates))
+
+      if label_format is None:
+        _label_ids = None
+
+      elif label_format == SRL_LABEL_SPAN_BASED:
+        _label_ids = example._label_ids + [
+          (1, 0, 1, 0, example.label_padding_id)
+        ] * (_max_label_length - example._label_len)
+
+      elif label_format == SRL_LABEL_SEQ_BASED:
+        _label_ids = example._label_ids + [example.label_padding_id] * (
+          _max_label_length - example._label_len)
+      else:
+        raise ValueError(
+          "The label format {} is not supported. Choice: {} | {}".format(
+            label_format, SRL_LABEL_SEQ_BASED, SRL_LABEL_SPAN_BASED))
+
       features.append(
           SRLFeature(input_ids=input_ids,
                      input_mask=input_mask,
@@ -301,5 +433,10 @@ class SRLDataFlow(DataFlow):
                      arg_candidates=arg_candidates,
                      predicate_candidates=predicate_candidates,
                      arg_candidate_label_ids = arg_candidate_label_ids,
-                     predicate_candidate_label_ids = predicate_candidate_label_ids))
+                     predicate_candidate_label_ids = predicate_candidate_label_ids,
+                     _input_token_ids=_input_token_ids,
+                     _label_ids=_label_ids,
+                     _arg_candidates=_arg_candidates,
+                     _predicate_candidates=_predicate_candidates,
+                     _token_length=example._len))
     return features

@@ -54,7 +54,7 @@ class LabeledDataLoader(object):
 
   def get_dataflow(self) -> DataFlow:
     return TASK_TO_DATAFLOW_CLASS_MAP[self.task_name](
-      config=self.config, task_name=self.task_name ,tokenizer=self.tokenizer, label_mapping=self.label_mapping)
+      config=self.config, task_name=self.task_name ,tokenizers=self.tokenizer, label_mapping=self.label_mapping)
 
   def get_examples(self, split):
     examples = get_labeled_examples(split=split, raw_data_path=self.raw_data_path, file_name=self.file_names[split], task=self.task_name)

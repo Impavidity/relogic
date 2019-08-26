@@ -8,6 +8,7 @@ import abc
 import collections
 import json
 import random
+from typing import Dict
 
 import numpy as np
 
@@ -90,10 +91,10 @@ class DataFlow(object, metaclass=abc.ABCMeta):
 
   """
 
-  def __init__(self, config, task_name, tokenizer, label_mapping):
+  def __init__(self, config, task_name, tokenizers: Dict, label_mapping):
     self.config = config
     self.task_name = task_name
-    self.tokenizer = tokenizer
+    self.tokenizers = tokenizers
     self.examples = []
     self.label_mapping = label_mapping
     # if label_mapping_path == "none":
