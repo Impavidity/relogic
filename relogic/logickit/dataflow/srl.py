@@ -24,13 +24,15 @@ class SRLExample(Example):
       argument_start_index, argument_end_index, argument_text_string, argument_label.
 
   """
-  def __init__(self, text, labels=None):
+  def __init__(self, text, labels=None, label_candidates=None):
     super(SRLExample, self).__init__()
     self.text = text
     self.raw_tokens = text.split()
     self.labels = labels
     # Hard code here
     self.label_padding = 'X'
+
+    self.label_candidates = label_candidates
 
   def process(self, tokenizers, *inputs, **kwargs):
     """Process the SRL example.
@@ -169,7 +171,8 @@ class SRLExample(Example):
 
     """
     return cls(text=" ".join(example["tokens"]),
-               labels=example.get("labels", None))
+               labels=example.get("labels", None),
+               label_candidates=example.get("label_candidates", None))
 
   @property
   def len(self):
@@ -217,6 +220,10 @@ class SRLFeature(Feature):
     self.arg_candidate_label_ids = kwargs.pop("arg_candidate_label_ids")
     self.predicate_candidate_label_ids = kwargs.pop("predicate_candidate_label_ids")
 
+    # Label embeddings
+    self.label_candidates = kwargs.pop("label_candidates")
+    self.label_candidates_mask = kwargs.pop("label_candidates_mask")
+
     # Classical feature
     self._input_token_ids = kwargs.pop("_input_token_ids")
     self._label_ids = kwargs.pop("_label_ids")
@@ -261,6 +268,12 @@ class SRLMiniBatch(MiniBatch):
         self.input_features, "arg_candidates", torch.long, device)
     inputs["predicate_candidates"] = create_tensor(
         self.input_features, "predicate_candidates", torch.long, device)
+
+    # Label Embeddings
+    inputs["label_candidates"] = create_tensor(self.input_features, "label_candidates", 
+        torch.long, device)
+    inputs["label_candidates_mask"] = create_tensor(self.input_features, "label_candidates_mask", 
+        torch.long, device)
 
     # Classical features
     inputs["_input_token_ids"] = create_tensor(self.input_features, "_input_token_ids",
@@ -339,6 +352,14 @@ class SRLDataFlow(DataFlow):
     max_predicate_candidate_length = max(
         [len(example.predicate_candidates) for example in examples])
 
+    # Label embedding variables
+    try:
+      max_label_candidate_length = max([
+          max([len(label_candidates) for label_candidates in example.label_candidates])
+        for example in examples])
+    except:
+      max_label_candidate_length = None
+
     # Classical based variable
     _max_token_length = max([example._len for example in examples])
     if label_format is not None:
@@ -397,6 +418,27 @@ class SRLDataFlow(DataFlow):
         raise ValueError(
             "The label format {} is not supported. Choice: {} | {}".format(
                 label_format, SRL_LABEL_SEQ_BASED, SRL_LABEL_SPAN_BASED))
+      
+
+      # Label embeddings
+      # It will be a matrix. The first dim will be the length of the sentence (max), the second dim will
+      # be the length of the label candidates (max)
+      if max_label_candidate_length is not None:
+        label_candidates_list = []
+        label_candidates_mask_list = []
+        
+        for label_candidates in example.label_candidates:
+          padded_label_candidates = label_candidates + [0] * (max_label_candidate_length - len(label_candidates))
+          padded_label_candidates_mask = [1] * len(label_candidates) + [0] * (max_label_candidate_length - len(label_candidates))
+          label_candidates_list.append(padded_label_candidates)
+          label_candidates_mask_list.append(padded_label_candidates_mask)
+        while len(label_candidates_list) < max_predicate_candidate_length:
+          # We assue the predicate length is same as the original sentence length without BPE tokenization
+          label_candidates_list.append([0] * max_label_candidate_length)
+          label_candidates_mask_list.append([0] * max_label_candidate_length)
+      else:
+        label_candidates_list = None
+        label_candidates_mask_list = None
 
 
       # Classical based feature process
@@ -434,6 +476,8 @@ class SRLDataFlow(DataFlow):
                      predicate_candidates=predicate_candidates,
                      arg_candidate_label_ids = arg_candidate_label_ids,
                      predicate_candidate_label_ids = predicate_candidate_label_ids,
+                     label_candidates = label_candidates_list,
+                     label_candidates_mask = label_candidates_mask_list,
                      _input_token_ids=_input_token_ids,
                      _label_ids=_label_ids,
                      _arg_candidates=_arg_candidates,

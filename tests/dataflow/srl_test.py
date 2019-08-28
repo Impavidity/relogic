@@ -26,11 +26,15 @@ dataflow = SRLDataFlow(task_name="joint_srl",
 structures = [Sentence(text="I went to Paris yesterday .")]
 dataflow.update_with_structures(structures)
 
-example = {"tokens": ["I", "went", "to", "Paris", "yesterday", "."],
-           "labels": [(1, 2, "went", 0, 1, "I", "A0"), (1, 2, "went", 3, 4, "Paris", "A1")]}
-dataflow.update_with_jsons([example])
+examples = [{"tokens": ["I", "went", "to", "Paris", "yesterday", "."],
+           "labels": [(1, 2, "went", 0, 1, "I", "A0"), (1, 2, "went", 3, 4, "Paris", "A1")],
+           "label_candidates": [[0], [0, 1, 2, 3], [0], [0], [0], [0]]},
+            {"tokens": ["But", "I", "didn't", "find", "you", "lol", "."],
+            "labels": [(3, 4, "find", 0, 1, "But", "AM-DIS")],
+            "label_candidates": [[0], [0], [0], [5, 6, 7, 8, 9],[0], [0], [0]]}]
+dataflow.update_with_jsons(examples)
 
-for mb in dataflow.get_minibatches(minibatch_size=1):
+for mb in dataflow.get_minibatches(minibatch_size=2):
   print(mb)
 
 raise NotImplementedError("You can start to play with data")
