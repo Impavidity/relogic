@@ -2,7 +2,9 @@
 The module contains the implementation of DataFlow on SRL task.
 """
 
+import json
 from typing import List, Tuple
+import os
 
 import torch
 
@@ -24,7 +26,7 @@ class SRLExample(Example):
       argument_start_index, argument_end_index, argument_text_string, argument_label.
 
   """
-  def __init__(self, text, labels=None, label_candidates=None):
+  def __init__(self, text, labels=None, pos_tag_label=None, label_candidates=None):
     super(SRLExample, self).__init__()
     self.text = text
     self.raw_tokens = text.split()
@@ -32,7 +34,9 @@ class SRLExample(Example):
     # Hard code here
     self.label_padding = 'X'
 
+    self.pos_tag_label = pos_tag_label
     self.label_candidates = label_candidates
+
 
   def process(self, tokenizers, *inputs, **kwargs):
     """Process the SRL example.
@@ -40,6 +44,8 @@ class SRLExample(Example):
     This process requires the tokenizer. Furthermore, if this example is for
      training and evaluation, the label_format and label_mapping are required.
     """
+    use_gold_predicate = kwargs.pop("use_gold_predicate", False)
+    use_gold_argument = kwargs.pop("use_gold_argument", False)
     for tokenizer in tokenizers.values():
       if isinstance(tokenizer, BertTokenizer):
         # BERT process part
@@ -63,7 +69,17 @@ class SRLExample(Example):
         self.input_mask = [1] * len(self.input_ids)
 
         # Enumerate the span and map the spans into sub-token level
-        spans = enumerate_spans(sentence=self.raw_tokens, max_span_width=30)
+        if use_gold_argument:
+          assert self.labels is not None
+          spans = []
+          for label in self.labels:
+            (predicate_start, predicate_end, predicate_text,
+             arg_start, arg_end, argument_text, arg_label) = label
+            span_tuple = (arg_start, arg_end)
+            if span_tuple not in spans:
+              spans.append(span_tuple)
+        else:
+          spans = enumerate_spans(sentence=self.raw_tokens, max_span_width=30)
 
         self.enumerated_span_candidates: List[Tuple[int, int]] = []
         for span in spans:
@@ -71,7 +87,18 @@ class SRLExample(Example):
               (self.head_index[span[0]], self.head_index[span[1]]))
 
         # Currently we assume that the predicate length is 1
-        spans = enumerate_spans(sentence=self.raw_tokens, max_span_width=1)
+        if use_gold_predicate:
+          assert self.labels is not None
+          spans = []
+          for label in self.labels:
+            (predicate_start, predicate_end, predicate_text,
+             arg_start, arg_end, argument_text, arg_label) = label
+            span_tuple = (predicate_start, predicate_end)
+            if span_tuple not in spans:
+              spans.append(span_tuple)
+        else:
+          spans = enumerate_spans(sentence=self.raw_tokens, max_span_width=1)
+
         self.predicate_candidates: List[Tuple[int, int]] = []
         for span in spans:
           self.predicate_candidates.append(
@@ -110,6 +137,14 @@ class SRLExample(Example):
             pass
           else:
             raise ValueError()
+
+        # Process the pos tag labels into sequence labeling task
+        if self.pos_tag_label is not None:
+          pos_tag_label_mapping = kwargs.get("pos_tag_label_mapping")
+          self.pos_tag_label_padding_id = pos_tag_label_mapping[self.label_padding]
+          self.pos_tag_label_ids = [self.label_padding_id] * len(self.input_ids)
+          for idx, label in zip(self.head_index, self.pos_tag_label):
+            self.pos_tag_label_ids[idx] = pos_tag_label_mapping[label]
 
       elif isinstance(tokenizer, FasttextTokenizer):
         # Traditional process part
@@ -172,6 +207,7 @@ class SRLExample(Example):
     """
     return cls(text=" ".join(example["tokens"]),
                labels=example.get("labels", None),
+               pos_tag_label=example.get("pos_tag", None),
                label_candidates=example.get("label_candidates", None))
 
   @property
@@ -224,6 +260,9 @@ class SRLFeature(Feature):
     self.label_candidates = kwargs.pop("label_candidates")
     self.label_candidates_mask = kwargs.pop("label_candidates_mask")
 
+    # POS tag labels
+    self.pos_tag_label_ids = kwargs.pop("pos_tag_label_ids")
+
     # Classical feature
     self._input_token_ids = kwargs.pop("_input_token_ids")
     self._label_ids = kwargs.pop("_label_ids")
@@ -258,10 +297,11 @@ class SRLMiniBatch(MiniBatch):
                                            torch.long, device)
       arg_candidate_label_ids = create_tensor(self.input_features, "arg_candidate_label_ids",
                                            torch.long, device)
+      pos_tag_label_ids = create_tensor(self.input_features, "pos_tag_label_ids", torch.long, device)
       if predicate_candidate_label_ids is None or arg_candidate_label_ids is None:
         inputs["label_ids"] = label_ids
       else:
-        inputs["label_ids"] = (label_ids, predicate_candidate_label_ids, arg_candidate_label_ids)
+        inputs["label_ids"] = (label_ids, predicate_candidate_label_ids, arg_candidate_label_ids, pos_tag_label_ids)
     else:
       inputs["label_ids"] = None
     inputs["arg_candidates"] = create_tensor(
@@ -274,31 +314,30 @@ class SRLMiniBatch(MiniBatch):
         torch.long, device)
     inputs["label_candidates_mask"] = create_tensor(self.input_features, "label_candidates_mask", 
         torch.long, device)
-
     # Classical features
-    inputs["_input_token_ids"] = create_tensor(self.input_features, "_input_token_ids",
-                                               torch.long, device)
-    inputs["_token_length"] = create_tensor(self.input_features, "_token_length",
-                                            torch.long, device)
-    if use_label:
-      _label_ids = create_tensor(self.input_features, "_label_ids",
-                                          torch.long, device)
-      _predicate_candidate_label_ids = create_tensor(self.input_features, "_predicate_candidate_label_ids",
-                                           torch.long, device)
-      _arg_candidate_label_ids = create_tensor(self.input_features, "_arg_candidate_label_ids",
-                                           torch.long, device)
-      if _predicate_candidate_label_ids is None or _arg_candidate_label_ids is None:
-        inputs["_label_ids"] = _label_ids
-      else:
-        inputs["_label_ids"] = (_label_ids, _predicate_candidate_label_ids, _arg_candidate_label_ids)
-    else:
-      inputs["_label_ids"] = None
-    inputs["_arg_candidates"] = create_tensor(
-        self.input_features, "_arg_candidates", torch.long, device)
-    inputs["_predicate_candidates"] = create_tensor(
-      self.input_features, "_predicate_candidates", torch.long, device)
+    # inputs["_input_token_ids"] = create_tensor(self.input_features, "_input_token_ids",
+    #                                            torch.long, device)
+    # inputs["_token_length"] = create_tensor(self.input_features, "_token_length",
+    #                                         torch.long, device)
+    # if use_label:
+    #   _label_ids = create_tensor(self.input_features, "_label_ids",
+    #                                       torch.long, device)
+    #   _predicate_candidate_label_ids = create_tensor(self.input_features, "_predicate_candidate_label_ids",
+    #                                        torch.long, device)
+    #   _arg_candidate_label_ids = create_tensor(self.input_features, "_arg_candidate_label_ids",
+    #                                        torch.long, device)
+    #   if _predicate_candidate_label_ids is None or _arg_candidate_label_ids is None:
+    #     inputs["_label_ids"] = _label_ids
+    #   else:
+    #     inputs["_label_ids"] = (_label_ids, _predicate_candidate_label_ids, _arg_candidate_label_ids)
+    # else:
+    #   inputs["_label_ids"] = None
+    # inputs["_arg_candidates"] = create_tensor(
+    #     self.input_features, "_arg_candidates", torch.long, device)
+    # inputs["_predicate_candidates"] = create_tensor(
+    #   self.input_features, "_predicate_candidates", torch.long, device)
     inputs["extra_args"] = {
-      "selected_non_final_layers": [14, 18]
+      "selected_non_final_layers": [1, 14, 18]
     }
 
     return inputs
@@ -308,6 +347,9 @@ class SRLDataFlow(DataFlow):
   """DataFlow implementation based on SRL task."""
   def __init__(self, config, task_name, tokenizers, label_mapping):
     super(SRLDataFlow, self).__init__(config, task_name, tokenizers, label_mapping)
+    self.pos_tag_label_mapping = json.load(open("data/preprocessed_data/pos_tag.json"))
+    self.use_gold_predicate = hasattr(config, "srl_use_gold_predicate") and config.srl_use_gold_predicate
+    self.use_gold_argument = hasattr(config, "srl_use_gold_argument") and config.srl_use_gold_argument
 
   @property
   def example_class(self):
@@ -328,7 +370,10 @@ class SRLDataFlow(DataFlow):
     """
     example.process(tokenizers=self.tokenizers,
                     label_mapping=self.label_mapping,
-                    label_format=self.config.srl_label_format)
+                    pos_tag_label_mapping=self.pos_tag_label_mapping,
+                    label_format=self.config.srl_label_format,
+                    use_gold_predicate=self.use_gold_predicate,
+                    use_gold_argument=self.use_gold_argument)
 
   def convert_examples_to_features(self, examples: List[SRLExample]):
     """
@@ -418,7 +463,13 @@ class SRLDataFlow(DataFlow):
         raise ValueError(
             "The label format {} is not supported. Choice: {} | {}".format(
                 label_format, SRL_LABEL_SEQ_BASED, SRL_LABEL_SPAN_BASED))
-      
+
+      # POS tag joint learning
+
+      if example.pos_tag_label is not None:
+        pos_tag_label_ids = example.pos_tag_label_ids + [example.pos_tag_label_padding_id] * (max_token_length - example.len)
+      else:
+        pos_tag_label_ids = None
 
       # Label embeddings
       # It will be a matrix. The first dim will be the length of the sentence (max), the second dim will
@@ -442,29 +493,29 @@ class SRLDataFlow(DataFlow):
 
 
       # Classical based feature process
-      _input_token_ids = example._input_token_ids + [0] * (_max_token_length - example._len)
-      _arg_candidates = example._enumerated_span_candidates + [
-        (1, 0)
-      ] * (_max_arg_candidate_length - len(example._enumerated_span_candidates))
-      _predicate_candidates = example._predicate_candidates + [
-        (1, 0)
-      ]* (_max_predicate_candidate_length - len(example._predicate_candidates))
-
-      if label_format is None:
-        _label_ids = None
-
-      elif label_format == SRL_LABEL_SPAN_BASED:
-        _label_ids = example._label_ids + [
-          (1, 0, 1, 0, example.label_padding_id)
-        ] * (_max_label_length - example._label_len)
-
-      elif label_format == SRL_LABEL_SEQ_BASED:
-        _label_ids = example._label_ids + [example.label_padding_id] * (
-          _max_label_length - example._label_len)
-      else:
-        raise ValueError(
-          "The label format {} is not supported. Choice: {} | {}".format(
-            label_format, SRL_LABEL_SEQ_BASED, SRL_LABEL_SPAN_BASED))
+      # _input_token_ids = example._input_token_ids + [0] * (_max_token_length - example._len)
+      # _arg_candidates = example._enumerated_span_candidates + [
+      #   (1, 0)
+      # ] * (_max_arg_candidate_length - len(example._enumerated_span_candidates))
+      # _predicate_candidates = example._predicate_candidates + [
+      #   (1, 0)
+      # ]* (_max_predicate_candidate_length - len(example._predicate_candidates))
+      #
+      # if label_format is None:
+      #   _label_ids = None
+      #
+      # elif label_format == SRL_LABEL_SPAN_BASED:
+      #   _label_ids = example._label_ids + [
+      #     (1, 0, 1, 0, example.label_padding_id)
+      #   ] * (_max_label_length - example._label_len)
+      #
+      # elif label_format == SRL_LABEL_SEQ_BASED:
+      #   _label_ids = example._label_ids + [example.label_padding_id] * (
+      #     _max_label_length - example._label_len)
+      # else:
+      #   raise ValueError(
+      #     "The label format {} is not supported. Choice: {} | {}".format(
+      #       label_format, SRL_LABEL_SEQ_BASED, SRL_LABEL_SPAN_BASED))
 
       features.append(
           SRLFeature(input_ids=input_ids,
@@ -478,9 +529,10 @@ class SRLDataFlow(DataFlow):
                      predicate_candidate_label_ids = predicate_candidate_label_ids,
                      label_candidates = label_candidates_list,
                      label_candidates_mask = label_candidates_mask_list,
-                     _input_token_ids=_input_token_ids,
-                     _label_ids=_label_ids,
-                     _arg_candidates=_arg_candidates,
-                     _predicate_candidates=_predicate_candidates,
+                     pos_tag_label_ids=pos_tag_label_ids,
+                     _input_token_ids=None, # _input_token_ids,
+                     _label_ids=None, #_label_ids,
+                     _arg_candidates=None, # _arg_candidates,
+                     _predicate_candidates=None, #_predicate_candidates,
                      _token_length=example._len))
     return features

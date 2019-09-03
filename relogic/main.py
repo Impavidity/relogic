@@ -39,7 +39,7 @@ def finetune(config):
   model_trainer = trainer.Trainer(config)
   model_trainer.restore(model_path)
   progress = training_progress.TrainingProgress(
-    config=config, tokenizer=model_trainer.tokenizer)
+    config=config, tokenizer=model_trainer.tokenizer["BPE"])
   model_trainer.train(progress)
 
 
@@ -133,6 +133,10 @@ def main():
   parser.add_argument("--srl_candidate_loss", default=False, action="store_true")
   parser.add_argument("--srl_arg_span_repr", default="ave")
   parser.add_argument("--srl_pred_span_repr", default="ave")
+  parser.add_argument("--srl_use_label_embedding", default=False, action="store_true")
+  parser.add_argument("--srl_compute_pos_tag_loss", default=False, action="store_true")
+  parser.add_argument("--srl_use_gold_predicate", default=False, action="store_true")
+  parser.add_argument("--srl_use_gold_argument", default=False, action="store_true")
 
   # Reading Comprehension
   parser.add_argument("--null_score_diff_threshold", default=1.0)

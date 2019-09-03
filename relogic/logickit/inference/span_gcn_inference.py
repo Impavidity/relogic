@@ -8,6 +8,7 @@ from relogic.logickit.modules.contextualizers.highway_lstm import HighwayLSTM
 from relogic.logickit.base.constants import *
 
 from relogic.logickit.loss_func import get_loss
+from torch.utils.checkpoint import checkpoint
 import numpy as np
 import torch
 
@@ -36,6 +37,7 @@ class SpanGCNInference(nn.Module):
     for task in tasks:
       self.tasks_modules.update([(task.name, task.get_module())])
     self.task_dict = dict([(task.name, task) for task in self.tasks])
+    self.dummy_input = torch.rand(1, 10, requires_grad=True)
 
     # self.encoder = HighwayLSTM(num_layers=3, input_size=300, hidden_size=200, layer_dropout=0.2)
     # self.word_embedding = nn.Embedding(self.config.external_vocab_size, self.config.external_vocab_embed_size)
@@ -73,6 +75,16 @@ class SpanGCNInference(nn.Module):
       route_path=route_path,
       no_dropout=no_dropout)
 
+    # features = checkpoint(self.encoder, {
+    #   "input_ids": input_ids,
+    #   "token_type_ids": segment_ids,
+    #   "attention_mask": input_mask,
+    #   "output_all_encoded_layers": output_all_encoded_layers,
+    #   "selected_non_final_layers": selected_non_final_layers,
+    #   "route_path": route_path,
+    #   "no_dropout": no_dropout,
+    # })
+
     # # LSTM encoder
     # input_token_ids = self.word_embedding(kwargs.pop("_input_token_ids"))
     # token_lengths = kwargs.pop("_token_length")
@@ -93,6 +105,13 @@ class SpanGCNInference(nn.Module):
       extra_args=extra_args,
       **kwargs)
 
+    # logits = checkpoint(self.tasks_modules[task_name], {
+    #   "features": features,
+    #   "input_mask": input_mask,
+    #   "segment_ids": segment_ids,
+    #   "extra_args": extra_args,
+    # }.update(kwargs))
+
     if label_ids is not None:
       # if task_name in ["joint_srl"]:
       #   loss = self.task_dict[task_name].compute_loss()
@@ -101,6 +120,7 @@ class SpanGCNInference(nn.Module):
         task=self.task_dict[task_name],
         logits=logits,
         label_ids=label_ids,
+        input_head=input_head,
         config=self.config,
         extra_args=extra_args,
         **kwargs)

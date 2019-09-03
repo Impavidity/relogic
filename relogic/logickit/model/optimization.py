@@ -406,6 +406,15 @@ class MultipleOptimizer(object):
           print("Into Stage Two")
           self.stage_two = True
 
+        if self.stage_two:
+          opti_names = []
+          for n in self.optimizers:
+            if n != "bert_optimizer":
+              opti_names.append(n)
+          for n in opti_names:
+            optimizer = self.optimizers.pop(n)
+            del optimizer
+            torch.cuda.empty_cache()
 
   def update_loss(self, loss):
 

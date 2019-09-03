@@ -120,14 +120,18 @@ class JointSpanSRLF1Scorer(Scorer):
 
   def update(self, mbs, predictions, loss, extra_args):
     # predictions = srl_scores, top_pred_spans, top_arg_spans
-    srl_scores, top_pred_spans, top_arg_spans, _, _, _, _ = predictions
-
+    srl_scores, top_pred_spans, top_arg_spans, top_pred_span_mask, top_arg_span_mask, _, _, _ = predictions
+    # top_pred_spans = (batch, max_seq_len, 2)
     batch_size = top_pred_spans.size(0)
 
     max_pred_num = top_pred_spans.size(1)
     max_arg_num = top_arg_spans.size(1)
     expanded_top_pred_spans = top_pred_spans.unsqueeze(2).repeat(1, 1, max_arg_num, 1)
     expanded_top_arg_spans = top_arg_spans.unsqueeze(1).repeat(1, max_pred_num, 1, 1)
+    expanded_top_pred_span_mask = top_pred_span_mask.unsqueeze(2).repeat(1, 1, max_arg_num)
+    expanded_top_arg_span_mask = top_arg_span_mask.unsqueeze(1).repeat(1, max_pred_num, 1)
+    indices_mask = expanded_top_pred_span_mask & expanded_top_arg_span_mask
+
     indices = torch.cat([expanded_top_pred_spans, expanded_top_arg_spans], dim=-1)
     # batch_id = torch.arange(0, batch_size).unsqueeze(1).unsqueeze(1).unsqueeze(1).repeat(1, *indices.size()[1:3], 1).to(
     #   indices.device)
@@ -139,11 +143,12 @@ class JointSpanSRLF1Scorer(Scorer):
       raise ValueError("The length of predicate span {} is not equal to argument span {}".format(
         len(expanded_top_pred_spans), len(expanded_top_arg_spans)))
 
-    for example_indices, example_pred in zip(indices, preds_tags):
+    for example_indices, example_pred, example_indices_mask in zip(indices, preds_tags, indices_mask):
       prediction_list = []
-      for indices, pred in zip(example_indices.view(-1, 4), example_pred.view(-1)):
-        pred_label = self._inv_label_mapping[pred.data.cpu().numpy().item()]
-        if pred_label != 'X' and pred_label != 'O':
+      for indices, pred, mask in zip(example_indices.view(-1, 4), example_pred.view(-1), example_indices_mask.view(-1)):
+        if mask:
+          pred_label = self._inv_label_mapping[pred.data.cpu().numpy().item()]
+          # if pred_label != 'X' and pred_label != 'O':
           prediction_list.append(tuple(indices.data.cpu().numpy()) +  (pred_label,))
       self._predictions.append(prediction_list)
     for example in mbs.examples:
@@ -160,9 +165,9 @@ class JointSpanSRLF1Scorer(Scorer):
       sent_spans = set([(pred_start, pred_end, arg_start, arg_end, self._inv_label_mapping[label_id]) for
                         pred_start, pred_end, arg_start, arg_end, label_id in example.label_ids])
       example: SRLExample
-      span_preds = set(preds)
+      without_filter_span_preds = set(preds)
       sent_spans = set(filter(lambda item: item[4] != 'V', sent_spans))
-      span_preds = set(filter(lambda item: item[4] != 'V', span_preds))
+      span_preds = set(filter(lambda item: item[4] not in ['V', "O", "X"], without_filter_span_preds))
       self._n_correct += len(sent_spans & span_preds)
       self._n_gold += len(sent_spans)
       self._n_predicted += len(span_preds)
@@ -170,11 +175,13 @@ class JointSpanSRLF1Scorer(Scorer):
       if self.dump_to_file_path:
         sent_spans = [(int(s[0]), int(s[1]), int(s[2]), int(s[3]), s[4]) for s in sent_spans]
         span_preds = [(int(s[0]), int(s[1]), int(s[2]), int(s[3]), s[4]) for s in span_preds]
+        without_filter_span_preds = [(int(s[0]), int(s[1]), int(s[2]), int(s[3]), s[4]) for s in without_filter_span_preds]
         self.dump_to_file_handler.write(json.dumps({
           "text": example.raw_tokens,
           "BPE_tokens": example.text_tokens,
           "span_preds": list(span_preds),
-          "sent_spans": list(sent_spans)}) + "\n")
+          "sent_spans": list(sent_spans),
+          "pruned_span_preds": list(without_filter_span_preds)}) + "\n")
     if self.dump_to_file_path:
       self.dump_to_file_handler.close()
 

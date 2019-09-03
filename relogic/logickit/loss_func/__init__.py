@@ -4,10 +4,10 @@ from relogic.logickit.tasks.task import Task
 import torch.nn.functional as F
 import torch
 
-def get_loss(task: Task, logits, label_ids, config, extra_args, **kwargs):
+def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kwargs):
   if task.name in ["joint_srl"]:
     if isinstance(label_ids, tuple):
-      label_ids, pred_span_label, arg_span_label = label_ids
+      label_ids, pred_span_label, arg_span_label, pos_tag_ids = label_ids
     batch_size = label_ids.size(0)
     key = label_ids[:, :, :4]
     batch_id = torch.arange(0, batch_size).unsqueeze(1).unsqueeze(1).repeat(1, key.size(1), 1).to(key.device)
@@ -18,9 +18,8 @@ def get_loss(task: Task, logits, label_ids, config, extra_args, **kwargs):
     flatten_key = expanded_key.view(-1, 5)
     flatten_v = v.view(-1)
 
-    (srl_scores, top_pred_spans,
-     top_arg_spans, top_pred_span_mask, top_arg_span_mask,
-     pred_span_mention_full_scores, arg_span_mention_full_scores) = logits
+    (srl_scores, top_pred_spans, top_arg_spans, top_pred_span_mask, top_arg_span_mask,
+     pred_span_mention_full_scores, arg_span_mention_full_scores, pos_tag_logits) = logits
     # (batch_size, max_pred_num, 2), (batch_size, max_arg_num, 2)
     max_pred_num = top_pred_spans.size(1)
     max_arg_num = top_arg_spans.size(1)
@@ -70,6 +69,14 @@ def get_loss(task: Task, logits, label_ids, config, extra_args, **kwargs):
       srl_arg_candidate_loss = F.binary_cross_entropy(flatten_arg_span_mention_full_scores, flatten_arg_span_label)
       candidate_loss = srl_pred_candidate_loss + srl_arg_candidate_loss
       return candidate_loss + label_loss
+
+    if hasattr(task.config, "srl_compute_pos_tag_loss") and task.config.srl_compute_pos_tag_loss:
+      active_loss = input_head[:, :pos_tag_logits.size(1)].contiguous().view(-1) == 1
+      # I use pos_tag_logits.size(1) to get the label length. It is OK to filter extra things
+      active_pos_tag_logits = pos_tag_logits.view(-1, pos_tag_logits.size(-1))[active_loss]
+      active_labels = pos_tag_ids[:, :pos_tag_logits.size(1)].contiguous().view(-1)[active_loss]
+      loss = F.cross_entropy(active_pos_tag_logits, active_labels)
+      label_loss += loss
 
     return label_loss
 

@@ -29,6 +29,14 @@ class Model(BaseModel):
     if config.mode == "train" or config.mode == "finetune":
       self.setup_training(config, tasks)
 
+    ## Inplace Relu
+    def inplace_relu(m):
+      classname = m.__class__.__name__
+      if classname.find('ReLU') != -1:
+        m.inplace = True
+
+    inference.apply(inplace_relu)
+
   def setup_training(self, config, tasks):
     # Calculate optimization steps
     size_train_examples = 0

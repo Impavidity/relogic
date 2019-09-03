@@ -164,6 +164,27 @@ def batched_index_select(target: torch.Tensor,
   selected_targets = flattened_selected.view(*selected_shape)
   return selected_targets
 
+def batched_index_select_tensor(target: torch.Tensor,
+                                indices: torch.LongTensor,
+                                flattened_indices: Optional[torch.LongTensor] = None) -> torch.Tensor:
+  """Select ``target`` of size ``(batch_size, sequence_length, d2, d3, ... ,dn)`` with indices of size
+  ``(batch, index_of_sequence)``.
+  Args:
+    target (torch.Tensor): High dimensional tensor, at least 3-D.
+    indices (torch.LongTensor): A 2 dimensional tensor of shape (batch_size, sequence_length)
+  """
+  if flattened_indices is None:
+    flattened_indices = flatten_and_batch_shift_indices(indices, target.size(1))
+
+  flatten_target = target.view((target.size(0) * target.size(1),) + (target.size()[2:]))
+
+  flattened_selected = flatten_target.index_select(0, flattened_indices)
+  selected_shape = indices.size() + target.size()[2:]
+
+  selected_targets = flattened_selected.view(*selected_shape)
+  return selected_targets
+
+
 def masked_softmax(vector: torch.Tensor,
                    mask: torch.Tensor,
                    dim: int = -1,
