@@ -15,3 +15,12 @@ SRL_LABEL_SEQ_BASED = "srl_label_seq_based"
 SPAN_REPR_KENTON_LEE = "kenton_lee"
 SPAN_REPR_AVE_MAX = "ave_max"
 SPAN_REPR_AVE = "ave"
+
+ECP_TASK = "ecp"
+
+
+# Language Code based on ISO 639-1 codes
+LANG_EN = "en"
+LANG_zH = "zh"
+
+POINTWISE_TASK = "pointwise"
