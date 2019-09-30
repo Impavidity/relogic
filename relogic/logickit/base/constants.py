@@ -24,3 +24,8 @@ LANG_EN = "en"
 LANG_zH = "zh"
 
 POINTWISE_TASK = "pointwise"
+
+IR_TASK = "ir"
+
+NER_TASK = "ner"
+SEQUENCE_LABELING_TASK = "sequence_labeling"

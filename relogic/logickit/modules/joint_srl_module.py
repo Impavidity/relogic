@@ -9,21 +9,23 @@ from relogic.logickit.inference.modeling import gelu
 from relogic.logickit.utils import utils
 from relogic.logickit.base.constants import SPAN_REPR_KENTON_LEE, SPAN_REPR_AVE_MAX, SPAN_REPR_AVE
 
+try:
+  from torch_geometric.nn import GCNConv
 
-from torch_geometric.nn import GCNConv
+  class GraphNet(nn.Module):
+    def __init__(self, feature_size, hidden_size):
+      super(GraphNet, self).__init__()
+      self.conv1 = GCNConv(feature_size, hidden_size)
+      self.conv2 = GCNConv(hidden_size, hidden_size)
 
-class GraphNet(nn.Module):
-  def __init__(self, feature_size, hidden_size):
-    super(GraphNet, self).__init__()
-    self.conv1 = GCNConv(feature_size, hidden_size)
-    self.conv2 = GCNConv(hidden_size, hidden_size)
-
-  def forward(self, x, edge_index):
-    x = self.conv1(x, edge_index)
-    x = torch.relu(x)
-    x = torch.dropout(x, training=self.training)
-    x = self.conv2(x, edge_index)
-    return x
+    def forward(self, x, edge_index):
+      x = self.conv1(x, edge_index)
+      x = torch.relu(x)
+      x = torch.dropout(x, training=self.training)
+      x = self.conv2(x, edge_index)
+      return x
+except:
+  pass
 
 class LayerNorm(nn.Module):
   def __init__(self, hidden_size, eps=1e-12):

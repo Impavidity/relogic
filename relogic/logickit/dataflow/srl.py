@@ -26,7 +26,7 @@ class SRLExample(Example):
       argument_start_index, argument_end_index, argument_text_string, argument_label.
 
   """
-  def __init__(self, text, labels=None, pos_tag_label=None, label_candidates=None):
+  def __init__(self, text, labels=None, pos_tag_label=None, predicate_sense_label=None, label_candidates=None):
     super(SRLExample, self).__init__()
     self.text = text
     self.raw_tokens = text.split()
@@ -35,8 +35,8 @@ class SRLExample(Example):
     self.label_padding = 'X'
 
     self.pos_tag_label = pos_tag_label
+    self.predicate_sense_label = predicate_sense_label
     self.label_candidates = label_candidates
-
 
   def process(self, tokenizers, *inputs, **kwargs):
     """Process the SRL example.
@@ -146,6 +146,14 @@ class SRLExample(Example):
           for idx, label in zip(self.head_index, self.pos_tag_label):
             self.pos_tag_label_ids[idx] = pos_tag_label_mapping[label]
 
+        if self.predicate_sense_label is not None:
+          predicate_sense_mapping = kwargs.get("predicate_sense_mapping")
+          self.predicate_sense_label_padding_id = predicate_sense_mapping[self.label_padding]
+          self.predicate_sense_label_ids = [self.predicate_sense_label_padding_id] * len(self.input_ids)
+
+
+
+
       elif isinstance(tokenizer, FasttextTokenizer):
         # Traditional process part
         self._text_tokens = tokenizer.tokenize(self.text)
@@ -208,6 +216,7 @@ class SRLExample(Example):
     return cls(text=" ".join(example["tokens"]),
                labels=example.get("labels", None),
                pos_tag_label=example.get("pos_tag", None),
+               predicate_sense_label=example.get("predicate_sense", None),
                label_candidates=example.get("label_candidates", None))
 
   @property
@@ -337,7 +346,7 @@ class SRLMiniBatch(MiniBatch):
     # inputs["_predicate_candidates"] = create_tensor(
     #   self.input_features, "_predicate_candidates", torch.long, device)
     inputs["extra_args"] = {
-      "selected_non_final_layers": [1, 14, 18]
+      "selected_non_final_layers": [1, 9, 18]
     }
 
     return inputs
@@ -348,6 +357,7 @@ class SRLDataFlow(DataFlow):
   def __init__(self, config, task_name, tokenizers, label_mapping):
     super(SRLDataFlow, self).__init__(config, task_name, tokenizers, label_mapping)
     self.pos_tag_label_mapping = json.load(open("data/preprocessed_data/pos_tag.json"))
+    self.predicate_sense_label_mapping = json.load(open("data/preprocessed_data/predicate_sense_label_mapping.json"))
     self.use_gold_predicate = hasattr(config, "srl_use_gold_predicate") and config.srl_use_gold_predicate
     self.use_gold_argument = hasattr(config, "srl_use_gold_argument") and config.srl_use_gold_argument
 
@@ -371,6 +381,7 @@ class SRLDataFlow(DataFlow):
     example.process(tokenizers=self.tokenizers,
                     label_mapping=self.label_mapping,
                     pos_tag_label_mapping=self.pos_tag_label_mapping,
+                    predicate_sense_mapping=self.predicate_sense_label_mapping,
                     label_format=self.config.srl_label_format,
                     use_gold_predicate=self.use_gold_predicate,
                     use_gold_argument=self.use_gold_argument)

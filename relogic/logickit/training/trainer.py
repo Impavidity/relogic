@@ -15,6 +15,7 @@ from relogic.logickit.training.training_progress import TrainingProgress
 from relogic.logickit.dataflow import MiniBatch
 import os
 from relogic.logickit.utils.utils import print_2d_tensor
+from relogic.logickit.base.constants import ECP_TASK, IR_TASK
 
 
 class Trainer(object):
@@ -30,7 +31,7 @@ class Trainer(object):
     # A quick fix for version migration
     self.tasks = [
       get_task(self.config, task_name, self.tokenizer
-          if task_name in ["joint_srl"] else self.tokenizer["BPE"])
+          if task_name in ["joint_srl", IR_TASK, ECP_TASK] else self.tokenizer["BPE"])
       for task_name in self.config.task_names
     ]
     self.model = get_model(config)(config=self.config, tasks=self.tasks)
@@ -162,6 +163,7 @@ class Trainer(object):
                                                                                  device=self.model.device)
     head_ranks = head_ranks.view_as(head_importance)
     print_2d_tensor(head_ranks)
+    return results
 
   def get_training_mbs(self, unlabeled_data_reader):
     datasets = [task.train_set for task in self.tasks]

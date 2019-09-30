@@ -14,7 +14,7 @@ python -u -m relogic.main  \
 --test_batch_size 12 \
 --learning_rate 3e-5 \
 --epoch_number 4 \
---eval_dev_every 1000 \
+--eval_dev_every 5000 \
 --hidden_size 1024 \
 --no_bilstm \
 --srl_module_type span_gcn \

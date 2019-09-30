@@ -3,10 +3,11 @@ from relogic.logickit.inference.span_gcn_inference import SpanGCNInference
 from relogic.logickit.inference.inference import Inference
 
 def get_inference(config):
-  if config.span_inference:
-    return SpanGCNInference
-  else:
-    return Inference
+  # if config.span_inference:
+  #   return SpanGCNInference
+  # else:
+  #   return Inference
+  return SpanGCNInference
 
 
 def get_encoder(config):

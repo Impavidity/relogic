@@ -13,7 +13,7 @@ from relogic.logickit.base import utils
 from relogic.logickit.base.configure import configure
 from relogic.logickit.training import trainer, training_progress
 from relogic.logickit.serving import Server
-from relogic.logickit.analyzer.heads_importance import compute_heads_importance
+from relogic.logickit.analyzer.heads_importance import compute_heads_importance, mask_heads
 
 import relogic.utils.crash_on_ipy
 
@@ -77,7 +77,8 @@ def eval(config):
     model_trainer.evaluate_all_tasks()
 
 def analyze(config, model_trainer):
-  compute_heads_importance(config, model_trainer)
+  # compute_heads_importance(config, model_trainer)
+  mask_heads(config, model_trainer)
 
 
 def main():
@@ -141,8 +142,12 @@ def main():
   # Reading Comprehension
   parser.add_argument("--null_score_diff_threshold", default=1.0)
 
+  # Information Retrieval
+  parser.add_argument("--qrels_file_path")
+
   # Modeling
   parser.add_argument("--use_gcn", dest="use_gcn", default=False, action="store_true")
+  parser.add_argument("--fix_embedding", default=False, action="store_true")
 
   # Model
   parser.add_argument("--bert_model", type=str)
@@ -196,6 +201,9 @@ def main():
   parser.add_argument("--fix_bert", default=False, action="store_true")
   parser.add_argument("--two_stage_optim", default=False, action="store_true")
   # Need to combine to CUDA_VISIBLE_DEVICES
+
+  # Analysis
+  parser.add_argument("--head_to_mask_file", type=str, default="")
 
   args = parser.parse_args()
 

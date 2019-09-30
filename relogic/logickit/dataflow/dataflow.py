@@ -124,7 +124,8 @@ class DataFlow(object, metaclass=abc.ABCMeta):
         self.example_class.from_structure(structure)
         for structure in structures
     ]
-    for example in self.examples:
+    from tqdm import tqdm
+    for example in tqdm(self.examples):
       self.process_example(example)
 
   def update_with_jsons(self, examples):

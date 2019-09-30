@@ -5,17 +5,29 @@ from relogic.logickit.model import get_model
 from relogic.logickit.dataflow import DataFlow
 import torch
 from relogic.logickit.base import utils
+from relogic.logickit.base.constants import IR_TASK, ECP_TASK
 
 class Predictor(object):
   def __init__(self, config):
     self.config = config
-    self.tokenizer = BertTokenizer.from_pretrained(
-      config.vocab_path, do_lower_case=config.do_lower_case,
-      never_split=config.never_split, lang=config.lang)
+    self.tokenizer = {
+      "BPE": BertTokenizer.from_pretrained(
+        config.vocab_path, do_lower_case=config.do_lower_case,
+        never_split=config.never_split, lang=config.lang),
+      # "Fasttext": FasttextTokenizer.from_pretrained("wiki-news-300d-1M")
+    }
     self.tasks = [
-      get_task(self.config, task_name, self.tokenizer)
+      get_task(self.config, task_name, self.tokenizer
+      if task_name in ["joint_srl", IR_TASK, ECP_TASK] else self.tokenizer["BPE"])
       for task_name in self.config.task_names
     ]
+    # self.tokenizer = BertTokenizer.from_pretrained(
+    #   config.vocab_path, do_lower_case=config.do_lower_case,
+    #   never_split=config.never_split, lang=config.lang)
+    # self.tasks = [
+    #   get_task(self.config, task_name, self.tokenizer)
+    #   for task_name in self.config.task_names
+    # ]
     self.model = get_model(config)(config=self.config, tasks=self.tasks)
 
   def predict(self, structures):
@@ -23,11 +35,18 @@ class Predictor(object):
     task: Task = self.tasks[0]
     data: DataFlow = task.dataset
     data.update_with_structures(structures)
+    print(self.config)
+    print("Updated the structures")
+    # results = []
     for i, mb in enumerate(data.get_minibatches(self.config.test_batch_size)):
       # batch_preds = self.model.test(mb)
       batch_preds = self.model.test_abstract(mb)
-      print(batch_preds)
+      yield batch_preds
+      # results.append(batch_preds.data.cpu().numpy())
       # labels = data.decode_to_labels(batch_preds)
+    #   if i % 100 == 0:
+    #     print("Processed {} batches".format(i))
+    # return results
 
   def restore(self, model_path):
     restore_state_dict = torch.load(

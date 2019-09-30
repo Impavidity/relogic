@@ -93,6 +93,19 @@ class Model(BaseModel):
       modules_parameters = [p for n, p in param_optimizer if "bert" not in n]
       optimizers["module_optimizer"] = Adam(params=modules_parameters, lr=config.adam_learning_rate)
       optim_type = "fix_bert"
+    elif config.fix_embedding:
+      utils.log("Optimizing the model using one optimizer and fix embedding layer")
+      bert_optimizer_grouped_parameters = [
+        {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay) and ("word_embeddings" not in n)],
+                'weight_decay': 0.01},
+        {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay) and ("word_embeddings" not in n)],
+         'weight_decay': 0.0}]
+      optimizers["bert_optimizer"] = BertAdam(bert_optimizer_grouped_parameters,
+                                              lr=config.learning_rate,
+                                              warmup=config.warmup_proportion,
+                                              schedule=config.schedule_method,
+                                              t_total=config.num_train_optimization_steps)
+      optim_type = "normal"
     else:
       utils.log("Optimizing the model using one optimizer")
       bert_optimizer_grouped_parameters = [
@@ -219,6 +232,7 @@ class Model(BaseModel):
       return results
 
   def analyze(self, mb, head_mask, params):
+    self.model.eval()
     if isinstance(mb, MiniBatch):
       inputs = mb.generate_input(self.device, use_label=False)
     else:

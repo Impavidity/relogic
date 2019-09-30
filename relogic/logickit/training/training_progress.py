@@ -44,7 +44,7 @@ class TrainingProgress(object):
       total, count = 0, 0
       for result in results:
         for metric, value in result:
-          if "f1" in metric or "las" in metric or "accuracy" in metric or "recall_left" in metric or "recall_right" in metric:
+          if "f1" in metric or "las" in metric or "accuracy" in metric or "recall_left" in metric or "recall_right" in metric or "map" in metric:
             total += value
             count += 1
       avg_score = total / count

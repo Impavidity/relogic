@@ -27,6 +27,16 @@ class SpanExtraction(Task):
         null_score_diff_threshold=self.config.null_score_diff_threshold,
         dump_to_file=dump_to_file)
 
+class ECPExtraction(Task):
+  def __init__(self, config, name, tokenizer=None):
+    super(ECPExtraction, self).__init__(
+      config, name, LabeledDataLoader(config, name, tokenizer))
+    self.n_classes = len(set(self.loader.label_mapping.values()))
+    self.config = config
+
+
+
+
 class SpanGCN(Task):
   def __init__(self, config, name, tokenizer=None):
     super(SpanGCN, self).__init__(

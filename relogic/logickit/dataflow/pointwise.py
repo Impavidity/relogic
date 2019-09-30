@@ -17,10 +17,13 @@ class PointwiseExample(Example):
   as text_b.
 
   Args:
+    guid (str): global unique identifier for this pair. This information is usually used
+      in the ranking problem.
     text (str):
   """
-  def __init__(self, text_a: str, text_b:str, label=None):
+  def __init__(self, guid: str, text_a: str, text_b:str, label=None):
     super(PointwiseExample, self).__init__()
+    self.guid = guid
     self.text_a = text_a
     self.text_b = text_b
     self.label = label
@@ -56,13 +59,14 @@ class PointwiseExample(Example):
 
   @classmethod
   def from_structure(cls, structure):
-    return cls(text_a=structure.text_a, text_b=structure.text_b)
+    return cls(guid="", text_a=structure.text_a, text_b=structure.text_b)
 
   @classmethod
   def from_json(cls, example):
     """
     """
-    return cls(text_a=example["text_a"],
+    return cls(guid="{}-{}".format(example["text_a_id"], example["text_b_id"]),
+               text_a=example["text_a"],
                text_b=example["text_b"],
                label=example.get("label", None))
 
@@ -102,6 +106,15 @@ class PointwiseBatch(MiniBatch):
                                          torch.long, device)
     inputs["segment_ids"] = create_tensor(self.input_features, "segment_ids",
                                           torch.long, device)
+    inputs["input_head"] = create_tensor(self.input_features, "is_head",
+                                          torch.long, device)
+    if use_label:
+      inputs["label_ids"] = create_tensor(self.input_features, "label_ids",
+                                          torch.long, device)
+    else:
+      inputs["label_ids"] = None
+    inputs["extra_args"] = {}
+    return inputs
 
 class PointwiseDataFlow(DataFlow):
   """DataFlow implementation based on Pointwise task"""
@@ -134,8 +147,10 @@ class PointwiseDataFlow(DataFlow):
       input_ids = example.input_ids + padding
       input_mask = example.input_mask + padding
       segment_ids = example.segment_ids + padding
-
-      label_ids = example.label_ids
+      if hasattr(example, "label_ids"):
+        label_ids = example.label_ids
+      else:
+        label_ids = None
 
       features.append(
         PointwiseFeature(input_ids=input_ids,
@@ -143,3 +158,6 @@ class PointwiseDataFlow(DataFlow):
                          segment_ids=segment_ids,
                          label_ids=label_ids))
     return features
+
+  def decode_to_labels(self, preds):
+    pass

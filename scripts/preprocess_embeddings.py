@@ -8,11 +8,17 @@ import numpy as np
 
 def load_vectors(fname):
   fin = io.open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
-  n, d = map(int, fin.readline().split())
+  try:
+    n, d = map(int, fin.readline().split())
+  except:
+    print("No heading")
+    d = int(input("You need to specify the dim of the vector"))
   data = []
   vocab= ["<PAD>", "<UNK>"]
-  data.append([random.uniform(-0.1, 0.1) for i in range(d)])
-  data.append([random.uniform(-0.1, 0.1) for i in range(d)])
+  # data.append([random.uniform(-0.1, 0.1) for i in range(d)])
+  # data.append([random.uniform(-0.1, 0.1) for i in range(d)])
+  data.append([0 for i in range(d)])
+  data.append([0 for i in range(d)])
   index = 2
   for line in tqdm(fin):
     tokens = line.rstrip().split(' ')

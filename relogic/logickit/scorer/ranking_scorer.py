@@ -1,8 +1,10 @@
 from relogic.logickit.scorer.scorer import Scorer
+from relogic.logickit.utils.utils import softmax
 import torch.nn.functional as F
 import torch
 from tqdm import tqdm
 import os
+import subprocess
 
 class RecallScorer(Scorer):
   def __init__(self, label_mapping, topk, correct_label='1', dump_to_file=None):
@@ -158,3 +160,56 @@ class CartesianMatchingRecallScorer(Scorer):
             ("total_right", self._n_total_right),
             ("recall_left", self._n_hit_left / self._n_total_left),
             ("recall_right", self._n_hit_right / self._n_total_right)]
+
+class RetrievalScorer(Scorer):
+  """
+
+  """
+  def __init__(self, label_mapping, qrels_file_path, correct_label='1', dump_to_file=None):
+    super(RetrievalScorer, self).__init__()
+    self.label_mapping = label_mapping
+    self._inv_label_mapping = {v: k for k, v in label_mapping.items()}
+    self._examples = []
+    self._preds = []
+    self.correct_label = correct_label
+    self.qrels_file_path = qrels_file_path
+    # Because we need to leverage trec_eval to calculate the scores, so dump_to_file can not be None
+    if dump_to_file:
+      self.dump_to_file_path = os.path.join(dump_to_file["output_dir"], dump_to_file["task_name"] + "_dump.json")
+      self.dump_to_file_handler = open(self.dump_to_file_path, 'w')
+    else:
+      print("You need to specify the dump_to_file path for the retrieval task")
+      exit()
+
+  def update(self, mbs, predictions, loss, extra):
+    super(RetrievalScorer, self).update(mbs, predictions, loss, extra)
+    for example, preds in zip(mbs.examples, predictions):
+      self._examples.append(example)
+      self._preds.append(preds.data.cpu().numpy())
+
+  def get_loss(self):
+    return 0
+
+  def _get_results(self):
+    for example, preds in zip(self._examples, self._preds):
+      preds = softmax(preds)
+      score = preds[self.label_mapping[self.correct_label]]
+      text_a_id, text_b_id = example.guid.split('-')
+      if self.dump_to_file_handler:
+        self.dump_to_file_handler.write("{} Q0 {} 0 {} rerank\n".format(text_a_id, text_b_id, score))
+
+    self.dump_to_file_handler.flush()
+    self.dump_to_file_handler.close()
+    dir = os.path.abspath(os.path.dirname(__file__))
+    trec_eval_path = os.path.join(dir, '..', '..', '..', 'evals', 'trec', 'trec_eval.9.0.4/trec_eval')
+
+    trec_out = subprocess.check_output([trec_eval_path, self.qrels_file_path , self.dump_to_file_path])
+    trec_out_lines = str(trec_out, 'utf-8').split('\n')
+    mean_average_precision = float(trec_out_lines[5].split('\t')[-1])
+    # mean_reciprocal_rank = float(trec_out_lines[9].split('\t')[-1])
+    # p_30 = float(trec_out_lines[25].split('\t')[-1])
+
+    return [("map", mean_average_precision)]
+
+
+

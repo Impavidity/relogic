@@ -6,6 +6,7 @@ from relogic.logickit.modules.joint_srl_module import JointSRLModule
 from relogic.logickit.scorer.tagging_scorers import EntityLevelF1Scorer, AccuracyScorer
 from relogic.logickit.scorer.srl_scorers import SRLF1Scorer, SpanSRLF1Scorer, JointSpanSRLF1Scorer
 from relogic.logickit.dataset.labeled_data_loader import LabeledDataLoader
+from relogic.logickit.base.constants import SEQUENCE_LABELING_TASK, NER_TASK
 
 class Tagging(Task):
   def __init__(self, config, name, is_token_level=True, tokenizer=None):
@@ -23,11 +24,13 @@ class Tagging(Task):
       return JointSRLModule(self.config, self.name, self.n_classes)
     elif self.name in ['predicate_sense']:
       return PredicateSenseModule(self.config, self.name, self.n_classes)
-    else:
+    elif self.name in [NER_TASK]:
       return TaggingModule(self.config, self.name, self.n_classes)
+    else:
+      raise ValueError("Task name {} is not defined".format(self.name))
 
   def get_scorer(self, dump_to_file=None):
-    if self.name in ["er", "ner"]:
+    if self.name in ["er", "ner", NER_TASK]:
       return EntityLevelF1Scorer(label_mapping=self.loader.label_mapping, dump_to_file=dump_to_file)
     if self.name in ["srl", "srl_conll05", "srl_conll09", "srl_conll12"]:
       if self.config.span_inference:
