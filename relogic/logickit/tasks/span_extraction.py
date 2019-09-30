@@ -3,6 +3,7 @@ from relogic.logickit.dataset.labeled_data_loader import LabeledDataLoader
 from relogic.logickit.scorer.span_extraction_scorer import SpanExtractionScorer
 from relogic.logickit.modules.span_extraction_module import SpanExtractionModule
 from relogic.logickit.modules.span_gcn import SpanGCNModule
+from relogic.logickit.modules.ecp_extraction_module import ECPExtractionModule
 
 
 class SpanExtraction(Task):
@@ -33,6 +34,12 @@ class ECPExtraction(Task):
       config, name, LabeledDataLoader(config, name, tokenizer))
     self.n_classes = len(set(self.loader.label_mapping.values()))
     self.config = config
+  
+  def get_module(self):
+    return ECPExtractionModule(self.config, self.name, self.n_classes)
+
+  def get_scorer(self, dump_to_file=None):
+    pass
 
 
 

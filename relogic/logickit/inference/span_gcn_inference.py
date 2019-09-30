@@ -44,19 +44,11 @@ class SpanGCNInference(nn.Module):
     # self.word_embedding.weight.data.copy_(torch.from_numpy(np.load(config.external_embeddings)))
     # print("Loading embedding from {}".format(config.external_embeddings))
 
-  # def forward(self,
-  #             task_name,
-  #             input_ids,
-  #             input_mask,
-  #             input_head,
-  #             segment_ids,
-  #             label_ids,
-  #             extra_args):
   def forward(self, *inputs, **kwargs):
     task_name = kwargs.pop("task_name")
     input_ids = kwargs.pop("input_ids")
     input_mask = kwargs.pop("input_mask")
-    input_head = kwargs.pop("input_head")
+    input_head = kwargs.pop("input_head", None)
     segment_ids = kwargs.pop("segment_ids")
     label_ids = kwargs.pop("label_ids")
     extra_args = kwargs.pop("extra_args", {})
@@ -98,6 +90,7 @@ class SpanGCNInference(nn.Module):
 
     # For each task, the interface is static
     #  including input_features, input_mask, segment_ids and extra_args
+
     logits = self.tasks_modules[task_name](
       features = features,
       input_mask=input_mask,

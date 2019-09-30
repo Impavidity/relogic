@@ -133,6 +133,12 @@ class ECPMiniBatch(MiniBatch):
                                          torch.long, device)
     inputs["segment_ids"] = create_tensor(self.input_features, "segment_ids",
                                           torch.long, device)
+    inputs["label_ids"] = create_tensor(self.input_features, "label_ids", 
+                                          torch.long, device)
+    inputs["clause_candidates"] = create_tensor(self.input_features, "clause_candidates",
+                                          torch.long, device)
+    inputs["extra_args"] = {}
+    return inputs
 
 class ECPDataFlow(DataFlow):
   """DataFlow implementation based on ECP task."""
