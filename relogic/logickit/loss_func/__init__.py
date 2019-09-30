@@ -85,6 +85,7 @@ def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kw
     active_logits = logits.view(-1, logits.size(-1))[active_loss]
     active_labels = label_ids[:, :logits.size(1)].contiguous().view(-1)[active_loss]
     loss = F.cross_entropy(active_logits, active_labels)
+    return loss
   else:
     span_boundary, logits = logits
     return F.cross_entropy(logits.view(-1, logits.size(-1)), label_ids.view(-1))

@@ -33,11 +33,11 @@ class AccuracyScorer(WordLevelScorer):
           count += 1
           correct += 1 if y_pred == y_true else 0
       if self.dump_to_file_path:
-        data_to_dump.append((int(example.guid), example.raw_text, example.label, preds, confidences))
+        data_to_dump.append((int(example.guid), example.raw_tokens, example.label, preds, confidences))
     if self.dump_to_file_path:
       data_to_dump = sorted(data_to_dump, key=lambda x: x[0])
-      for idx, raw_text, sent_labels, pred_labels, confidences in data_to_dump:
-        for word, gold, pred, confidence in zip(raw_text, sent_labels, pred_labels, confidences):
+      for idx, raw_tokens, sent_labels, pred_labels, confidences in data_to_dump:
+        for word, gold, pred, confidence in zip(raw_tokens, sent_labels, pred_labels, confidences):
           self.dump_to_file_handler.write("{} {} {} {}\n".format(word, gold, pred, confidence))
         self.dump_to_file_handler.write("\n")
 
@@ -90,7 +90,7 @@ class EntityLevelF1Scorer(F1Score):
       preds_tags = preds.argmax(-1).data.cpu().numpy()
       confidences = [max(softmax(token_level)) for token_level in preds.data.cpu().numpy()]
       sent_spans, sent_labels = get_span_labels(
-        sentence_tags = example.label)
+        sentence_tags = example.labels)
       span_preds, pred_labels = get_span_labels(
         sentence_tags=preds_tags,
         is_head = example.is_head,
@@ -100,14 +100,14 @@ class EntityLevelF1Scorer(F1Score):
       self._n_gold += len(sent_spans)
       self._n_predicted += len(span_preds)
       if self.dump_to_file_path:
-        if len(example.raw_text) != len(sent_labels) or len(example.raw_text) != len(pred_labels):
-          print(len(example.raw_text), example.raw_text)
+        if len(example.raw_tokens) != len(sent_labels) or len(example.raw_tokens) != len(pred_labels):
+          print(len(example.raw_tokens), example.raw_tokens)
           print(len(sent_labels), sent_labels)
           print(len(pred_labels), pred_labels)
           exit()
         self.dump_to_file_handler.write(
           json.dumps({
-            "tokens": example.raw_text,
+            "tokens": example.raw_tokens,
             "labels": sent_labels,
             "predicted_labels": pred_labels}) + "\n")
 

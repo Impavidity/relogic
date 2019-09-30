@@ -3,6 +3,7 @@ from relogic.logickit.modules.srl_module import SRLModule
 from relogic.logickit.modules.tagging_module import TaggingModule
 from relogic.logickit.modules.predicate_sense_module import PredicateSenseModule
 from relogic.logickit.modules.joint_srl_module import JointSRLModule
+from relogic.logickit.modules.sequence_labeling_module import SequenceLabelingModule
 from relogic.logickit.scorer.tagging_scorers import EntityLevelF1Scorer, AccuracyScorer
 from relogic.logickit.scorer.srl_scorers import SRLF1Scorer, SpanSRLF1Scorer, JointSpanSRLF1Scorer
 from relogic.logickit.dataset.labeled_data_loader import LabeledDataLoader
@@ -25,9 +26,10 @@ class Tagging(Task):
     elif self.name in ['predicate_sense']:
       return PredicateSenseModule(self.config, self.name, self.n_classes)
     elif self.name in [NER_TASK]:
-      return TaggingModule(self.config, self.name, self.n_classes)
+      return SequenceLabelingModule(self.config, self.name, self.n_classes)
     else:
-      raise ValueError("Task name {} is not defined".format(self.name))
+      return TaggingModule(self.config, self.name, self.n_classes)
+      # raise ValueError("Task name {} is not defined".format(self.name))
 
   def get_scorer(self, dump_to_file=None):
     if self.name in ["er", "ner", NER_TASK]:

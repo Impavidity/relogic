@@ -15,7 +15,7 @@ from relogic.logickit.training.training_progress import TrainingProgress
 from relogic.logickit.dataflow import MiniBatch
 import os
 from relogic.logickit.utils.utils import print_2d_tensor
-from relogic.logickit.base.constants import ECP_TASK, IR_TASK
+from relogic.logickit.base.constants import ECP_TASK, IR_TASK, NER_TASK
 
 
 class Trainer(object):
@@ -31,7 +31,7 @@ class Trainer(object):
     # A quick fix for version migration
     self.tasks = [
       get_task(self.config, task_name, self.tokenizer
-          if task_name in ["joint_srl", IR_TASK, ECP_TASK] else self.tokenizer["BPE"])
+          if task_name in ["joint_srl", IR_TASK, ECP_TASK, NER_TASK] else self.tokenizer["BPE"])
       for task_name in self.config.task_names
     ]
     self.model = get_model(config)(config=self.config, tasks=self.tasks)
