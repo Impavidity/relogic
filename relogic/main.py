@@ -10,7 +10,7 @@ import numpy as np
 
 import torch
 from relogic.logickit.base import utils
-from relogic.logickit.base.configure import configure
+from relogic.logickit.base.configure import configure, update_configure
 from relogic.logickit.training import trainer, training_progress
 from relogic.logickit.serving import Server
 from relogic.logickit.analyzer.heads_importance import compute_heads_importance, mask_heads
@@ -63,6 +63,8 @@ def eval(config):
   restore_config.output_attentions = config.output_attentions
   if not hasattr(restore_config, "branching_encoder"):
     restore_config.branching_encoder = False
+  # Update the evaluation dataset
+  update_configure(restore_config, config)
   print(restore_config)
   utils.heading("RUN {} ({:})".format(config.mode.upper(),
                                       restore_config.task_names))

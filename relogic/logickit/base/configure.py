@@ -4,7 +4,7 @@ from relogic.logickit.base.constants import NEVER_SPLIT
 
 def configure(config):
   config.buckets = [(0, 40), (40, 80), (80, config.max_seq_length)]
-  if config.task_names:
+  if config.task_names and config.restore_path is None:
     config.task_names = config.task_names.split(',')
     config.raw_data_path = config.raw_data_path.split(',')
     config.label_mapping_path = config.label_mapping_path.split(',')
@@ -44,3 +44,18 @@ def configure(config):
 
   config.external_vocab_size = 999996 # a quick patch
   config.external_vocab_embed_size = 300
+
+def update_configure(restore_config, config):
+  if config.raw_data_path:
+    assert config.task_names is not None
+    # If user want to change the raw_data_path, they need to provide the 
+    # task_name and the raw_data_path. These two arguments should match 
+    # each other.
+    config.raw_data_path = config.raw_data_path.split(",")
+    config.task_names = config.task_names.split(",")
+    # If user want to change the raw_data_path, then they need to change
+    # for all tasks.
+    assert len(config.raw_data_path) == len(restore_config.tasks)
+    for name, raw_data_path in zip(config.task_names, config.raw_data_path):
+      restore_config.tasks[name]["raw_data_path"] = raw_data_path
+    
