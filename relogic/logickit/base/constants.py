@@ -29,3 +29,7 @@ IR_TASK = "ir"
 
 NER_TASK = "ner"
 SEQUENCE_LABELING_TASK = "sequence_labeling"
+
+SINGLETON = []
+SIAMESE = ["parallel_mapping"]
+TRIPLET = []

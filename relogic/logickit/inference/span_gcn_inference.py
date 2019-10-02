@@ -46,6 +46,11 @@ class SpanGCNInference(nn.Module):
 
   def forward(self, *inputs, **kwargs):
     task_name = kwargs.pop("task_name")
+
+    if task_name in SIAMESE:
+      return self.siamese_forward(*inputs, **kwargs)
+
+
     input_ids = kwargs.pop("input_ids")
     input_mask = kwargs.pop("input_mask")
     input_head = kwargs.pop("input_head", None)
@@ -120,6 +125,9 @@ class SpanGCNInference(nn.Module):
       return loss, logits
     else:
       return logits
+
+  def siamese_forward(self, *inputs, **kwargs):
+    return
 
 
 
