@@ -74,8 +74,8 @@ class ParallelExample(Example):
 
   @classmethod
   def from_json(cls, example):
-    return cls(text_a=" ".join(example["text_a"]),
-               text_b=" ".join(example["text_b"]),
+    return cls(text_a=example["text_a"],
+               text_b=example["text_b"],
                alignment=example["alignment"])
 
   @property
@@ -151,7 +151,7 @@ class ParallelDataFlow(DataFlow):
     a_max_token_length = max([example.len_a for example in examples])
     b_max_token_length = max([example.len_b for example in examples])
 
-    max_selected_indices_length = max([example.a_selected_indices for example in examples])
+    max_selected_indices_length = max([len(example.a_selected_indices) for example in examples])
 
     for idx, example in enumerate(examples):
       a_padding = [0] * (a_max_token_length - example.len_a)

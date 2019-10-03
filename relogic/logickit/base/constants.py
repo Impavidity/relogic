@@ -29,6 +29,7 @@ IR_TASK = "ir"
 
 NER_TASK = "ner"
 SEQUENCE_LABELING_TASK = "sequence_labeling"
+PARALLEL_MAPPING_TASK = "parallel_mapping"
 
 SINGLETON = []
 SIAMESE = ["parallel_mapping"]
