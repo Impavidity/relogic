@@ -4,7 +4,7 @@ from relogic.logickit.base import utils
 from relogic.logickit.data_io import get_labeled_examples
 from relogic.logickit.dataset.dataset import get_dataset
 from relogic.logickit.dataflow import DataFlow, TASK_TO_DATAFLOW_CLASS_MAP
-from relogic.logickit.base.constants import IR_TASK, ECP_TASK, NER_TASK
+from relogic.logickit.base.constants import IR_TASK, ECP_TASK, NER_TASK, PARALLEL_MAPPING_TASK
 
 
 class LabeledDataLoader(object):
@@ -38,7 +38,7 @@ class LabeledDataLoader(object):
       dataset_type = "sequential"
     utils.log("Using {} Dataset".format(dataset_type))
 
-    if self.task_name in ["joint_srl", IR_TASK, ECP_TASK, NER_TASK]:
+    if self.task_name in ["joint_srl", IR_TASK, ECP_TASK, NER_TASK, PARALLEL_MAPPING_TASK]:
       dataflow: DataFlow = self.get_dataflow()
       file_path = os.path.join(self.raw_data_path, self.file_names[split])
       dataflow.update_with_file(file_path)

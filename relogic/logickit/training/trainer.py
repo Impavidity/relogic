@@ -15,7 +15,7 @@ from relogic.logickit.training.training_progress import TrainingProgress
 from relogic.logickit.dataflow import MiniBatch
 import os
 from relogic.logickit.utils.utils import print_2d_tensor
-from relogic.logickit.base.constants import ECP_TASK, IR_TASK, NER_TASK
+from relogic.logickit.base.constants import ECP_TASK, IR_TASK, NER_TASK, PARALLEL_MAPPING_TASK
 
 
 class Trainer(object):
@@ -24,14 +24,14 @@ class Trainer(object):
     self.tokenizer = {
       "BPE" : BertTokenizer.from_pretrained(
         config.vocab_path, do_lower_case=config.do_lower_case,
-        never_split=config.never_split, lang=config.lang),
+        never_split=config.never_split, lang=config.lang, pretokenized=config.pretokenized),
       "Fasttext": FasttextTokenizer.from_pretrained("wiki-news-300d-1M")
     }
 
     # A quick fix for version migration
     self.tasks = [
       get_task(self.config, task_name, self.tokenizer
-          if task_name in ["joint_srl", IR_TASK, ECP_TASK, NER_TASK] else self.tokenizer["BPE"])
+          if task_name in ["joint_srl", IR_TASK, ECP_TASK, NER_TASK, PARALLEL_MAPPING_TASK] else self.tokenizer["BPE"])
       for task_name in self.config.task_names
     ]
     self.model = get_model(config)(config=self.config, tasks=self.tasks)
@@ -44,7 +44,7 @@ class Trainer(object):
     unsupervised_loss_total, unsupervised_loss_count = 0, 0
     supervised_loss_total, supervised_loss_count = 0, 0
     step = 0
-    # self.evaluate_all_tasks(progress.history)
+    self.evaluate_all_tasks(progress.history)
 
     for mb in self.get_training_mbs(progress.unlabeled_data_reader):
       if isinstance(mb, MiniBatch):
@@ -118,7 +118,10 @@ class Trainer(object):
       if self.config.output_attentions:
         batch_preds, attention_map = batch_preds
         extra_output["attention_map"] = attention_map
-      loss = 0
+      if isinstance(batch_preds, tuple):
+        loss, batch_preds = batch_preds
+      else:
+        loss = 0
       scorer.update(mb, batch_preds, loss, extra_output)
       if i % 100 == 0:
         utils.log("{} batch processed.".format(i))

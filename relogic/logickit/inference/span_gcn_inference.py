@@ -45,7 +45,7 @@ class SpanGCNInference(nn.Module):
     # print("Loading embedding from {}".format(config.external_embeddings))
 
   def forward(self, *inputs, **kwargs):
-    task_name = kwargs.pop("task_name")
+    task_name = kwargs.get("task_name")
 
     if task_name in SIAMESE:
       return self.siamese_forward(*inputs, **kwargs)
@@ -127,7 +127,44 @@ class SpanGCNInference(nn.Module):
       return logits
 
   def siamese_forward(self, *inputs, **kwargs):
-    return
+    task_name = kwargs.pop("task_name")
+    a_input_ids = kwargs.pop("a_input_ids")
+    a_input_mask = kwargs.pop("a_input_mask")
+    a_segment_ids = kwargs.pop("a_segment_ids")
+    b_input_ids = kwargs.pop("b_input_ids")
+    b_input_mask = kwargs.pop("b_input_mask")
+    b_segment_ids = kwargs.pop("b_segment_ids")
+    extra_args = kwargs.pop("extra_args", {})
+    output_all_encoded_layers = extra_args.get("output_all_encoded_layers", False)
+    route_path = extra_args.get("route_path", None)
+    selected_non_final_layers = extra_args.get("selected_non_final_layers", None)
+
+    # BERT encoding
+    a_features = self.encoder(
+      input_ids=a_input_ids,
+      token_type_ids=a_segment_ids,
+      attention_mask=a_input_mask,
+      output_all_encoded_layers=output_all_encoded_layers,
+      selected_non_final_layers=selected_non_final_layers,
+      route_path=route_path)
+
+    b_features = self.encoder(
+      input_ids=b_input_ids,
+      token_type_ids=b_segment_ids,
+      attention_mask=b_input_mask,
+      output_all_encoded_layers=output_all_encoded_layers,
+      selected_non_final_layers=selected_non_final_layers,
+      route_path=route_path)
+
+    logits = self.tasks_modules[task_name](
+      a_features=a_features,
+      b_features=b_features,
+      extra_args=extra_args,
+      **kwargs)
+
+    loss = (logits * logits).sum() / logits.size(0)
+
+    return loss, logits
 
 
 

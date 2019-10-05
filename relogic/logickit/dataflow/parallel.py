@@ -79,6 +79,10 @@ class ParallelExample(Example):
                alignment=example["alignment"])
 
   @property
+  def len(self):
+    return len(self.a_tokens) + len(self.b_tokens)
+
+  @property
   def len_a(self):
     return len(self.a_tokens)
 
@@ -162,9 +166,9 @@ class ParallelDataFlow(DataFlow):
       b_segment_ids = example.b_segment_ids + b_padding
       a_input_mask = example.a_input_mask + a_padding
       b_input_mask = example.b_input_mask + b_padding
-      a_selected_indices = example.a_selected_indices + [-1] * (
+      a_selected_indices = example.a_selected_indices + [0] * (
           max_selected_indices_length - len(example.a_selected_indices))
-      b_selected_indices = example.b_selected_indices + [-1] * (
+      b_selected_indices = example.b_selected_indices + [0] * (
           max_selected_indices_length - len(example.b_selected_indices))
 
       features.append(

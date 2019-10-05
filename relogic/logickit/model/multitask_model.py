@@ -91,7 +91,7 @@ class Model(BaseModel):
     elif config.fix_bert:
       utils.log("Optimizing the module using Adam optimizer ..")
       modules_parameters = [p for n, p in param_optimizer if "bert" not in n]
-      optimizers["module_optimizer"] = Adam(params=modules_parameters, lr=config.adam_learning_rate)
+      optimizers["module_optimizer"] = SGD(params=modules_parameters, lr=config.adam_learning_rate)
       optim_type = "fix_bert"
     elif config.fix_embedding:
       utils.log("Optimizing the model using one optimizer and fix embedding layer")
@@ -167,7 +167,7 @@ class Model(BaseModel):
     self.model.train()
     if isinstance(mb, MiniBatch):
       inputs = mb.generate_input(device=self.device, use_label=True)
-      if inputs["input_ids"].size(0) == 0:
+      if "input_ids" in inputs and inputs["input_ids"].size(0) == 0:
         utils.log("Zero Batch")
         return 0
     else:

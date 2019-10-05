@@ -87,7 +87,7 @@ class BertTokenizer(object):
   """Runs end-to-end tokenization: punctuation splitting + wordpiece"""
 
   def __init__(self, vocab_file, do_lower_case=True, max_len=None, do_basic_tokenize=True,
-               never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]"), lang=""):
+               never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]"), lang="", pretokenized=False):
     """Constructs a BertTokenizer.
 
     Args:
@@ -114,7 +114,7 @@ class BertTokenizer(object):
     if do_basic_tokenize:
       self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case,
                                             never_split=never_split,
-                                            lang=lang)
+                                            lang=lang, pretokenized=pretokenized)
     self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab)
     self.max_len = max_len if max_len is not None else int(1e12)
 
@@ -206,7 +206,7 @@ class BasicTokenizer(object):
   def __init__(self,
                do_lower_case=True,
                never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]"),
-               lang=""):
+               lang="", pretokenized=False):
     """Constructs a BasicTokenizer.
 
     Args:
@@ -215,11 +215,14 @@ class BasicTokenizer(object):
     self.do_lower_case = do_lower_case
     self.never_split = never_split
     self.lang = lang
+    self.pretokenized = pretokenized
 
   def tokenize(self, text):
     """Tokenizes a piece of text."""
     is_head = []
-    text = self._clean_text(text)
+    if not self.pretokenized:
+      text = self._clean_text(text)
+
     # This was added on November 1st, 2018 for the multilingual and Chinese
     # models. This is also applied to the English models now, but it doesn't
     # matter since the English models were not trained on any Chinese data
@@ -235,7 +238,10 @@ class BasicTokenizer(object):
       if self.do_lower_case and token not in self.never_split:
         token = token.lower()
         token = self._run_strip_accents(token)
-      splits = self._run_split_on_punc(token)
+      if not self.pretokenized:
+        splits = self._run_split_on_punc(token)
+      else:
+        splits = [token]
       for idx, s in enumerate(splits):
         if idx == 0:
           is_head.append(1)

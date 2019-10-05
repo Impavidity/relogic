@@ -11,7 +11,7 @@ class Scorer(object, metaclass=abc.ABCMeta):
 
 
   @abc.abstractmethod
-  def update(self, mbs, predictons, loss, extra_args):
+  def update(self, mbs, predictions, loss, extra_args):
     self._updated = True
 
 

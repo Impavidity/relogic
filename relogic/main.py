@@ -107,6 +107,7 @@ def main():
   parser.add_argument("--label_mapping_path", type=str)
   parser.add_argument("--unsupervised_data", type=str)
   parser.add_argument("--lang", type=str, default="en")
+  parser.add_argument("--pretokenized", action="store_true", default=False)
   parser.add_argument("--topk", default=1)
   parser.add_argument("--gold_answer_file", default="data/preprocessed_data/squad20.json")
   parser.add_argument("--dump_to_files_dict", default="")
@@ -140,6 +141,9 @@ def main():
   parser.add_argument("--srl_compute_pos_tag_loss", default=False, action="store_true")
   parser.add_argument("--srl_use_gold_predicate", default=False, action="store_true")
   parser.add_argument("--srl_use_gold_argument", default=False, action="store_true")
+
+  # Parallel Mapping
+  parser.add_argument("--parallel_mapping_mode", default="alignment", type=str)
 
   # Reading Comprehension
   parser.add_argument("--null_score_diff_threshold", default=1.0)

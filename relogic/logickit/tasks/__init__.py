@@ -2,7 +2,8 @@ from relogic.logickit.tasks.tagging import Tagging
 from relogic.logickit.tasks.classification import Classification
 from relogic.logickit.tasks.span_extraction import SpanExtraction, SpanGCN
 from relogic.logickit.tasks.span_extraction import ECPExtraction
-from relogic.logickit.base.constants import ECP_TASK, IR_TASK, NER_TASK
+from relogic.logickit.tasks.unsupervised import Unsupervised
+from relogic.logickit.base.constants import ECP_TASK, IR_TASK, NER_TASK, PARALLEL_MAPPING_TASK
 
 def get_task(config, name, tokenizer):
   if name in ["ccg", "pos"]:
@@ -20,6 +21,8 @@ def get_task(config, name, tokenizer):
     return SpanGCN(config, name, tokenizer)
   elif name in [ECP_TASK]:
     return ECPExtraction(config, name, tokenizer)
+  elif name in [PARALLEL_MAPPING_TASK]:
+    return Unsupervised(config, name, tokenizer)
   elif name == "depparse":
     return DependencyParsing(config, name)
   else:
