@@ -86,6 +86,15 @@ def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kw
     active_labels = label_ids[:, :logits.size(1)].contiguous().view(-1)[active_loss]
     loss = F.cross_entropy(active_logits, active_labels)
     return loss
+
+  elif task.name in [PARALLEL_TEACHER_STUDENT_TASK]:
+    active_loss = kwargs.pop("mask").view(-1)
+    target = kwargs.pop("target")
+    active_logits = F.softmax(logits.view(-1, logits.size(-1)), -1)[active_loss]
+    active_target = F.softmax(target.view(-1, target.size(-1)), -1)[active_loss]
+    loss = F.kl_div(active_logits.log(), active_target)
+    return loss
+
   else:
     span_boundary, logits = logits
     return F.cross_entropy(logits.view(-1, logits.size(-1)), label_ids.view(-1))

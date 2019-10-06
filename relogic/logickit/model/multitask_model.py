@@ -14,7 +14,7 @@ from relogic.logickit.utils.utils import entropy
 class Model(BaseModel):
   def __init__(self, config, tasks):
     super(Model, self).__init__(config)
-
+    self.tasks = tasks
     utils.log("Building model")
     inference = get_inference(config)(config, tasks)
     utils.log("Switch Model to device")
@@ -334,6 +334,37 @@ class Model(BaseModel):
     for task_name, probs in results.items():
       mb.teacher_predictions[task_name] = probs
       # TODO: check the output format for probs
+
+  def run_teacher_abstract(self, mb: MiniBatch):
+    self.teacher.eval()
+    inputs = mb.generate_input(device=self.device, use_label=False)
+    with torch.no_grad():
+      results = self.teacher(**inputs)
+      mb.teacher_predictions = results
+
+
+  def train_unlabeled_abstract(self, mb: MiniBatch, step):
+    self.model.train()
+    inputs = mb.generate_input(device=self.device, use_label=False)
+    outputs = self.model(**inputs,
+            teacher_predictions=mb.teacher_predictions)
+
+    loss, _ = outputs
+
+    loss = min(1, self.global_step_unlabeled / 3000) * loss
+
+    if self.config.gradient_accumulation_steps > 1:
+      loss = loss / self.config.gradient_accumulation_steps
+    loss.backward()
+    if (step + 1) % self.config.gradient_accumulation_steps == 0:
+      # TODO: a quick fix
+      if not hasattr(mb, "task_name") or mb.task_name not in ["squad11", "squad20"]:
+        nn.utils.clip_grad_norm_(self.model.parameters(), self.config.grad_clip)
+      self.optimizer.step()
+      self.optimizer.zero_grad()
+      self.global_step_unlabeled += 1
+    return loss.item()
+
 
   def test(self, mb):
     self.model.eval()

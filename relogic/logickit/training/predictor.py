@@ -17,8 +17,7 @@ class Predictor(object):
       # "Fasttext": FasttextTokenizer.from_pretrained("wiki-news-300d-1M")
     }
     self.tasks = [
-      get_task(self.config, task_name, self.tokenizer
-      if task_name in ["joint_srl", IR_TASK, ECP_TASK] else self.tokenizer["BPE"])
+      get_task(self.config, task_name, self.tokenizer)
       for task_name in self.config.task_names
     ]
     # self.tokenizer = BertTokenizer.from_pretrained(
@@ -41,7 +40,8 @@ class Predictor(object):
     for i, mb in enumerate(data.get_minibatches(self.config.test_batch_size)):
       # batch_preds = self.model.test(mb)
       batch_preds = self.model.test_abstract(mb)
-      yield batch_preds
+      labels = data.decode_to_labels(batch_preds, mb)
+      yield batch_preds, labels
       # results.append(batch_preds.data.cpu().numpy())
       # labels = data.decode_to_labels(batch_preds)
     #   if i % 100 == 0:

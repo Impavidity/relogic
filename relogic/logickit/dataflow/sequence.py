@@ -6,7 +6,7 @@ import torch
 
 from relogic.logickit.dataflow import DataFlow, Example, Feature, MiniBatch
 from relogic.logickit.tokenizer.tokenization import BertTokenizer
-from relogic.logickit.utils import create_tensor
+from relogic.logickit.utils import create_tensor, filter_head_prediction
 
 
 class SequenceExample(Example):
@@ -102,6 +102,7 @@ class SequenceMiniBatch(MiniBatch):
 class SequenceDataFlow(DataFlow):
   def __init__(self, config, task_name, tokenizers, label_mapping):
     super(SequenceDataFlow, self).__init__(config, task_name, tokenizers, label_mapping)
+    self._inv_label_mapping = {v: k for k, v in label_mapping.items()}
 
   @property
   def example_class(self):
@@ -143,3 +144,15 @@ class SequenceDataFlow(DataFlow):
         label_ids=label_ids))
 
     return features
+
+  def decode_to_labels(self, preds, mb: MiniBatch):
+    labels = []
+    for example, pred_logits in zip(mb.examples, preds):
+      pred_label_index = pred_logits.argmax(-1).data.cpu().numpy()
+      pred_label = [self._inv_label_mapping[y_pred] for y_pred in pred_label_index]
+      pred_label = filter_head_prediction(sentence_tags=pred_label, is_head=example.is_head)
+      labels.append(pred_label)
+    return labels
+
+
+

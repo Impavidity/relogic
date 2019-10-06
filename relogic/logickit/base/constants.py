@@ -30,7 +30,10 @@ IR_TASK = "ir"
 NER_TASK = "ner"
 SEQUENCE_LABELING_TASK = "sequence_labeling"
 PARALLEL_MAPPING_TASK = "parallel_mapping"
+PARALLEL_TEACHER_STUDENT_TASK = "parallel_teacher_student"
 
 SINGLETON = []
 SIAMESE = ["parallel_mapping"]
 TRIPLET = []
+
+DISTILL_TASKS = ["parallel_teacher_student"]
