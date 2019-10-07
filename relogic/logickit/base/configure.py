@@ -11,6 +11,10 @@ def configure(config):
     config.train_file = config.train_file.split(',')
     config.dev_file = config.dev_file.split(',')
     config.test_file = config.test_file.split(',')
+    if len(config.train_file) != len(config.task_names):
+      config.train_file = [config.train_file[0]] * len(config.task_names)
+      config.dev_file = [config.dev_file[0]] * len(config.task_names)
+      config.test_file = [config.test_file[0]] * len(config.task_names)
     assert len(config.task_names) == len(config.raw_data_path) == len(config.label_mapping_path)
     config.tasks = {}
     for task, raw_data_path, label_mapping_path, train_file, dev_file, test_file in zip(
@@ -55,7 +59,7 @@ def update_configure(restore_config, config):
     config.task_names = config.task_names.split(",")
     # If user want to change the raw_data_path, then they need to change
     # for all tasks.
-    assert len(config.raw_data_path) == len(restore_config.tasks)
+    # assert len(config.raw_data_path) == len(config.tasks)
     for name, raw_data_path in zip(config.task_names, config.raw_data_path):
       restore_config.tasks[name]["raw_data_path"] = raw_data_path
     

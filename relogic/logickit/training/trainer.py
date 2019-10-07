@@ -15,7 +15,7 @@ from relogic.logickit.training.training_progress import TrainingProgress
 from relogic.logickit.dataflow import MiniBatch
 import os
 from relogic.logickit.utils.utils import print_2d_tensor
-from relogic.logickit.base.constants import ECP_TASK, IR_TASK, NER_TASK, PARALLEL_MAPPING_TASK
+from relogic.logickit.base.constants import ECP_TASK, IR_TASK, NER_TASK, PARALLEL_MAPPING_TASK, DISTILL_TASKS, PARALLEL_TEACHER_STUDENT_TASK
 
 
 class Trainer(object):
@@ -43,13 +43,22 @@ class Trainer(object):
     unsupervised_loss_total, unsupervised_loss_count = 0, 0
     supervised_loss_total, supervised_loss_count = 0, 0
     step = 0
-    self.evaluate_all_tasks(progress.history)
+    # self.evaluate_all_tasks(progress.history)
 
     for mb in self.get_training_mbs(progress.unlabeled_data_reader):
       if isinstance(mb, MiniBatch):
-        loss = self.model.train_labeled_abstract(mb, step)
-        supervised_loss_total += loss
-        supervised_loss_count += 1
+        if mb.task_name not in DISTILL_TASKS:
+          loss = self.model.train_labeled_abstract(mb, step)
+          supervised_loss_total += loss
+          supervised_loss_count += 1
+        else:
+          # Hard code
+          if self.model.global_step_labeled > 3000:
+            self.model.run_teacher_abstract(mb)
+            loss = self.model.train_unlabeled_abstract(mb, step)
+            unsupervised_loss_total += loss
+            unsupervised_loss_count += 1
+            mb.teacher_predictions.clear()
       else:
         if mb.task_name != "unlabeled":
           loss = self.model.train_labeled_abstract(mb, step)
@@ -67,8 +76,9 @@ class Trainer(object):
 
 
       if self.model.global_step_labeled % self.config.print_every == 0 \
-            and self.model.global_step_unlabeled % self.config.print_every == 0 \
             and not progress.log_in_step(self.model.global_step_labeled):
+              # and self.model.global_step_unlabeled % self.config.print_every == 0 \
+
         # a quick patch here
         # TODO: organize better
         self.model.optimizer.update_loss(supervised_loss_total / max(1, supervised_loss_count))
@@ -88,8 +98,9 @@ class Trainer(object):
         progress.add_log_step(self.model.global_step_labeled)
 
       if self.model.global_step_labeled % self.config.eval_dev_every == 0 \
-            and self.model.global_step_unlabeled % self.config.eval_dev_every == 0 and \
-            not progress.evaluated_in_step(self.model.global_step_labeled):
+            and not progress.evaluated_in_step(self.model.global_step_labeled):
+            # and self.model.global_step_unlabeled % self.config.eval_dev_every == 0 and \
+
         heading("EVAL on DEV")
         self.evaluate_all_tasks(progress.history)
         progress.save_if_best_dev_model(self.model.model)
@@ -168,6 +179,7 @@ class Trainer(object):
     return results
 
   def get_training_mbs(self, unlabeled_data_reader):
+
     datasets = [task.train_set for task in self.tasks]
     weights = [np.sqrt(dataset.size) for dataset in datasets]
     thresholds = np.cumsum([w / np.sum(weights) for w in weights])
@@ -183,6 +195,7 @@ class Trainer(object):
       yield next(labeled_mbs[dataset_ind])
       if self.config.is_semisup:
         yield next(unlabeled_mbs)
+
 
   def restore(self, model_path):
     restore_state_dict = torch.load(

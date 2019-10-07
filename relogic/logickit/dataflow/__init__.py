@@ -1,5 +1,5 @@
 from relogic.logickit.base.constants import (SRL_TASK, ECP_TASK, POINTWISE_TASK, IR_TASK, NER_TASK,
-  SEQUENCE_LABELING_TASK, PARALLEL_MAPPING_TASK, PAIRWISE_TASK)
+  SEQUENCE_LABELING_TASK, PARALLEL_MAPPING_TASK, PAIRWISE_TASK, PARALLEL_TEACHER_STUDENT_TASK)
 from relogic.logickit.dataflow.dataflow import DataFlow, Example, Feature, MiniBatch
 from relogic.logickit.dataflow.srl import SRLDataFlow, SRLExample, SRLFeature, SRLMiniBatch
 from relogic.logickit.dataflow.ecp import ECPDataFlow, ECPExample, ECPFeature, ECPMiniBatch
@@ -15,5 +15,6 @@ TASK_TO_DATAFLOW_CLASS_MAP = {
   SEQUENCE_LABELING_TASK: SequenceDataFlow,
   NER_TASK: SequenceDataFlow,
   PARALLEL_MAPPING_TASK: ParallelDataFlow,
-  PAIRWISE_TASK: PairwiseDataFlow
+  PAIRWISE_TASK: PairwiseDataFlow,
+  PARALLEL_TEACHER_STUDENT_TASK: ParallelDataFlow
 }

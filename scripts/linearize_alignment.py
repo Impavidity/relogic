@@ -18,7 +18,7 @@ def main(alignment_file_path, parallel_file_path, selected_indices_file_path):
   with open(alignment_file_path) as fin_align, open(parallel_file_path) as fin_parallel:
     for alignment, sentence_pair in zip(fin_align, fin_parallel):
       text_a, text_b = sentence_pair.strip().split("|||")
-      a_tokens, b_tokens = text_a.split(), text_b.split()
+      a_tokens, b_tokens = text_a.strip().split(), text_b.strip().split()
       length = len(a_tokens) + len(b_tokens)
       shape = (length, length)
       a_base_index, b_base_index = 0, len(a_tokens)
