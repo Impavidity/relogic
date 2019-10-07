@@ -50,6 +50,9 @@ class SpanGCNInference(nn.Module):
     if task_name in SIAMESE:
       return self.siamese_forward(*inputs, **kwargs)
 
+    if task_name in TRIPLET:
+      return self.triplet_forward(*inputs, **kwargs)
+
 
     input_ids = kwargs.pop("input_ids")
     input_mask = kwargs.pop("input_mask")
@@ -165,6 +168,63 @@ class SpanGCNInference(nn.Module):
     loss = (logits * logits).sum() / logits.size(0)
 
     return loss, logits
+
+  def triplet_forward(self, *inputs, **kwargs):
+    task_name = kwargs.pop("task_name")
+    input_ids = kwargs.pop("input_ids")
+    input_mask = kwargs.pop("input_mask")
+    segment_ids = kwargs.pop("segment_ids")
+    p_input_ids = kwargs.pop("p_input_ids")
+    p_input_mask = kwargs.pop("p_input_mask")
+    p_segment_ids = kwargs.pop("p_segment_ids")
+    n_input_ids = kwargs.pop("n_input_ids")
+    n_input_mask = kwargs.pop("n_input_mask")
+    n_segment_ids = kwargs.pop("n_segment_ids")
+
+    extra_args = kwargs.pop("extra_args", {})
+    output_all_encoded_layers = extra_args.get("output_all_encoded_layers", False)
+    route_path = extra_args.get("route_path", None)
+    selected_non_final_layers = extra_args.get("selected_non_final_layers", None)
+
+    is_inference = kwargs.pop("is_inference")
+
+    features = self.encoder(
+      input_ids=input_ids,
+      token_type_ids=segment_ids,
+      attention_mask=input_mask,
+      output_all_encoded_layers=output_all_encoded_layers,
+      selected_non_final_layers=selected_non_final_layers,
+      route_path=route_path)
+
+    logits = self.tasks_modules[task_name](features)
+
+    if not is_inference:
+      p_features = self.encoder(
+        input_ids=p_input_ids,
+        token_type_ids=p_segment_ids,
+        attention_mask=p_input_mask,
+        output_all_encoded_layers=output_all_encoded_layers,
+        selected_non_final_layers=selected_non_final_layers,
+        route_path=route_path)
+
+      n_features = self.encoder(
+        input_ids=n_input_ids,
+        token_type_ids=n_segment_ids,
+        attention_mask=n_input_mask,
+        output_all_encoded_layers=output_all_encoded_layers,
+        selected_non_final_layers=selected_non_final_layers,
+        route_path=route_path)
+
+      p_logits = self.tasks_modules[task_name](p_features)
+      n_logits = self.tasks_modules[task_name](n_features)
+
+      positive_distance = self.distance(logits, p_logits)
+      negative_distance = self.distance(logits, n_logits)
+      loss = self.loss_max_margin(positive_distance, negative_distance, target=extra_args["target"])
+
+      return loss
+    else:
+      return logits
 
 
 

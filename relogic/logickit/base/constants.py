@@ -24,12 +24,14 @@ LANG_EN = "en"
 LANG_zH = "zh"
 
 POINTWISE_TASK = "pointwise"
+PAIRWISE_TASK = "pairwise"
 
 IR_TASK = "ir"
 
 NER_TASK = "ner"
 SEQUENCE_LABELING_TASK = "sequence_labeling"
 PARALLEL_MAPPING_TASK = "parallel_mapping"
+
 
 SINGLETON = []
 SIAMESE = ["parallel_mapping"]

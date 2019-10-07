@@ -30,8 +30,7 @@ class Trainer(object):
 
     # A quick fix for version migration
     self.tasks = [
-      get_task(self.config, task_name, self.tokenizer
-          if task_name in ["joint_srl", IR_TASK, ECP_TASK, NER_TASK, PARALLEL_MAPPING_TASK] else self.tokenizer["BPE"])
+      get_task(self.config, task_name, self.tokenizer)
       for task_name in self.config.task_names
     ]
     self.model = get_model(config)(config=self.config, tasks=self.tasks)
