@@ -5,6 +5,7 @@ import torch
 from tqdm import tqdm
 import os
 import subprocess
+import json
 
 class RecallScorer(Scorer):
   def __init__(self, label_mapping, topk, correct_label='1', dump_to_file=None):
@@ -84,82 +85,107 @@ class CartesianMatchingRecallScorer(Scorer):
   def __init__(self, topk, dump_to_file=None):
     super(CartesianMatchingRecallScorer, self).__init__()
     self.topk = topk
-    self.left = {}
-    self.right = {}
-    self.left_to_right_gold = {}
-    self.right_to_left_gold = {}
     if dump_to_file:
       self.dump_to_file_path = os.path.join(dump_to_file["output_dir"], dump_to_file["task_name"] + "_dump.json")
-
+      self.dump_to_file_handler = open(self.dump_to_file_path, 'w')
+    else:
+      print("You need to specify the dump_to_file path for the pair matching task")
+      exit()
 
   def update(self, mbs, reprs, loss, extra_args):
     super(CartesianMatchingRecallScorer, self).update(mbs, reprs, loss, extra_args)
     for example, repr in zip(mbs.examples, reprs):
-      left_id, right_id, direc = example.guid.split('-')
-      if direc == "0":
-        self.left[left_id] = repr
-      else:
-        self.right[right_id] = repr
-      left_id, right_id, direc = example.gold_pair.split('-')
-      if direc == "0":
-        self.left_to_right_gold[left_id] = right_id
-      else:
-        self.right_to_left_gold[right_id] = left_id
+      self.dump_to_file_handler.write(json.dumps({
+        "guid": example.guid,
+        "feature": repr}))
 
   def get_loss(self):
     return 0
 
   def _get_results(self):
-    if self.dump_to_file_path:
-      self.dump_to_file_handler = open(self.dump_to_file_path, 'w')
+    return [("recall", 0)]
 
-    self._n_hit_left, self._n_hit_right, self._n_total_left, self._n_total_right = 0, 0, 0, 0
-    if self.dump_to_file_path:
-      for key in self.left:
-        self.dump_to_file_handler.write("{}\t".format(key) + " ".join([str(f) for f in self.left[key].cpu().data.numpy()]) + '\n')
-      for key in self.right:
-        self.dump_to_file_handler.write("{}\t".format(key) + " ".join([str(f) for f in self.right[key].cpu().data.numpy()]) + '\n')
-    left_to_right_distance = {}
-    right_to_left_distance = {}
-    print("Evaluating left to right")
-    for left_id in self.left.keys():
-      left_to_right_distance[left_id] = {}
-      for right_id in self.right.keys():
-        left_to_right_distance[left_id][right_id] = torch.sum(torch.abs(self.left[left_id] - self.right[right_id])).item()
-    print("Evaluating right to left")
-    for right_id in self.right.keys():
-      right_to_left_distance[right_id] = {}
-      for left_id in self.left.keys():
-        right_to_left_distance[right_id][left_id] = torch.sum(torch.abs(self.right[right_id] - self.left[left_id])).item()
 
-    for left_id in self.left.keys():
-      sorted_list = sorted(left_to_right_distance[left_id].items(), key=lambda x: x[1])
-      candidate_ids = [x[0] for x in sorted_list][:self.topk]
-      if self.left_to_right_gold[left_id] in candidate_ids:
-        self._n_hit_left += 1
-      # if dump_to_file:
-      #   for right_id, dist in sorted_list:
-      #     fout.write("{}\t{}\t{}\n".format(left_id, right_id, dist))
-    for right_id in self.right.keys():
-      sorted_list = sorted(right_to_left_distance[right_id].items(), key=lambda x: x[1])
-      candidate_ids = [x[0] for x in sorted_list][:self.topk]
-      if self.right_to_left_gold[right_id] in candidate_ids:
-        self._n_hit_right += 1
-      # if dump_to_file:
-      #   for left_id, dist in sorted_list:
-      #     fout.write("{}\t{}\t{}\n".format(right_id, left_id, dist))
-
-    if self.dump_to_file_path:
-      self.dump_to_file_handler.close()
-
-    self._n_total_left = len(self.left_to_right_gold)
-    self._n_total_right = len(self.right_to_left_gold)
-    return [("hits_left", self._n_hit_left),
-            ("hits_right", self._n_hit_right),
-            ("total_left", self._n_total_left),
-            ("total_right", self._n_total_right),
-            ("recall_left", self._n_hit_left / self._n_total_left),
-            ("recall_right", self._n_hit_right / self._n_total_right)]
+# class CartesianMatchingRecallScorer(Scorer):
+#   def __init__(self, topk, dump_to_file=None):
+#     super(CartesianMatchingRecallScorer, self).__init__()
+#     self.topk = topk
+#     self.left = {}
+#     self.right = {}
+#     self.left_to_right_gold = {}
+#     self.right_to_left_gold = {}
+#     if dump_to_file:
+#       self.dump_to_file_path = os.path.join(dump_to_file["output_dir"], dump_to_file["task_name"] + "_dump.json")
+#
+#
+#   def update(self, mbs, reprs, loss, extra_args):
+#     super(CartesianMatchingRecallScorer, self).update(mbs, reprs, loss, extra_args)
+#     for example, repr in zip(mbs.examples, reprs):
+#       left_id, right_id, direc = example.guid.split('-')
+#       if direc == "0":
+#         self.left[left_id] = repr
+#       else:
+#         self.right[right_id] = repr
+#       left_id, right_id, direc = example.gold_pair.split('-')
+#       if direc == "0":
+#         self.left_to_right_gold[left_id] = right_id
+#       else:
+#         self.right_to_left_gold[right_id] = left_id
+#
+#   def get_loss(self):
+#     return 0
+#
+#   def _get_results(self):
+#     if self.dump_to_file_path:
+#       self.dump_to_file_handler = open(self.dump_to_file_path, 'w')
+#
+#     self._n_hit_left, self._n_hit_right, self._n_total_left, self._n_total_right = 0, 0, 0, 0
+#     if self.dump_to_file_path:
+#       for key in self.left:
+#         self.dump_to_file_handler.write("{}\t".format(key) + " ".join([str(f) for f in self.left[key].cpu().data.numpy()]) + '\n')
+#       for key in self.right:
+#         self.dump_to_file_handler.write("{}\t".format(key) + " ".join([str(f) for f in self.right[key].cpu().data.numpy()]) + '\n')
+#     left_to_right_distance = {}
+#     right_to_left_distance = {}
+#     print("Evaluating left to right")
+#     for left_id in self.left.keys():
+#       left_to_right_distance[left_id] = {}
+#       for right_id in self.right.keys():
+#         left_to_right_distance[left_id][right_id] = torch.sum(torch.abs(self.left[left_id] - self.right[right_id])).item()
+#     print("Evaluating right to left")
+#     for right_id in self.right.keys():
+#       right_to_left_distance[right_id] = {}
+#       for left_id in self.left.keys():
+#         right_to_left_distance[right_id][left_id] = torch.sum(torch.abs(self.right[right_id] - self.left[left_id])).item()
+#
+#     for left_id in self.left.keys():
+#       sorted_list = sorted(left_to_right_distance[left_id].items(), key=lambda x: x[1])
+#       candidate_ids = [x[0] for x in sorted_list][:self.topk]
+#       if self.left_to_right_gold[left_id] in candidate_ids:
+#         self._n_hit_left += 1
+#       # if dump_to_file:
+#       #   for right_id, dist in sorted_list:
+#       #     fout.write("{}\t{}\t{}\n".format(left_id, right_id, dist))
+#     for right_id in self.right.keys():
+#       sorted_list = sorted(right_to_left_distance[right_id].items(), key=lambda x: x[1])
+#       candidate_ids = [x[0] for x in sorted_list][:self.topk]
+#       if self.right_to_left_gold[right_id] in candidate_ids:
+#         self._n_hit_right += 1
+#       # if dump_to_file:
+#       #   for left_id, dist in sorted_list:
+#       #     fout.write("{}\t{}\t{}\n".format(right_id, left_id, dist))
+#
+#     if self.dump_to_file_path:
+#       self.dump_to_file_handler.close()
+#
+#     self._n_total_left = len(self.left_to_right_gold)
+#     self._n_total_right = len(self.right_to_left_gold)
+#     return [("hits_left", self._n_hit_left),
+#             ("hits_right", self._n_hit_right),
+#             ("total_left", self._n_total_left),
+#             ("total_right", self._n_total_right),
+#             ("recall_left", self._n_hit_left / self._n_total_left),
+#             ("recall_right", self._n_hit_right / self._n_total_right)]
 
 class RetrievalScorer(Scorer):
   """

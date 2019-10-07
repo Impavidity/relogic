@@ -35,7 +35,7 @@ PARALLEL_TEACHER_STUDENT_TASK = "parallel_teacher_student"
 
 
 SINGLETON = []
-SIAMESE = ["parallel_mapping"]
-TRIPLET = []
+SIAMESE = [PARALLEL_MAPPING_TASK]
+TRIPLET = [PAIRWISE_TASK]
 
 DISTILL_TASKS = ["parallel_teacher_student"]

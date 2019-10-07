@@ -3,6 +3,7 @@ import torch.nn as nn
 from relogic.logickit.base import utils
 from relogic.logickit.inference.encoder import Encoder
 from relogic.logickit.inference.branching_encoder import BranchingBertModel
+from torch.nn import MarginRankingLoss
 from relogic.logickit.modules.contextualizers.highway_lstm import HighwayLSTM
 
 from relogic.logickit.base.constants import *
@@ -44,6 +45,9 @@ class SpanGCNInference(nn.Module):
     # self.word_embedding = nn.Embedding(self.config.external_vocab_size, self.config.external_vocab_embed_size)
     # self.word_embedding.weight.data.copy_(torch.from_numpy(np.load(config.external_embeddings)))
     # print("Loading embedding from {}".format(config.external_embeddings))
+
+    self.loss_max_margin = MarginRankingLoss(margin=config.max_margin)
+    self.distance = nn.PairwiseDistance(p=1)
 
 
   def encoding(self, **kwargs):
@@ -131,6 +135,8 @@ class SpanGCNInference(nn.Module):
 
     # elif task_name in SIAMESE:
     #   return self.siamese_forward(*inputs, **kwargs)
+    elif task_name in TRIPLET:
+      return self.triplet_forward(*inputs, **kwargs)
     else:
       arguments = self.get_arguments(prefix="", kwargs=kwargs)
       features = self.encoding(**arguments)
@@ -316,9 +322,9 @@ class SpanGCNInference(nn.Module):
 
       positive_distance = self.distance(logits, p_logits)
       negative_distance = self.distance(logits, n_logits)
-      loss = self.loss_max_margin(positive_distance, negative_distance, target=extra_args["target"])
+      loss = self.loss_max_margin(positive_distance, negative_distance, target= extra_args["target"])
 
-      return loss
+      return loss, None
     else:
       return logits
 

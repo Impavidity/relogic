@@ -38,20 +38,20 @@ class LabeledDataLoader(object):
       dataset_type = "sequential"
     utils.log("Using {} Dataset".format(dataset_type))
 
-    if self.task_name in ["joint_srl", IR_TASK, ECP_TASK, NER_TASK, PARALLEL_MAPPING_TASK, PARALLEL_TEACHER_STUDENT_TASK]:
-      dataflow: DataFlow = self.get_dataflow()
-      file_path = os.path.join(self.raw_data_path, self.file_names[split])
-      dataflow.update_with_file(file_path)
-      return dataflow
-    else:
-      return get_dataset(dataset_type=dataset_type)(
-        config=self.config,
-        examples=self.get_examples(split),
-        task_name=self.task_name,
-        is_training=self.config.mode == 'train',
-        split=split,
-        label_mapping=self.label_mapping,
-        extra_args=self.extra_args)
+    # if self.task_name in ["joint_srl", IR_TASK, ECP_TASK, NER_TASK, PARALLEL_MAPPING_TASK, PARALLEL_TEACHER_STUDENT_TASK]:
+    dataflow: DataFlow = self.get_dataflow()
+    file_path = os.path.join(self.raw_data_path, self.file_names[split])
+    dataflow.update_with_file(file_path)
+    return dataflow
+    # else:
+    #   return get_dataset(dataset_type=dataset_type)(
+    #     config=self.config,
+    #     examples=self.get_examples(split),
+    #     task_name=self.task_name,
+    #     is_training=self.config.mode == 'train',
+    #     split=split,
+    #     label_mapping=self.label_mapping,
+    #     extra_args=self.extra_args)
 
   def get_dataflow(self) -> DataFlow:
     return TASK_TO_DATAFLOW_CLASS_MAP[self.task_name](
