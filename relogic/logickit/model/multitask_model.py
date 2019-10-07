@@ -351,7 +351,7 @@ class Model(BaseModel):
 
     loss, _ = outputs
 
-    loss = min(1, self.global_step_unlabeled / 3000) * loss
+    loss = 0.1 * loss
 
     if self.config.gradient_accumulation_steps > 1:
       loss = loss / self.config.gradient_accumulation_steps

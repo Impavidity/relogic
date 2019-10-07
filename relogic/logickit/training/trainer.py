@@ -53,11 +53,13 @@ class Trainer(object):
           supervised_loss_total += loss
           supervised_loss_count += 1
         else:
-          self.model.run_teacher_abstract(mb)
-          loss = self.model.train_unlabeled_abstract(mb, step)
-          unsupervised_loss_total += loss
-          unsupervised_loss_count += 1
-          mb.teacher_predictions.clear()
+          # Hard code
+          if self.model.global_step_labeled > 3000:
+            self.model.run_teacher_abstract(mb)
+            loss = self.model.train_unlabeled_abstract(mb, step)
+            unsupervised_loss_total += loss
+            unsupervised_loss_count += 1
+            mb.teacher_predictions.clear()
       else:
         if mb.task_name != "unlabeled":
           loss = self.model.train_labeled_abstract(mb, step)
@@ -178,6 +180,7 @@ class Trainer(object):
     return results
 
   def get_training_mbs(self, unlabeled_data_reader):
+
     datasets = [task.train_set for task in self.tasks]
     weights = [np.sqrt(dataset.size) for dataset in datasets]
     thresholds = np.cumsum([w / np.sum(weights) for w in weights])
@@ -193,6 +196,7 @@ class Trainer(object):
       yield next(labeled_mbs[dataset_ind])
       if self.config.is_semisup:
         yield next(unlabeled_mbs)
+
 
   def restore(self, model_path):
     restore_state_dict = torch.load(

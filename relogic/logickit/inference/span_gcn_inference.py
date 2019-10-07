@@ -102,16 +102,19 @@ class SpanGCNInference(nn.Module):
         features = self.encoding(**arguments)
         for task in self.tasks:
           if task.name != task_name:
-            result = self.decoding(**arguments, **kwargs, features=features, task_name=task.name)
-            results[task.name] = result.detach()
+            result = features[0]
+            # result = self.decoding(**arguments, **kwargs, features=features, task_name=task.name)
+            results[task.name] = result.detach()# result.detach()
         return results
+
       else:
         arguments = self.get_arguments(prefix="b_", kwargs=kwargs)
         features = self.encoding(**arguments)
         losses = {}
         for task in self.tasks:
           if task.name != task_name:
-            result = self.decoding(**arguments, features=features, task_name=task.name)
+            # result = self.decoding(**arguments, features=features, task_name=task.name)
+            result = features[0]
             logits, target, mask = self.decoding(
               task_name=task_name,
               student_results=result,
