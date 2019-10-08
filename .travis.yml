@@ -3,9 +3,9 @@ python:
   - "3.7"
 
 before_install:
-  - pip install --user pip --upgrade pip
-  - pip install --user cython --upgrade Cython
-  - pip install --user pyjnius --upgrade pyjnius
+  - pip install --upgrade pip
+  - pip install --upgrade Cython
+  - pip install --upgrade pyjnius
 
 install:
   - python setup.py install
