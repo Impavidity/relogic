@@ -206,6 +206,8 @@ def main():
   parser.add_argument("--ignore_parameters", default="", type=str)
   parser.add_argument("--fix_bert", default=False, action="store_true")
   parser.add_argument("--two_stage_optim", default=False, action="store_true")
+  parser.add_argument("--training_scheme", default=None, type=str)
+  parser.add_argument("--training_scheme_file", default=None, type=str)
   # Need to combine to CUDA_VISIBLE_DEVICES
 
   # Analysis

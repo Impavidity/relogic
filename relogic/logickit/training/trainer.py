@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import bisect
 import time
-
+from relogic.logickit.training.training_scheme import TRAINING_SCHEME
 import numpy as np
 
 import torch
@@ -44,7 +44,6 @@ class Trainer(object):
     supervised_loss_total, supervised_loss_count = 0, 0
     step = 0
     # self.evaluate_all_tasks(progress.history)
-
     for mb in self.get_training_mbs(progress.unlabeled_data_reader):
       if isinstance(mb, MiniBatch):
         if mb.task_name not in DISTILL_TASKS:
@@ -52,13 +51,11 @@ class Trainer(object):
           supervised_loss_total += loss
           supervised_loss_count += 1
         else:
-          # Hard code
-          if self.model.global_step_labeled > 3000:
-            self.model.run_teacher_abstract(mb)
-            loss = self.model.train_unlabeled_abstract(mb, step)
-            unsupervised_loss_total += loss
-            unsupervised_loss_count += 1
-            mb.teacher_predictions.clear()
+          self.model.run_teacher_abstract(mb)
+          loss = self.model.train_unlabeled_abstract(mb, step)
+          unsupervised_loss_total += loss
+          unsupervised_loss_count += 1
+          mb.teacher_predictions.clear()
       else:
         if mb.task_name != "unlabeled":
           loss = self.model.train_labeled_abstract(mb, step)
@@ -179,22 +176,24 @@ class Trainer(object):
     return results
 
   def get_training_mbs(self, unlabeled_data_reader):
+    if self.config.training_scheme is not None:
+      yield from TRAINING_SCHEME[self.config.training_scheme](self.config, self.tasks)
+    else:
+      datasets = [task.train_set for task in self.tasks]
+      weights = [np.sqrt(dataset.size) for dataset in datasets]
+      thresholds = np.cumsum([w / np.sum(weights) for w in weights])
 
-    datasets = [task.train_set for task in self.tasks]
-    weights = [np.sqrt(dataset.size) for dataset in datasets]
-    thresholds = np.cumsum([w / np.sum(weights) for w in weights])
-
-    labeled_mbs = [
-      dataset.endless_minibatches(self.config.train_batch_size)
-      for dataset in datasets
-    ]
-    unlabeled_mbs = unlabeled_data_reader.endless_minibatches(
-      self.config.train_batch_size)
-    while True:
-      dataset_ind = bisect.bisect(thresholds, np.random.random())
-      yield next(labeled_mbs[dataset_ind])
-      if self.config.is_semisup:
-        yield next(unlabeled_mbs)
+      labeled_mbs = [
+        dataset.endless_minibatches(self.config.train_batch_size)
+        for dataset in datasets
+      ]
+      unlabeled_mbs = unlabeled_data_reader.endless_minibatches(
+        self.config.train_batch_size)
+      while True:
+        dataset_ind = bisect.bisect(thresholds, np.random.random())
+        yield next(labeled_mbs[dataset_ind])
+        if self.config.is_semisup:
+          yield next(unlabeled_mbs)
 
 
   def restore(self, model_path):
