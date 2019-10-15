@@ -145,8 +145,12 @@ class PairwiseDataFlow(DataFlow):
     features = []
 
     max_token_length = max([example.len for example in examples])
-    max_token_length_p = max([example.len_p for example in examples])
-    max_token_length_n = max([example.len_n for example in examples])
+    try:
+      max_token_length_p = max([example.len_p for example in examples])
+      max_token_length_n = max([example.len_n for example in examples])
+    except:
+      max_token_length_p = 0
+      max_token_length_n = 0
 
     for idx, example in enumerate(examples):
       padding = [0] * (max_token_length - example.len)
