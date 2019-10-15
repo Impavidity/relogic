@@ -62,8 +62,12 @@ class ParallelExample(Example):
           idx for idx, value in enumerate(self.b_is_head) if value == 1
         ] + [len(self.b_is_head) - 1]
 
-        self.a_selected_indices = [self.a_head_index[index] for index in self.alignment[0]]
-        self.b_selected_indices = [self.b_head_index[index] for index in self.alignment[1]]
+        if self.alignment is not None:
+          self.a_selected_indices = [self.a_head_index[index] for index in self.alignment[0]]
+          self.b_selected_indices = [self.b_head_index[index] for index in self.alignment[1]]
+        else:
+          self.a_selected_indices = None
+          self.b_selected_indices = None
 
 
   @classmethod
@@ -76,7 +80,7 @@ class ParallelExample(Example):
   def from_json(cls, example):
     return cls(text_a=example["text_a"],
                text_b=example["text_b"],
-               alignment=example["alignment"])
+               alignment=example.get("alignment", None))
 
   @property
   def len(self):
@@ -155,7 +159,10 @@ class ParallelDataFlow(DataFlow):
     a_max_token_length = max([example.len_a for example in examples])
     b_max_token_length = max([example.len_b for example in examples])
 
-    max_selected_indices_length = max([len(example.a_selected_indices) for example in examples])
+    try:
+      max_selected_indices_length = max([len(example.a_selected_indices) for example in examples])
+    except:
+      max_selected_indices_length = 0
 
     for idx, example in enumerate(examples):
       a_padding = [0] * (a_max_token_length - example.len_a)
@@ -166,10 +173,15 @@ class ParallelDataFlow(DataFlow):
       b_segment_ids = example.b_segment_ids + b_padding
       a_input_mask = example.a_input_mask + a_padding
       b_input_mask = example.b_input_mask + b_padding
-      a_selected_indices = example.a_selected_indices + [0] * (
-          max_selected_indices_length - len(example.a_selected_indices))
-      b_selected_indices = example.b_selected_indices + [0] * (
-          max_selected_indices_length - len(example.b_selected_indices))
+
+      if max_selected_indices_length > 0:
+        a_selected_indices = example.a_selected_indices + [0] * (
+            max_selected_indices_length - len(example.a_selected_indices))
+        b_selected_indices = example.b_selected_indices + [0] * (
+            max_selected_indices_length - len(example.b_selected_indices))
+      else:
+        a_selected_indices = None
+        b_selected_indices = None
 
       features.append(
         ParallelFeature(

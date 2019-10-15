@@ -39,3 +39,6 @@ SIAMESE = [PARALLEL_MAPPING_TASK]
 TRIPLET = [PAIRWISE_TASK]
 
 DISTILL_TASKS = ["parallel_teacher_student"]
+
+AUXILIARY_TRAINING = "auxiliary_training"
+ITERATIVE_TRAINING = "iterative_training"
