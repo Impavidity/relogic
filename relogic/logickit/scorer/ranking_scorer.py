@@ -97,7 +97,7 @@ class CartesianMatchingRecallScorer(Scorer):
     for example, repr in zip(mbs.examples, reprs):
       self.dump_to_file_handler.write(json.dumps({
         "guid": example.guid,
-        "feature": repr}))
+        "feature": " ".join([str(f) for f in repr.cpu().data.numpy()])}) + "\n")
 
   def get_loss(self):
     return 0
