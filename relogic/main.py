@@ -114,8 +114,12 @@ def main():
 
   parser.add_argument("--output_attentions", default=False, action="store_true")
   parser.add_argument("--span_inference", default=False, action="store_true")
+  parser.add_argument("--metrics", default="", type=str)
 
   # Task related configuration
+
+  # Sequence Labeling
+  parser.add_argument("--sequence_labeling_use_cls", default=False, action="store_true")
 
   # Relation Extraction
   parser.add_argument("--no_entity_surface", dest="entity_surface_aware", default=True, action="store_false")
@@ -208,6 +212,10 @@ def main():
   parser.add_argument("--two_stage_optim", default=False, action="store_true")
   parser.add_argument("--training_scheme", default=None, type=str)
   parser.add_argument("--training_scheme_file", default=None, type=str)
+  parser.add_argument("--num_train_optimization_steps", default=0, type=int)
+  parser.add_argument("--early_stop_at", default=0, type=int)
+  parser.add_argument("--loss_weight", type=str, default='1')
+  # We allow to set same training steps for different dataset
   # Need to combine to CUDA_VISIBLE_DEVICES
 
   # Analysis

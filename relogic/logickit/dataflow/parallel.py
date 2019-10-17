@@ -132,8 +132,9 @@ class ParallelMiniBatch(MiniBatch):
                                             torch.long, device)
     inputs["b_selected_indices"] = create_tensor(self.input_features, "b_selected_indices",
                                             torch.long, device)
-    inputs["extra_args"] = {
-      "selected_non_final_layers": [8]}
+    # inputs["extra_args"] = {
+    #   "selected_non_final_layers": [10]}
+    inputs["extra_args"] = {}
 
     return inputs
 

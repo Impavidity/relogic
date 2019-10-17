@@ -42,6 +42,7 @@ class LabeledDataLoader(object):
     dataflow: DataFlow = self.get_dataflow()
     file_path = os.path.join(self.raw_data_path, self.file_names[split])
     dataflow.update_with_file(file_path)
+    self.dataflow = dataflow
     return dataflow
     # else:
     #   return get_dataset(dataset_type=dataset_type)(

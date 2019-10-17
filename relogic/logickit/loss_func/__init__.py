@@ -86,6 +86,9 @@ def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kw
     active_labels = label_ids[:, :logits.size(1)].contiguous().view(-1)[active_loss]
     loss = F.cross_entropy(active_logits, active_labels)
     return loss
+  elif task.name in [ENTITY_TYPE_CLASSIFICATION]:
+    loss = F.binary_cross_entropy_with_logits(logits, label_ids.float())
+    return loss
 
   elif task.name in [PARALLEL_TEACHER_STUDENT_TASK]:
     active_loss = kwargs.pop("mask")

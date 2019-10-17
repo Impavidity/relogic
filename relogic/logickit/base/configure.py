@@ -11,21 +11,25 @@ def configure(config):
     config.train_file = config.train_file.split(',')
     config.dev_file = config.dev_file.split(',')
     config.test_file = config.test_file.split(',')
+    config.loss_weight = config.loss_weight.split(',')
     if len(config.train_file) != len(config.task_names):
       config.train_file = [config.train_file[0]] * len(config.task_names)
       config.dev_file = [config.dev_file[0]] * len(config.task_names)
       config.test_file = [config.test_file[0]] * len(config.task_names)
+    if len(config.loss_weight) != len(config.task_names):
+      config.loss_weight = [config.loss_weight[0]] * len(config.task_names)
     assert len(config.task_names) == len(config.raw_data_path) == len(config.label_mapping_path)
     config.tasks = {}
-    for task, raw_data_path, label_mapping_path, train_file, dev_file, test_file in zip(
+    for task, raw_data_path, label_mapping_path, train_file, dev_file, test_file, loss_weight in zip(
           config.task_names, config.raw_data_path, config.label_mapping_path,
-          config.train_file, config.dev_file, config.test_file):
+          config.train_file, config.dev_file, config.test_file, config.loss_weight):
       config.tasks[task] = {}
       config.tasks[task]["raw_data_path"] = raw_data_path
       config.tasks[task]["label_mapping_path"] = label_mapping_path
       config.tasks[task]["train_file"] = train_file
       config.tasks[task]["dev_file"] = dev_file
       config.tasks[task]["test_file"] = test_file
+      config.tasks[task]["loss_weight"] = float(loss_weight)
   if config.output_dir:
     config.progress = os.path.join(config.output_dir, "progress")
     config.history_file = os.path.join(config.output_dir, "history.pkl")
@@ -49,6 +53,8 @@ def configure(config):
   config.external_vocab_size = 999996 # a quick patch
   config.external_vocab_embed_size = 300
 
+  config.metrics = config.metrics.split(',')
+
 def update_configure(restore_config, config):
   if config.raw_data_path:
     assert config.task_names is not None
@@ -56,10 +62,18 @@ def update_configure(restore_config, config):
     # task_name and the raw_data_path. These two arguments should match 
     # each other.
     config.raw_data_path = config.raw_data_path.split(",")
-    config.task_names = config.task_names.split(",")
+    task_names = config.task_names.split(",")
     # If user want to change the raw_data_path, then they need to change
     # for all tasks.
     # assert len(config.raw_data_path) == len(config.tasks)
-    for name, raw_data_path in zip(config.task_names, config.raw_data_path):
+    for name, raw_data_path in zip(task_names, config.raw_data_path):
       restore_config.tasks[name]["raw_data_path"] = raw_data_path
+  if config.test_file is not None:
+    assert config.task_names is not None
+
+    config.test_file = config.test_file.split(",")
+    task_names = config.task_names.split(",")
+
+    for name, test_file in zip(task_names, config.test_file):
+      restore_config.tasks[name]["test_file"] = test_file
     

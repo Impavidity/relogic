@@ -37,9 +37,10 @@ def iterative_training(config, tasks):
   while True:
     for stage in iterative_stages:
       stage_steps = stage["steps"]
-      stage_task = stage["task"]
+      stage_tasks = stage["tasks"]
       for i in range(stage_steps):
-        yield next(mbs[stage_task])
+        for task in stage_tasks:
+          yield next(mbs[task])
 
 TRAINING_SCHEME = {
   AUXILIARY_TRAINING: auxiliary_training,
