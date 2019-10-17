@@ -44,7 +44,7 @@ class TrainingProgress(object):
       total, count = 0, 0
       for result in results:
         for metric, value in result:
-          if hasattr(self.config, "metrics"):
+          if hasattr(self.config, "metrics") and self.config.metrics is not None:
             if metric in self.config.metrics:
               total += value
               count += 1

@@ -52,8 +52,10 @@ def configure(config):
 
   config.external_vocab_size = 999996 # a quick patch
   config.external_vocab_embed_size = 300
-
-  config.metrics = config.metrics.split(',')
+  if config.metrics != "":
+    config.metrics = config.metrics.split(',')
+  else:
+    config.metrics = None
 
 def update_configure(restore_config, config):
   if config.raw_data_path:

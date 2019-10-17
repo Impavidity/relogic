@@ -111,7 +111,7 @@ class CartesianMatchingRecallScorer(Scorer):
     eval_out_lines = str(eval_out, 'utf-8').split('\n')
     results = []
     for line in eval_out_lines:
-      if line.startswith("Hits@1"):
+      if line.startswith("Hits@1:"):
         score = float(line.strip().split(" ")[1].strip("%"))
         results.append(score)
 
