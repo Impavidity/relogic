@@ -36,6 +36,6 @@ class Classification(Task):
     elif self.name in ["rel_extraction"]:
       return RelationF1Scorer(self.loader.label_mapping, dump_to_file=dump_to_file)
     elif self.name in ["pair_matching", PAIRWISE_TASK]:
-      return CartesianMatchingRecallScorer(topk=self.config.topk, dump_to_file=dump_to_file)
+      return CartesianMatchingRecallScorer(topk=self.config.topk, qrels_file_path=self.config.qrels_file_path, dump_to_file=dump_to_file)
     elif self.name in [ENTITY_TYPE_CLASSIFICATION]:
       return MultiClassAccuracyScorer(self.loader.label_mapping, dump_to_file=dump_to_file, dataflow=self.loader.dataflow)
