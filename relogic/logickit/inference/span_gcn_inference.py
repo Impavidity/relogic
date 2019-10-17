@@ -34,6 +34,8 @@ class SpanGCNInference(nn.Module):
       self.encoder = Encoder.from_pretrained(config.bert_model)
 
 
+
+
     utils.log("Build Task Modules")
     self.tasks_modules = nn.ModuleDict()
     for task in tasks:
@@ -105,7 +107,10 @@ class SpanGCNInference(nn.Module):
         features = self.encoding(**arguments)
         for task in self.tasks:
           if task.name != task_name:
-            result = features[0]
+            if isinstance(features, list):
+              result = features[0]
+            else:
+              result = features
             # result = self.decoding(**arguments, **kwargs, features=features, task_name=task.name)
             results[task.name] = result.detach()# result.detach()
         return results
@@ -117,7 +122,10 @@ class SpanGCNInference(nn.Module):
         for task in self.tasks:
           if task.name != task_name:
             # result = self.decoding(**arguments, features=features, task_name=task.name)
-            result = features[0]
+            if isinstance(features, list):
+              result = features[0]
+            else:
+              result = features
             logits, target, mask = self.decoding(
               task_name=task_name,
               student_results=result,

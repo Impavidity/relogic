@@ -103,6 +103,10 @@ class Trainer(object):
         progress.save_if_best_dev_model(self.model.model)
         progress.add_evaluated_step(self.model.global_step_labeled)
 
+      if self.model.global_step_labeled >= self.config.early_stop_at:
+        utils.log("Early stop at step {}".format(self.model.global_step_labeled))
+        break
+
   def evaluate_all_tasks(self, history=None, train_set=False):
     results = []
     for task in self.tasks:

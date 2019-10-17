@@ -29,7 +29,9 @@ PAIRWISE_TASK = "pairwise"
 IR_TASK = "ir"
 
 NER_TASK = "ner"
+ENTITY_TYPE_CLASSIFICATION = "entity_type_classification"
 SEQUENCE_LABELING_TASK = "sequence_labeling"
+SEQUENCE_CLASSIFICATION_TASK = "sequence_classification"
 PARALLEL_MAPPING_TASK = "parallel_mapping"
 PARALLEL_TEACHER_STUDENT_TASK = "parallel_teacher_student"
 

@@ -55,6 +55,10 @@ class MiniBatch(object, metaclass=abc.ABCMeta):
     self.size = kwargs.pop("size")
     self.input_features = kwargs.pop("input_features")
     self.teacher_predictions = kwargs.pop("teacher_predictions")
+    if "loss_weight" in self.config.tasks[self.task_name]:
+      self.loss_weight = self.config.tasks[self.task_name]["loss_weight"]
+    else:
+      self.loss_weight = 1
 
   @abc.abstractmethod
   def generate_input(self, device, use_label):
@@ -97,6 +101,7 @@ class DataFlow(object, metaclass=abc.ABCMeta):
     self.tokenizers = tokenizers
     self.examples = []
     self.label_mapping = label_mapping
+
     # if label_mapping_path == "none":
     #   self.label_mapping = {}
     # else:

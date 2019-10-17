@@ -1,4 +1,6 @@
 import torch.nn as nn
+import torch
+from relogic.logickit.base.utils import log
 
 class SequenceLabelingModule(nn.Module):
   def __init__(self, config, task_name, n_classes):
@@ -6,9 +8,16 @@ class SequenceLabelingModule(nn.Module):
     self.config = config
     self.task_name = task_name
     self.n_classes = n_classes
-    self.to_logits = nn.Linear(config.hidden_size, self.n_classes)
+    if hasattr(self.config, "sequence_labeling_use_cls") and self.config.sequence_labeling_use_cls:
+      self.mul = 2
+      log("Use cls in sequence labeling")
+    else:
+      self.mul = 1
+    self.to_logits = nn.Linear(config.hidden_size * self.mul, self.n_classes)
 
   def forward(self, *input, **kwargs):
     features = kwargs.pop("features")
+    if self.mul == 2:
+      features = torch.cat([features, features[:, 0].unsqueeze(1).repeat(1, features.size(1), 1)], dim=-1)
     logits = self.to_logits(features)
     return logits
