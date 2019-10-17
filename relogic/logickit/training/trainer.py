@@ -103,7 +103,7 @@ class Trainer(object):
         progress.save_if_best_dev_model(self.model.model)
         progress.add_evaluated_step(self.model.global_step_labeled)
 
-      if self.model.global_step_labeled >= self.config.early_stop_at:
+      if self.config.early_stop_at > 0 and self.model.global_step_labeled >= self.config.early_stop_at:
         utils.log("Early stop at step {}".format(self.model.global_step_labeled))
         break
 
