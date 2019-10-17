@@ -82,9 +82,10 @@ class RecallScorer(Scorer):
             ("recall_right", self._n_hit_right / self._n_total_right)]
 
 class CartesianMatchingRecallScorer(Scorer):
-  def __init__(self, topk, dump_to_file=None):
+  def __init__(self, topk, qrels_file_path, dump_to_file=None):
     super(CartesianMatchingRecallScorer, self).__init__()
     self.topk = topk
+    self.qrels_file_path = qrels_file_path
     if dump_to_file:
       self.dump_to_file_path = os.path.join(dump_to_file["output_dir"], dump_to_file["task_name"] + "_dump.json")
       self.dump_to_file_handler = open(self.dump_to_file_path, 'w')
