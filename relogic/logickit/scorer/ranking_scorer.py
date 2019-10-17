@@ -104,7 +104,19 @@ class CartesianMatchingRecallScorer(Scorer):
     return 0
 
   def _get_results(self):
-    return [("recall", 0)]
+    self.dump_to_file_handler.close()
+    dir = os.path.abspath(os.path.dirname(__file__))
+    recall_eval_path = os.path.join(dir, '..', '..', '..', 'evals', 'pair_matching', 'entity_align_eval.py')
+    eval_out = subprocess.check_output(["python", recall_eval_path, "-e", self.dump_to_file_path, "-g", self.qrels_file_path])
+    eval_out_lines = str(eval_out, 'utf-8').split('\n')
+    results = []
+    for line in eval_out_lines:
+      if line.startswith("Hits@1"):
+        score = float(line.strip().split(" ")[1].strip("%"))
+        results.append(score)
+
+    return [("recall_left", results[0]),
+            ("recall_right", results[1])]
 
 
 # class CartesianMatchingRecallScorer(Scorer):
