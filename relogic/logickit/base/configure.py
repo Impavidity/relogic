@@ -58,6 +58,8 @@ def configure(config):
     config.metrics = None
 
 def update_configure(restore_config, config):
+  if config.qrels_file_path is not None:
+    restore_config.qrels_file_path = config.qrels_file_path
   if config.raw_data_path:
     assert config.task_names is not None
     # If user want to change the raw_data_path, they need to provide the 

@@ -153,7 +153,7 @@ def main():
   parser.add_argument("--null_score_diff_threshold", default=1.0)
 
   # Information Retrieval
-  parser.add_argument("--qrels_file_path")
+  parser.add_argument("--qrels_file_path", type=str, default=None)
 
   # Modeling
   parser.add_argument("--use_gcn", dest="use_gcn", default=False, action="store_true")
