@@ -67,10 +67,14 @@ def configure(config):
 
   config.external_vocab_size = 999996 # a quick patch
   config.external_vocab_embed_size = 300
-
-  config.metrics = config.metrics.split(',')
+  if config.metrics != "":
+    config.metrics = config.metrics.split(',')
+  else:
+    config.metrics = None
 
 def update_configure(restore_config, config):
+  if config.qrels_file_path is not None:
+    restore_config.qrels_file_path = config.qrels_file_path
   if config.raw_data_path:
     assert config.task_names is not None
     # If user want to change the raw_data_path, they need to provide the 
