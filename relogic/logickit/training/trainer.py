@@ -19,7 +19,7 @@ from relogic.logickit.base.constants import ECP_TASK, IR_TASK, NER_TASK, PARALLE
 
 
 class Trainer(object):
-  def __init__(self, config):
+  def __init__(self, config, teacher_config=None):
     self.config = config
     self.tokenizer = {
       "BPE" : BertTokenizer.from_pretrained(
@@ -35,6 +35,13 @@ class Trainer(object):
     ]
     self.model = get_model(config)(config=self.config, tasks=self.tasks)
 
+    if self.config.use_external_teacher:
+      # Extension for multi-model distillation
+      self.teacher_tasks = [
+        get_task(teacher_config, task_name, self.tokenizer)
+        for task_name in teacher_config.task_names
+      ]
+      self.teacher_model = get_model(teacher_config)(config=teacher_config, tasks=self.teacher_tasks)
 
   def train(self, progress: TrainingProgress):
     heading = lambda s: utils.heading(s, '(' + self.config.model_name + ')')
@@ -51,7 +58,10 @@ class Trainer(object):
           supervised_loss_total += loss
           supervised_loss_count += 1
         else:
-          self.model.run_teacher_abstract(mb)
+          if self.config.use_external_teacher:
+            self.teacher_model.run_teacher_abstract(mb)
+          else:
+            self.model.run_teacher_abstract(mb)
           loss = self.model.train_unlabeled_abstract(mb, step)
           unsupervised_loss_total += loss
           unsupervised_loss_count += 1
@@ -212,3 +222,16 @@ class Trainer(object):
       restore_state_dict[key] = self.model.model.state_dict()[key]
     self.model.model.load_state_dict(restore_state_dict)
     utils.log("Model Restored from {}".format(model_path))
+
+  def restore_teacher(self, model_path):
+    restore_state_dict = torch.load(
+      model_path, map_location=lambda storage, location: storage)
+    # loaded_dict = {k: restore_state_dict[k] for k in
+    #                set(self.model.model.state_dict().keys()) & set(restore_state_dict.keys())}
+    # model_state = self.model.model.state_dict()
+    # model_state.update(loaded_dict)
+    for key in self.config.ignore_parameters:
+      # restore_state_dict.pop(key)
+      restore_state_dict[key] = self.model.model.state_dict()[key]
+    self.teacher_model.model.load_state_dict(restore_state_dict)
+    utils.log("Teacher Model Restored from {}".format(model_path))

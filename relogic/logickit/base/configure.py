@@ -12,17 +12,26 @@ def configure(config):
     config.dev_file = config.dev_file.split(',')
     config.test_file = config.test_file.split(',')
     config.loss_weight = config.loss_weight.split(',')
+    config.selected_non_final_layers = config.selected_non_final_layers.split(';')
+    config.dataset_type = config.dataset_type.split(',')
     if len(config.train_file) != len(config.task_names):
       config.train_file = [config.train_file[0]] * len(config.task_names)
       config.dev_file = [config.dev_file[0]] * len(config.task_names)
       config.test_file = [config.test_file[0]] * len(config.task_names)
     if len(config.loss_weight) != len(config.task_names):
       config.loss_weight = [config.loss_weight[0]] * len(config.task_names)
+    if len(config.selected_non_final_layers) != len(config.task_names):
+      config.selected_non_final_layers = [config.selected_non_final_layers[0]] * len(config.task_names)
+    if len(config.dataset_type) != len(config.task_names):
+      config.dataset_type = [config.dataset_type[0]] * len(config.task_names)
+
     assert len(config.task_names) == len(config.raw_data_path) == len(config.label_mapping_path)
     config.tasks = {}
-    for task, raw_data_path, label_mapping_path, train_file, dev_file, test_file, loss_weight in zip(
+    for (task, raw_data_path, label_mapping_path, train_file, dev_file, test_file,
+         loss_weight, selected_non_final_layers, dataset_type) in zip(
           config.task_names, config.raw_data_path, config.label_mapping_path,
-          config.train_file, config.dev_file, config.test_file, config.loss_weight):
+          config.train_file, config.dev_file, config.test_file, config.loss_weight,
+          config.selected_non_final_layers, config.dataset_type):
       config.tasks[task] = {}
       config.tasks[task]["raw_data_path"] = raw_data_path
       config.tasks[task]["label_mapping_path"] = label_mapping_path
@@ -30,6 +39,9 @@ def configure(config):
       config.tasks[task]["dev_file"] = dev_file
       config.tasks[task]["test_file"] = test_file
       config.tasks[task]["loss_weight"] = float(loss_weight)
+      config.tasks[task]["selected_non_final_layers"] = None if selected_non_final_layers == "none" else [
+        int(item) for item in selected_non_final_layers.split(',')]
+      config.tasks[task]["dataset_type"] = dataset_type
   if config.output_dir:
     config.progress = os.path.join(config.output_dir, "progress")
     config.history_file = os.path.join(config.output_dir, "history.pkl")
@@ -43,7 +55,10 @@ def configure(config):
     config.branching_structure = routing_config["branching_structure"]
   config.ignore_parameters = list(filter(lambda x:len(x.strip())>0, config.ignore_parameters.split(",")))
   config.vocab_path = config.bert_model
-
+  if config.language_id_file is not None:
+    config.language_name2id = json.load(config.language_id_file)
+  else:
+    config.language_name2id = None
   if config.task_names:
     if "rel_extraction" in config.task_names:
       if config.bert_model not in ["bert-base-cased", "bert-large-cased"]:
