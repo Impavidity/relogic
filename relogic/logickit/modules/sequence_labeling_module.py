@@ -14,6 +14,11 @@ class SequenceLabelingModule(nn.Module):
     else:
       self.mul = 1
     self.to_logits = nn.Linear(config.hidden_size * self.mul, self.n_classes)
+    self.init_weight()
+
+  def init_weight(self):
+    self.to_logits.bias.data.zero_()
+    self.to_logits.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
 
   def forward(self, *input, **kwargs):
     features = kwargs.pop("features")

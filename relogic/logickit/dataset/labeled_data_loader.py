@@ -32,11 +32,11 @@ class LabeledDataLoader(object):
           and (os.path.exists(os.path.join(self.raw_data_path, "train_subset.txt")) or
                os.path.exists(os.path.join(self.raw_data_path, "train_subset.json")))):
       split = 'train_subset'
-    if "train" in split:
-      dataset_type = "bucket"
-    else:
-      dataset_type = "sequential"
-    utils.log("Using {} Dataset".format(dataset_type))
+    # if "train" in split:
+    #   dataset_type = "bucket"
+    # else:
+    #   dataset_type = "sequential"
+    # utils.log("Using {} Dataset".format(dataset_type))
 
     # if self.task_name in ["joint_srl", IR_TASK, ECP_TASK, NER_TASK, PARALLEL_MAPPING_TASK, PARALLEL_TEACHER_STUDENT_TASK]:
     dataflow: DataFlow = self.get_dataflow()

@@ -1,5 +1,4 @@
 from relogic.logickit.inference.encoder import Encoder
-from relogic.logickit.inference.span_gcn_inference import SpanGCNInference
 from relogic.logickit.inference.inference import Inference
 
 def get_inference(config):
@@ -7,7 +6,7 @@ def get_inference(config):
   #   return SpanGCNInference
   # else:
   #   return Inference
-  return SpanGCNInference
+  return Inference
 
 
 def get_encoder(config):

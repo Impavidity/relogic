@@ -191,10 +191,15 @@ class Model(BaseModel):
 
 
     outputs = self.model(**inputs)
-    if self.config.output_attentions:
-      loss, _, _ = outputs
+
+    # TODO: Slow process Migrating Interface ...
+    if isinstance(outputs, dict):
+      loss = outputs["loss"]
     else:
-      loss, _ = outputs
+      if self.config.output_attentions:
+        loss, _, _ = outputs
+      else:
+        loss, _ = outputs
 
     loss = mb.loss_weight * loss
 
@@ -226,15 +231,18 @@ class Model(BaseModel):
         inputs = self.generate_input(mb, use_label=False)
     with torch.no_grad():
       results = self.model(**inputs)
-    if self.config.output_attentions:
-      results, attention_map = results
-      # list(batch_size, num_heads, sent_length, sent_length) = layer
-      attention_map = torch.stack(attention_map, dim=0).transpose(0, 1)
-    # (layer, batch, head, length, length)
-    if self.config.output_attentions:
-      return results, attention_map.cpu().numpy()
-    else:
+    if isinstance(results, dict):
       return results
+    else:
+      if self.config.output_attentions:
+        results, attention_map = results
+        # list(batch_size, num_heads, sent_length, sent_length) = layer
+        attention_map = torch.stack(attention_map, dim=0).transpose(0, 1)
+      # (layer, batch, head, length, length)
+      if self.config.output_attentions:
+        return results, attention_map.cpu().numpy()
+      else:
+        return results
 
   def analyze(self, mb, head_mask, params):
     self.model.eval()
@@ -356,7 +364,7 @@ class Model(BaseModel):
 
     loss, _ = outputs
 
-    loss = 0.1 * loss
+    loss = mb.loss_weight * loss
 
     if self.config.gradient_accumulation_steps > 1:
       loss = loss / self.config.gradient_accumulation_steps

@@ -10,11 +10,12 @@ config = SimpleNamespace(
   **{
     "buckets": [(0, 15), (15, 40), (40, 450)],
     "max_seq_length": 450,
-    "label_mapping_path": "data/preprocessed_data/ner_BIOES_label_mapping.json"
+    "label_mapping_path": "data/preprocessed_data/er_BIOES_label_mapping.json"
   })
 
 tokenizers = {
-  "BPE": BertTokenizer.from_pretrained("bert-base-multilingual-cased", do_lower_case=False),
+  "BPE": BertTokenizer.from_pretrained("bert-base-multilingual-cased", do_lower_case=False,
+                                       lang="zh", pretokenized=True),
 }
 
 dataflow: SequenceDataFlow = TASK_TO_DATAFLOW_CLASS_MAP[SEQUENCE_LABELING_TASK](
@@ -30,6 +31,51 @@ examples = [{
   "tokens": ["Barack", "Obama", "went", "to", "Paris", "."],
   "labels": ["B-PER", "E-PER", "O", "O", "S-LOC", "O"]
 }]
+# examples = [ {
+#  "tokens": [
+#   "哲人",
+#   "已",
+#   "远",
+#   "，",
+#   "典范",
+#   "长",
+#   "存",
+#   "——",
+#   "悼",
+#   "许常惠",
+#   "、",
+#   "张光直",
+#   "与",
+#   "戴国辉"
+#  ],
+#  "labels": [
+#   "O",
+#   "O",
+#   "O",
+#   "O",
+#   "O",
+#   "O",
+#   "O",
+#   "O",
+#   "O",
+#   "B-PERSON",
+#   "O",
+#   "B-PERSON",
+#   "O",
+#   "B-PERSON"
+#  ]
+# }, {
+#  "tokens": [
+#   "（",
+#   "李光真",
+#   "）"
+#  ],
+#  "labels": [
+#   "O",
+#   "B-PERSON",
+#   "O"
+#  ]
+# }]
 
 dataflow.update_with_jsons(examples)
 

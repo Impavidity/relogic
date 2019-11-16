@@ -31,16 +31,20 @@ IR_TASK = "ir"
 NER_TASK = "ner"
 ENTITY_TYPE_CLASSIFICATION = "entity_type_classification"
 SEQUENCE_LABELING_TASK = "sequence_labeling"
+DEP_PARSING_TASK = "dep_parsing"
 SEQUENCE_CLASSIFICATION_TASK = "sequence_classification"
 PARALLEL_MAPPING_TASK = "parallel_mapping"
 PARALLEL_TEACHER_STUDENT_TASK = "parallel_teacher_student"
+MIXSENT_TASK = "mixsent"
 
 
 SINGLETON = []
 SIAMESE = [PARALLEL_MAPPING_TASK]
 TRIPLET = [PAIRWISE_TASK]
 
-DISTILL_TASKS = ["parallel_teacher_student"]
+DISTILL_TASKS = ["parallel_teacher_student", "mixsent"]
 
 AUXILIARY_TRAINING = "auxiliary_training"
 ITERATIVE_TRAINING = "iterative_training"
+
+

@@ -32,8 +32,7 @@ def train(config):
   model_trainer = trainer.Trainer(
     config=config, teacher_config=teacher_config)
   # A quick fix for version migration
-  progress = training_progress.TrainingProgress(
-    config=config, tokenizer=model_trainer.tokenizer["BPE"])
+  progress = training_progress.TrainingProgress(config=config)
   if config.use_external_teacher:
     model_path = os.path.join(teacher_model_path,
                               teacher_config.model_name + ".ckpt")
@@ -54,8 +53,7 @@ def finetune(config):
                               restore_config.model_name + ".ckpt")
   model_trainer = trainer.Trainer(config)
   model_trainer.restore(model_path)
-  progress = training_progress.TrainingProgress(
-    config=config, tokenizer=model_trainer.tokenizer["BPE"])
+  progress = training_progress.TrainingProgress(config=config)
   model_trainer.train(progress)
 
 
@@ -163,8 +161,13 @@ def main():
   parser.add_argument("--srl_use_gold_predicate", default=False, action="store_true")
   parser.add_argument("--srl_use_gold_argument", default=False, action="store_true")
 
+  # Dependency Parsing
+  parser.add_argument("--dep_parsing_mlp_dim", default=300, type=int)
+  parser.add_argument("--dropout", default=0.3, type=float)
+
   # Parallel Mapping
   parser.add_argument("--parallel_mapping_mode", default="alignment", type=str)
+
 
   # Reading Comprehension
   parser.add_argument("--null_score_diff_threshold", default=1.0)
@@ -178,7 +181,7 @@ def main():
 
   # Model
   parser.add_argument("--bert_model", type=str)
-  parser.add_argument("--encoder_type", type=str, default="bert", choices=["bert", "xlm"])
+  parser.add_argument("--encoder_type", type=str, default="bert", choices=["bert", "xlm", "xlmr"])
   parser.add_argument("--hidden_size", type=int, default=768)
   parser.add_argument("--projection_size", type=int, default=300)
   parser.add_argument(
@@ -245,6 +248,10 @@ def main():
 
   # Analysis
   parser.add_argument("--head_to_mask_file", type=str, default="")
+
+
+  # Configuration
+  parser.add_argument("--trainer_config", type=str, default=None)
 
   args = parser.parse_args()
 

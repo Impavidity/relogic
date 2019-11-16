@@ -9,7 +9,13 @@ import torch
 import json
 
 class TrainingProgress(object):
-  def __init__(self, config, restore_if_possible=True, tokenizer=None):
+  """
+  TODO: We are going to retire the Training Progress somehow.
+  1. Remove the unlabeled data. The unlabeled data interface will be integrated into
+     dataflow.
+
+  """
+  def __init__(self, config, restore_if_possible=True):
     self.config = config
     if restore_if_possible and os.path.exists(config.progress):
       history, current_file, current_line = utils.load_pickle(
@@ -19,8 +25,6 @@ class TrainingProgress(object):
     else:
       utils.log("No previous checkpoint found - starting from scratch")
       self.history = []
-      self.unlabeled_data_reader = (UnlabeledDataReader(
-        config=config, tokenizer=tokenizer))
     self.evaluated_steps = set([0])
     self.log_steps = set([])
     # We do not want to evaluate in step 0

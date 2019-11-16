@@ -55,7 +55,7 @@ class MiniBatch(object, metaclass=abc.ABCMeta):
     self.size = kwargs.pop("size")
     self.input_features = kwargs.pop("input_features")
     self.teacher_predictions = kwargs.pop("teacher_predictions")
-    if "loss_weight" in self.config.tasks[self.task_name]:
+    if hasattr(self.config, "tasks") and "loss_weight" in self.config.tasks[self.task_name]:
       self.loss_weight = self.config.tasks[self.task_name]["loss_weight"]
     else:
       self.loss_weight = 1
@@ -164,6 +164,7 @@ class DataFlow(object, metaclass=abc.ABCMeta):
   def endless_minibatches(self, minibatch_size, sequential=False):
     """Generate endless minibatches with given batch size."""
 
+    print("Use {} dataset for {}".format("sequential" if sequential else "bucket", self.task_name))
     while True:
       for minibatch in self.get_minibatches(minibatch_size, sequential=sequential):
         yield minibatch

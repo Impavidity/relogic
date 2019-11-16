@@ -87,7 +87,7 @@ def update_configure(restore_config, config):
     # assert len(config.raw_data_path) == len(config.tasks)
     for name, raw_data_path in zip(task_names, config.raw_data_path):
       restore_config.tasks[name]["raw_data_path"] = raw_data_path
-  if config.test_file is not None:
+  if config.test_file != ",".join(restore_config.test_file):
     assert config.task_names is not None
 
     config.test_file = config.test_file.split(",")

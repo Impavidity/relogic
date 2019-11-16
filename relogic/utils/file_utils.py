@@ -7,6 +7,7 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import sys
 import json
+import six
 import logging
 import os
 import shutil
@@ -54,6 +55,9 @@ except (AttributeError, ImportError):
 
 CONFIG_NAME = "config.json"
 WEIGHTS_NAME = "pytorch_model.bin"
+TF2_WEIGHTS_NAME = 'tf_model.h5'
+TF_WEIGHTS_NAME = 'model.ckpt'
+
 
 
 
@@ -106,7 +110,7 @@ def filename_to_url(filename, cache_dir=None):
     return url, etag
 
 
-def cached_path(url_or_filename, cache_dir=None):
+def cached_path(url_or_filename, cache_dir=None,force_download=False, proxies=None):
     """
     Given something that might be a URL (or might be a local path),
     determine which. If it's a URL, download the file and cache it, and
@@ -197,7 +201,7 @@ def http_get(url, temp_file):
     progress.close()
 
 
-def get_from_cache(url, cache_dir=None):
+def get_from_cache(url, cache_dir=None, force_download=False, proxies=None):
     """
     Given a URL, look for the corresponding dataset in the local cache.
     If it's not there, download it. Then return the path to the cached file.
@@ -219,7 +223,7 @@ def get_from_cache(url, cache_dir=None):
         etag = s3_etag(url)
     else:
         try:
-            response = requests.head(url, allow_redirects=True)
+            response = requests.head(url, allow_redirects=True, proxies=proxies)
             if response.status_code != 200:
                 etag = None
             else:
@@ -242,7 +246,7 @@ def get_from_cache(url, cache_dir=None):
         if matching_files:
             cache_path = os.path.join(cache_dir, matching_files[-1])
 
-    if not os.path.exists(cache_path):
+    if not os.path.exists(cache_path) or force_download:
         # Download to temporary file, then copy to cache dir once finished.
         # Otherwise you get corrupt cache entries if the download gets interrupted.
         with tempfile.NamedTemporaryFile() as temp_file:
@@ -293,3 +297,33 @@ def get_file_extension(path, dot=True, lower=True):
     ext = os.path.splitext(path)[1]
     ext = ext if dot else ext[1:]
     return ext.lower() if lower else ext
+
+if not six.PY2:
+    def add_start_docstrings(*docstr):
+        def docstring_decorator(fn):
+            fn.__doc__ = ''.join(docstr) + fn.__doc__
+            return fn
+        return docstring_decorator
+
+    def add_end_docstrings(*docstr):
+        def docstring_decorator(fn):
+            fn.__doc__ = fn.__doc__ + ''.join(docstr)
+            return fn
+        return docstring_decorator
+else:
+    # Not possible to update class docstrings on python2
+    def add_start_docstrings(*docstr):
+        def docstring_decorator(fn):
+            return fn
+        return docstring_decorator
+
+    def add_end_docstrings(*docstr):
+        def docstring_decorator(fn):
+            return fn
+        return docstring_decorator
+
+def is_tf_available():
+    return False
+
+def is_torch_available():
+    return True

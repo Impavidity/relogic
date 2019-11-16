@@ -4,6 +4,7 @@ import bisect
 import time
 from relogic.logickit.training.training_scheme import TRAINING_SCHEME
 import numpy as np
+import json
 
 import torch
 from relogic.logickit.base import utils
@@ -16,21 +17,34 @@ from relogic.logickit.dataflow import MiniBatch
 import os
 from relogic.logickit.utils.utils import print_2d_tensor
 from relogic.logickit.base.constants import ECP_TASK, IR_TASK, NER_TASK, PARALLEL_MAPPING_TASK, DISTILL_TASKS, PARALLEL_TEACHER_STUDENT_TASK
-
+from relogic.logickit.base.configuration_trainer import TrainerConfig
+from relogic.logickit.tokenizer import NAME_TO_TOKENIZER_MAP
 
 class Trainer(object):
-  def __init__(self, config, teacher_config=None):
+  def __init__(self, config, teacher_config=None,
+        tokenizers = None,
+        model = None):
+    """
+    TODO: We are going to change the interface a little bit for easier configuration, less hard-coded.
+    :param config:
+    :param teacher_config:
+    :param tokenizers:
+    :param model:
+    """
     self.config = config
-    self.tokenizer = {
-      "BPE" : BertTokenizer.from_pretrained(
-        config.vocab_path, do_lower_case=config.do_lower_case,
-        never_split=config.never_split, lang=config.lang, pretokenized=config.pretokenized),
-      "Fasttext": FasttextTokenizer.from_pretrained("wiki-news-300d-1M")
-    }
+
+    trainer_config : TrainerConfig = TrainerConfig.load_from_json_file(config.trainer_config)
+
+    if tokenizers is not None:
+      self.tokenizers = tokenizers
+    else:
+      self.tokenizers = {}
+      for tokenizer_name, params in trainer_config.tokenizers.items():
+        self.tokenizers[tokenizer_name] = NAME_TO_TOKENIZER_MAP[tokenizer_name].from_pretrained(**params)
 
     # A quick fix for version migration
     self.tasks = [
-      get_task(self.config, task_name, self.tokenizer)
+      get_task(self.config, task_name, self.tokenizers)
       for task_name in self.config.task_names
     ]
     self.model = get_model(config)(config=self.config, tasks=self.tasks)
@@ -38,7 +52,7 @@ class Trainer(object):
     if self.config.use_external_teacher:
       # Extension for multi-model distillation
       self.teacher_tasks = [
-        get_task(teacher_config, task_name, self.tokenizer)
+        get_task(teacher_config, task_name, self.tokenizers)
         for task_name in teacher_config.task_names
       ]
       self.teacher_model = get_model(teacher_config)(config=teacher_config, tasks=self.teacher_tasks)
@@ -51,7 +65,7 @@ class Trainer(object):
     supervised_loss_total, supervised_loss_count = 0, 0
     step = 0
     # self.evaluate_all_tasks(progress.history)
-    for mb in self.get_training_mbs(progress.unlabeled_data_reader):
+    for mb in self.get_training_mbs():
       if isinstance(mb, MiniBatch):
         if mb.task_name not in DISTILL_TASKS:
           loss = self.model.train_labeled_abstract(mb, step)
@@ -135,15 +149,20 @@ class Trainer(object):
     for i, mb in enumerate(data.get_minibatches(self.config.test_batch_size)):
       # batch_preds = self.model.test(mb)
       batch_preds = self.model.test_abstract(mb)
-      extra_output = {}
-      if self.config.output_attentions:
-        batch_preds, attention_map = batch_preds
-        extra_output["attention_map"] = attention_map
-      if isinstance(batch_preds, tuple):
-        loss, batch_preds = batch_preds
+
+      if isinstance(batch_preds, dict):
+        scorer.update(mb, batch_preds, 0, None)
       else:
-        loss = 0
-      scorer.update(mb, batch_preds, loss, extra_output)
+        # Slow Migration towards the return interface
+        extra_output = {}
+        if self.config.output_attentions:
+          batch_preds, attention_map = batch_preds
+          extra_output["attention_map"] = attention_map
+        if isinstance(batch_preds, tuple):
+          loss, batch_preds = batch_preds
+        else:
+          loss = 0
+        scorer.update(mb, batch_preds, loss, extra_output)
       if i % 100 == 0:
         utils.log("{} batch processed.".format(i))
     results = scorer.get_results()
@@ -189,7 +208,7 @@ class Trainer(object):
     print_2d_tensor(head_ranks)
     return results
 
-  def get_training_mbs(self, unlabeled_data_reader):
+  def get_training_mbs(self):
     if self.config.training_scheme is not None:
       yield from TRAINING_SCHEME[self.config.training_scheme](self.config, self.tasks)
     else:
@@ -201,13 +220,9 @@ class Trainer(object):
         dataset.endless_minibatches(self.config.train_batch_size)
         for dataset in datasets
       ]
-      unlabeled_mbs = unlabeled_data_reader.endless_minibatches(
-        self.config.train_batch_size)
       while True:
         dataset_ind = bisect.bisect(thresholds, np.random.random())
         yield next(labeled_mbs[dataset_ind])
-        if self.config.is_semisup:
-          yield next(unlabeled_mbs)
 
 
   def restore(self, model_path):

@@ -106,6 +106,8 @@ class ParallelFeature(Feature):
     self.b_segment_ids = kwargs.pop("b_segment_ids")
     self.a_selected_indices = kwargs.pop("a_selected_indices")
     self.b_selected_indices = kwargs.pop("b_selected_indices")
+    self.a_is_head = kwargs.pop("a_is_head")
+    self.b_is_head = kwargs.pop("b_is_head")
 
 class ParallelMiniBatch(MiniBatch):
   def __init__(self, *inputs, **kwargs):
@@ -132,9 +134,15 @@ class ParallelMiniBatch(MiniBatch):
                                             torch.long, device)
     inputs["b_selected_indices"] = create_tensor(self.input_features, "b_selected_indices",
                                             torch.long, device)
-    # inputs["extra_args"] = {
-    #   "selected_non_final_layers": [10]}
+    inputs["a_is_head"] = create_tensor(self.input_features, "a_is_head",
+                                            torch.long, device)
+    inputs["b_is_head"] = create_tensor(self.input_features, "b_is_head",
+                                            torch.long, device)
+
     inputs["extra_args"] = {}
+    if self.config.tasks[self.task_name]["selected_non_final_layers"] is not None:
+      inputs["extra_args"]["selected_non_final_layers"] = self.config.tasks[self.task_name]["selected_non_final_layers"]
+
 
     return inputs
 
@@ -174,6 +182,8 @@ class ParallelDataFlow(DataFlow):
       b_segment_ids = example.b_segment_ids + b_padding
       a_input_mask = example.a_input_mask + a_padding
       b_input_mask = example.b_input_mask + b_padding
+      a_is_head = example.a_is_head + a_padding
+      b_is_head = example.b_is_head + b_padding
 
       if max_selected_indices_length > 0:
         a_selected_indices = example.a_selected_indices + [0] * (
@@ -193,5 +203,7 @@ class ParallelDataFlow(DataFlow):
           a_segment_ids=a_segment_ids,
           b_segment_ids=b_segment_ids,
           a_selected_indices=a_selected_indices,
-          b_selected_indices=b_selected_indices))
+          b_selected_indices=b_selected_indices,
+          a_is_head=a_is_head,
+          b_is_head=b_is_head))
     return features
