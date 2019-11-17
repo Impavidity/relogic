@@ -43,11 +43,14 @@ class Model(BaseModel):
     if config.mode == "train" or config.mode == "finetune":
       for task in tasks:
         utils.log("{} : {}  training examples".format(task.name, task.train_set.size))
+        if "loss_weight" in config.tasks[task.name]:
+          utils.log("loss weight {}".format(config.tasks[task.name]["loss_weight"]))
         size_train_examples += task.train_set.size
 
     config.num_steps_in_one_epoch = size_train_examples // config.train_batch_size
-    config.num_train_optimization_steps = size_train_examples // config.train_batch_size * config.epoch_number \
-      if config.schedule_lr else -1
+    if config.num_train_optimization_steps == 0:
+      config.num_train_optimization_steps = size_train_examples // config.train_batch_size * config.epoch_number \
+        if config.schedule_lr else -1
     utils.log("Optimization steps : {}".format(config.num_train_optimization_steps))
     # adjust to real training batch size
     config.train_batch_size = config.train_batch_size // config.gradient_accumulation_steps
@@ -188,10 +191,17 @@ class Model(BaseModel):
 
 
     outputs = self.model(**inputs)
-    if self.config.output_attentions:
-      loss, _, _ = outputs
+
+    # TODO: Slow process Migrating Interface ...
+    if isinstance(outputs, dict):
+      loss = outputs["loss"]
     else:
-      loss, _ = outputs
+      if self.config.output_attentions:
+        loss, _, _ = outputs
+      else:
+        loss, _ = outputs
+
+    loss = mb.loss_weight * loss
 
     if self.config.gradient_accumulation_steps > 1:
       loss = loss / self.config.gradient_accumulation_steps
@@ -221,15 +231,18 @@ class Model(BaseModel):
         inputs = self.generate_input(mb, use_label=False)
     with torch.no_grad():
       results = self.model(**inputs)
-    if self.config.output_attentions:
-      results, attention_map = results
-      # list(batch_size, num_heads, sent_length, sent_length) = layer
-      attention_map = torch.stack(attention_map, dim=0).transpose(0, 1)
-    # (layer, batch, head, length, length)
-    if self.config.output_attentions:
-      return results, attention_map.cpu().numpy()
-    else:
+    if isinstance(results, dict):
       return results
+    else:
+      if self.config.output_attentions:
+        results, attention_map = results
+        # list(batch_size, num_heads, sent_length, sent_length) = layer
+        attention_map = torch.stack(attention_map, dim=0).transpose(0, 1)
+      # (layer, batch, head, length, length)
+      if self.config.output_attentions:
+        return results, attention_map.cpu().numpy()
+      else:
+        return results
 
   def analyze(self, mb, head_mask, params):
     self.model.eval()
@@ -351,7 +364,7 @@ class Model(BaseModel):
 
     loss, _ = outputs
 
-    loss = 0.1 * loss
+    loss = mb.loss_weight * loss
 
     if self.config.gradient_accumulation_steps > 1:
       loss = loss / self.config.gradient_accumulation_steps

@@ -3,7 +3,7 @@ import torch.nn as nn
 
 from relogic.logickit.base import utils
 from relogic.logickit.model.optimization import BertAdam
-from relogic.logickit.inference.inference import PairMatching
+from relogic.logickit.inference.retire_inference import PairMatching
 
 class PairMatchingModel(object):
   def __init__(self, config, tasks):

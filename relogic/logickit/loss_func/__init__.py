@@ -86,6 +86,9 @@ def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kw
     active_labels = label_ids[:, :logits.size(1)].contiguous().view(-1)[active_loss]
     loss = F.cross_entropy(active_logits, active_labels)
     return loss
+  elif task.name in [ENTITY_TYPE_CLASSIFICATION]:
+    loss = F.binary_cross_entropy_with_logits(logits, label_ids.float())
+    return loss
 
   elif task.name in [PARALLEL_TEACHER_STUDENT_TASK]:
     active_loss = kwargs.pop("mask")
@@ -97,9 +100,15 @@ def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kw
       loss = F.kl_div(active_logits.log(), active_target)
     else:
       target = kwargs.pop("target")
-      loss = F.l1_loss(logits, target)
+      if task.config.use_cosine_loss:
+        loss = (1 - F.cosine_similarity(logits, target)).sum(-1) / logits.size(0)
+      else:
+        loss = F.l1_loss(logits, target)
     return loss
-
+  elif task.name in [MIXSENT_TASK]:
+    target = kwargs.pop("target")
+    loss = F.mse_loss(logits, target)
+    return loss
   else:
     span_boundary, logits = logits
     return F.cross_entropy(logits.view(-1, logits.size(-1)), label_ids.view(-1))

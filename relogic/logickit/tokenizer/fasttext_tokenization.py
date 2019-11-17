@@ -43,11 +43,11 @@ class FasttextTokenizer(object):
 
 
   @classmethod
-  def from_pretrained(cls, pretrained_name_or_path, cache_dir=None, *inputs, **kwargs):
-    if pretrained_name_or_path in PRETRAINED_VECTOR_ARCHIVE_MAP:
-      vocab_file = PRETRAINED_VECTOR_ARCHIVE_MAP[pretrained_name_or_path]
+  def from_pretrained(cls, pretrained_model_name_or_path, cache_dir=None, *inputs, **kwargs):
+    if pretrained_model_name_or_path in PRETRAINED_VECTOR_ARCHIVE_MAP:
+      vocab_file = PRETRAINED_VECTOR_ARCHIVE_MAP[pretrained_model_name_or_path]
     else:
-      vocab_file = pretrained_name_or_path
+      vocab_file = pretrained_model_name_or_path
     try:
       resolved_vocab_file = cached_path(vocab_file, cache_dir=cache_dir)
     except EnvironmentError:
@@ -55,7 +55,7 @@ class FasttextTokenizer(object):
         "Model name '{}' was not found in model name list ({}). "
         "We assumed '{}' was a path or url but couldn't find any file "
         "associated to this path or url.".format(
-          pretrained_name_or_path,
+          pretrained_model_name_or_path,
           ', '.join(PRETRAINED_VECTOR_ARCHIVE_MAP.keys()),
           vocab_file))
       return None

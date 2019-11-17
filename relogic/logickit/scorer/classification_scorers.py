@@ -1,4 +1,5 @@
 import abc
+from relogic.logickit.scorer.scorer import Scorer
 from relogic.logickit.scorer.sent_level_scorer import SentLevelScorer
 from relogic.logickit.utils.utils import softmax
 import json
@@ -27,6 +28,36 @@ class F1Score(SentLevelScorer, metaclass=abc.ABCMeta):
       ("f1", f1),
       ("loss", self.get_loss()),
     ]
+
+class MultiClassAccuracyScorer(Scorer):
+  def __init__(self, label_mapping, dump_to_file, dataflow):
+    super(MultiClassAccuracyScorer, self).__init__()
+    self._n_correct, self._n_total = 0, 0
+    self.dataflow = dataflow
+    self._examples = []
+    self._preds = []
+    if dump_to_file:
+      self.dump_to_file_path = os.path.join(dump_to_file["output_dir"], dump_to_file["task_name"] + "_dump.json")
+      self.dump_to_file_handler = open(self.dump_to_file_path, 'w')
+
+  def update(self, mbs, predictions, loss, extra_args):
+    super(MultiClassAccuracyScorer, self).update(mbs, predictions, loss, extra_args)
+    labels = self.dataflow.decode_to_labels(preds=predictions, mb=mbs)
+    self._examples.extend(mbs.examples)
+    self._preds.extend(labels)
+
+  def _get_results(self):
+    for example, pred in zip(self._examples, self._preds):
+      if set(example.labels) == set(pred):
+        self._n_correct += 1
+      self._n_total += 1
+    return [("accuracy", self._n_correct / self._n_total)]
+
+  def get_loss(self):
+    return 0
+
+
+
 
 class RelationF1Scorer(F1Score):
   def __init__(self, label_mapping, dump_to_file):

@@ -82,9 +82,10 @@ class RecallScorer(Scorer):
             ("recall_right", self._n_hit_right / self._n_total_right)]
 
 class CartesianMatchingRecallScorer(Scorer):
-  def __init__(self, topk, dump_to_file=None):
+  def __init__(self, topk, qrels_file_path, dump_to_file=None):
     super(CartesianMatchingRecallScorer, self).__init__()
     self.topk = topk
+    self.qrels_file_path = qrels_file_path
     if dump_to_file:
       self.dump_to_file_path = os.path.join(dump_to_file["output_dir"], dump_to_file["task_name"] + "_dump.json")
       self.dump_to_file_handler = open(self.dump_to_file_path, 'w')
@@ -97,13 +98,25 @@ class CartesianMatchingRecallScorer(Scorer):
     for example, repr in zip(mbs.examples, reprs):
       self.dump_to_file_handler.write(json.dumps({
         "guid": example.guid,
-        "feature": repr}))
+        "feature": " ".join([str(f) for f in repr.cpu().data.numpy()])}) + "\n")
 
   def get_loss(self):
     return 0
 
   def _get_results(self):
-    return [("recall", 0)]
+    self.dump_to_file_handler.close()
+    dir = os.path.abspath(os.path.dirname(__file__))
+    recall_eval_path = os.path.join(dir, '..', '..', '..', 'evals', 'pair_matching', 'entity_align_eval.py')
+    eval_out = subprocess.check_output(["python", recall_eval_path, "-e", self.dump_to_file_path, "-g", self.qrels_file_path])
+    eval_out_lines = str(eval_out, 'utf-8').split('\n')
+    results = []
+    for line in eval_out_lines:
+      if line.startswith("Hits@1:"):
+        score = float(line.strip().split(" ")[1].strip("%"))
+        results.append(score)
+
+    return [("recall_left", results[0]),
+            ("recall_right", results[1])]
 
 
 # class CartesianMatchingRecallScorer(Scorer):

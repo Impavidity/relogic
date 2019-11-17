@@ -2,9 +2,11 @@ from relogic.logickit.tasks.tagging import Tagging
 from relogic.logickit.tasks.classification import Classification
 from relogic.logickit.tasks.span_extraction import SpanExtraction, SpanGCN
 from relogic.logickit.tasks.span_extraction import ECPExtraction
+from relogic.logickit.tasks.parsing import Parsing
 from relogic.logickit.tasks.unsupervised import Unsupervised
 from relogic.logickit.base.constants import (ECP_TASK, IR_TASK, NER_TASK, PARALLEL_MAPPING_TASK,
-                                             PARALLEL_TEACHER_STUDENT_TASK, PAIRWISE_TASK)
+                                             PARALLEL_TEACHER_STUDENT_TASK, PAIRWISE_TASK, ENTITY_TYPE_CLASSIFICATION,
+                                             DEP_PARSING_TASK, MIXSENT_TASK)
 
 def get_task(config, name, tokenizer):
   if name in ["ccg", "pos"]:
@@ -14,7 +16,7 @@ def get_task(config, name, tokenizer):
                 "srl_conll05", "srl_conll09",
                 "srl_conll12", "predicate_sense", "joint_srl", NER_TASK]:
     return Tagging(config, name, False, tokenizer)
-  elif name in ["matching", "rel_extraction", "pair_matching", IR_TASK, PAIRWISE_TASK]:
+  elif name in ["matching", "rel_extraction", "pair_matching", IR_TASK, PAIRWISE_TASK, ENTITY_TYPE_CLASSIFICATION]:
     return Classification(config, name, tokenizer)
   elif name in ["squad11", "squad20"]:
     return SpanExtraction(config, name, tokenizer)
@@ -22,9 +24,9 @@ def get_task(config, name, tokenizer):
     return SpanGCN(config, name, tokenizer)
   elif name in [ECP_TASK]:
     return ECPExtraction(config, name, tokenizer)
-  elif name in [PARALLEL_MAPPING_TASK, PARALLEL_TEACHER_STUDENT_TASK]:
+  elif name in [PARALLEL_MAPPING_TASK, PARALLEL_TEACHER_STUDENT_TASK, MIXSENT_TASK]:
     return Unsupervised(config, name, tokenizer)
-  elif name == "depparse":
-    return DependencyParsing(config, name)
+  elif name in [DEP_PARSING_TASK]:
+    return Parsing(config, name, tokenizer)
   else:
     raise ValueError("Unknow task", name)

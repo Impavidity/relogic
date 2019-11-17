@@ -19,10 +19,25 @@ import relogic.utils.crash_on_ipy
 
 
 def train(config):
-  model_trainer = trainer.Trainer(config)
+  if config.use_external_teacher:
+    teacher_model_path = config.teacher_model_path
+    teacher_config = os.path.join(teacher_model_path, "general_config.json")
+    with open(teacher_config) as f:
+      teacher_config = SimpleNamespace(**json.load(f))
+    teacher_config.local_rank = config.local_rank
+    teacher_config.no_cuda = config.no_cuda
+  else:
+    teacher_config = None
+  # A quick fix for loading external teacher
+  model_trainer = trainer.Trainer(
+    config=config, teacher_config=teacher_config)
   # A quick fix for version migration
-  progress = training_progress.TrainingProgress(
-    config=config, tokenizer=model_trainer.tokenizer["BPE"])
+  progress = training_progress.TrainingProgress(config=config)
+  if config.use_external_teacher:
+    model_path = os.path.join(teacher_model_path,
+                              teacher_config.model_name + ".ckpt")
+    model_trainer.restore(model_path)
+    model_trainer.restore_teacher(model_path)
   model_trainer.train(progress)
 
 def finetune(config):
@@ -38,8 +53,7 @@ def finetune(config):
                               restore_config.model_name + ".ckpt")
   model_trainer = trainer.Trainer(config)
   model_trainer.restore(model_path)
-  progress = training_progress.TrainingProgress(
-    config=config, tokenizer=model_trainer.tokenizer["BPE"])
+  progress = training_progress.TrainingProgress(config=config)
   model_trainer.train(progress)
 
 
@@ -61,6 +75,7 @@ def eval(config):
   restore_config.gold_answer_file = config.gold_answer_file
   restore_config.null_score_diff_threshold = config.null_score_diff_threshold
   restore_config.output_attentions = config.output_attentions
+  restore_config.use_external_teacher = False
   if not hasattr(restore_config, "branching_encoder"):
     restore_config.branching_encoder = False
   # Update the evaluation dataset
@@ -114,8 +129,12 @@ def main():
 
   parser.add_argument("--output_attentions", default=False, action="store_true")
   parser.add_argument("--span_inference", default=False, action="store_true")
+  parser.add_argument("--metrics", default="", type=str)
 
   # Task related configuration
+
+  # Sequence Labeling
+  parser.add_argument("--sequence_labeling_use_cls", default=False, action="store_true")
 
   # Relation Extraction
   parser.add_argument("--no_entity_surface", dest="entity_surface_aware", default=True, action="store_false")
@@ -142,14 +161,19 @@ def main():
   parser.add_argument("--srl_use_gold_predicate", default=False, action="store_true")
   parser.add_argument("--srl_use_gold_argument", default=False, action="store_true")
 
+  # Dependency Parsing
+  parser.add_argument("--dep_parsing_mlp_dim", default=300, type=int)
+  parser.add_argument("--dropout", default=0.3, type=float)
+
   # Parallel Mapping
   parser.add_argument("--parallel_mapping_mode", default="alignment", type=str)
+
 
   # Reading Comprehension
   parser.add_argument("--null_score_diff_threshold", default=1.0)
 
   # Information Retrieval
-  parser.add_argument("--qrels_file_path")
+  parser.add_argument("--qrels_file_path", type=str, default=None)
 
   # Modeling
   parser.add_argument("--use_gcn", dest="use_gcn", default=False, action="store_true")
@@ -157,6 +181,7 @@ def main():
 
   # Model
   parser.add_argument("--bert_model", type=str)
+  parser.add_argument("--encoder_type", type=str, default="bert", choices=["bert", "xlm", "xlmr"])
   parser.add_argument("--hidden_size", type=int, default=768)
   parser.add_argument("--projection_size", type=int, default=300)
   parser.add_argument(
@@ -167,10 +192,15 @@ def main():
   parser.add_argument("--repr_size", default=300, type=int)
   parser.add_argument("--branching_encoder", default=False, action="store_true")
   parser.add_argument("--routing_config_file", type=str)
+  parser.add_argument("--selected_non_final_layers", type=str, default="none", help="split by ; among tasks")
+  parser.add_argument("--dataset_type", type=str, default="bucket")
+  parser.add_argument("--language_id_file", type=str, default=None)
 
   # Semi-Supervised
   parser.add_argument("--is_semisup", default=False, action="store_true")
   parser.add_argument("--partial_view_sources", type=str)
+  parser.add_argument("--use_external_teacher", default=False, action="store_true")
+  parser.add_argument("--teacher_model_path", default=None, type=str)
 
   # Training
   parser.add_argument("--seed", type=int, default=3435)
@@ -208,10 +238,20 @@ def main():
   parser.add_argument("--two_stage_optim", default=False, action="store_true")
   parser.add_argument("--training_scheme", default=None, type=str)
   parser.add_argument("--training_scheme_file", default=None, type=str)
+  parser.add_argument("--num_train_optimization_steps", default=0, type=int)
+  parser.add_argument("--early_stop_at", default=0, type=int)
+  parser.add_argument("--loss_weight", type=str, default='1')
+  parser.add_argument("--select_index_method", type=str, default="cls")
+  parser.add_argument("--use_cosine_loss", default=False, action="store_true")
+  # We allow to set same training steps for different dataset
   # Need to combine to CUDA_VISIBLE_DEVICES
 
   # Analysis
   parser.add_argument("--head_to_mask_file", type=str, default="")
+
+
+  # Configuration
+  parser.add_argument("--trainer_config", type=str, default=None)
 
   args = parser.parse_args()
 

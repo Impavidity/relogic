@@ -6,7 +6,8 @@ import json
 def auxiliary_training(config, tasks):
   training_scheme = json.load(open(config.training_scheme_file))
   datasets = {task.name: task.train_set for task in tasks}
-  mbs = {task.name: task.train_set.endless_minibatches(config.train_batch_size)
+  mbs = {task.name: task.train_set.endless_minibatches(config.train_batch_size,
+                                                       sequential=(config.tasks[task.name]["dataset_type"] == "sequential"))
           for task in tasks}
   warmup = training_scheme["warmup"]
 
@@ -30,16 +31,18 @@ def auxiliary_training(config, tasks):
 
 def iterative_training(config, tasks):
   training_scheme = json.load(open(config.training_scheme_file))
-  mbs = {task.name: task.train_set.endless_minibatches(config.train_batch_size)
+  mbs = {task.name: task.train_set.endless_minibatches(config.train_batch_size,
+                                                       sequential=(config.tasks[task.name]["dataset_type"] == "sequential"))
          for task in tasks}
 
   iterative_stages = training_scheme["iterative_stages"]
   while True:
     for stage in iterative_stages:
       stage_steps = stage["steps"]
-      stage_task = stage["task"]
+      stage_tasks = stage["tasks"]
       for i in range(stage_steps):
-        yield next(mbs[stage_task])
+        for task in stage_tasks:
+          yield next(mbs[task])
 
 TRAINING_SCHEME = {
   AUXILIARY_TRAINING: auxiliary_training,
