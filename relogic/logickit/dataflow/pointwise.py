@@ -87,12 +87,12 @@ class PointwiseFeature(Feature):
     self.segment_ids = kwargs.pop("segment_ids")
     self.label_ids = kwargs.pop("label_ids")
 
-class PointwiseBatch(MiniBatch):
+class PointwiseMiniBatch(MiniBatch):
   """
 
   """
   def __init__(self, *inputs, **kwargs):
-    super(PointwiseBatch, self).__init__(*inputs, **kwargs)
+    super(PointwiseMiniBatch, self).__init__(*inputs, **kwargs)
 
   def generate_input(self, device, use_label):
     """Generate tensors based on PointwiseFeatures
@@ -127,7 +127,7 @@ class PointwiseDataFlow(DataFlow):
 
   @property
   def minibatch_class(self):
-    return PointwiseBatch
+    return PointwiseMiniBatch
 
   def process_example(self, example: PointwiseExample):
     """Process Pointwise example"""
@@ -159,5 +159,5 @@ class PointwiseDataFlow(DataFlow):
                          label_ids=label_ids))
     return features
 
-  def decode_to_labels(self, preds):
-    pass
+  def decode_to_labels(self, preds, mbs: PointwiseMiniBatch):
+    return preds
