@@ -10,11 +10,10 @@ from relogic.logickit.dataset.labeled_data_loader import LabeledDataLoader
 from relogic.logickit.base.constants import SEQUENCE_LABELING_TASK, NER_TASK
 
 class Tagging(Task):
-  def __init__(self, config, name, is_token_level=True, tokenizer=None):
+  def __init__(self, config, name,  tokenizer=None):
     super(Tagging, self).__init__(
       config, name, LabeledDataLoader(config, name, tokenizer))
     self.n_classes = len(set(self.loader.label_mapping.values()))
-    self.is_token_level = is_token_level
 
   def get_module(self):
     if self.name in ['srl', "srl_conll05", "srl_conll09", "srl_conll12"]:

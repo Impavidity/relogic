@@ -14,6 +14,9 @@ def configure(config):
     config.loss_weight = config.loss_weight.split(',')
     config.selected_non_final_layers = config.selected_non_final_layers.split(';')
     config.dataset_type = config.dataset_type.split(',')
+    config.qrels_file_path = config.qrels_file_path.split(',')
+    # I assume those tasks do not use qrels will put none as placeholder
+
     if len(config.train_file) != len(config.task_names):
       config.train_file = [config.train_file[0]] * len(config.task_names)
       config.dev_file = [config.dev_file[0]] * len(config.task_names)
@@ -28,10 +31,10 @@ def configure(config):
     assert len(config.task_names) == len(config.raw_data_path) == len(config.label_mapping_path)
     config.tasks = {}
     for (task, raw_data_path, label_mapping_path, train_file, dev_file, test_file,
-         loss_weight, selected_non_final_layers, dataset_type) in zip(
+         loss_weight, selected_non_final_layers, dataset_type, qrels_file_path) in zip(
           config.task_names, config.raw_data_path, config.label_mapping_path,
           config.train_file, config.dev_file, config.test_file, config.loss_weight,
-          config.selected_non_final_layers, config.dataset_type):
+          config.selected_non_final_layers, config.dataset_type, config.qrels_file_path):
       config.tasks[task] = {}
       config.tasks[task]["raw_data_path"] = raw_data_path
       config.tasks[task]["label_mapping_path"] = label_mapping_path
@@ -42,6 +45,8 @@ def configure(config):
       config.tasks[task]["selected_non_final_layers"] = None if selected_non_final_layers == "none" else [
         int(item) for item in selected_non_final_layers.split(',')]
       config.tasks[task]["dataset_type"] = dataset_type
+      config.tasks[task]["qrels_file_path"] = qrels_file_path
+
   if config.output_dir:
     config.progress = os.path.join(config.output_dir, "progress")
     config.history_file = os.path.join(config.output_dir, "history.pkl")

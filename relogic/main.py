@@ -41,16 +41,17 @@ def train(config):
   model_trainer.train(progress)
 
 def finetune(config):
-  general_config_path = os.path.join(config.restore_path,
+  general_config_path = os.path.join(config.finetune_restore_path,
                                      "general_config.json")
   with open(general_config_path) as f:
     restore_config = SimpleNamespace(**json.load(f))
   if config.model_name:
-    model_path = os.path.join(config.restore_path,
+    model_path = os.path.join(config.finetune_restore_path,
                             config.model_name + ".ckpt")
   else:
-    model_path = os.path.join(config.restore_path,
+    model_path = os.path.join(config.finetune_restore_path,
                               restore_config.model_name + ".ckpt")
+
   model_trainer = trainer.Trainer(config)
   model_trainer.restore(model_path)
   progress = training_progress.TrainingProgress(config=config)
@@ -112,6 +113,7 @@ def main():
   parser.add_argument("--do_lower_case", default=False, action="store_true")
   parser.add_argument("--model_name", type=str)
   parser.add_argument("--restore_path", type=str)
+  parser.add_argument("--finetune_restore_path", type=str)
   parser.add_argument("--train_file", type=str, default="train.json")
   parser.add_argument("--dev_file", type=str, default="dev.json")
   parser.add_argument("--test_file", type=str, default="test.json")
@@ -252,6 +254,8 @@ def main():
 
   # Configuration
   parser.add_argument("--trainer_config", type=str, default=None)
+  parser.add_argument("--module_config", type=str, default=None)
+  parser.add_argument("--task_config", type=str, default=None)
 
   args = parser.parse_args()
 

@@ -11,7 +11,9 @@ from relogic.logickit.dataflow.pairwise import PairwiseDataFlow, PairwiseExample
 from relogic.logickit.dataflow.singleton import SingletonDataFlow, SingletonExample, SingletonFeature, SingletonMiniBatch
 from relogic.logickit.dataflow.dep import DependencyParsingDataFlow, DependencyParsingExample, DependencyParsingFeature, DependencyParsingMiniBatch
 from relogic.logickit.dataflow.mixsent import MixSentDataFlow, MixSentExample, MixSentFeature, MixSentMiniBatch
-TASK_TO_DATAFLOW_CLASS_MAP = {
+from relogic.common.prefix_map import PrefixMap
+
+task_to_dataflow_class_map = {
   SRL_TASK: SRLDataFlow,
   ECP_TASK: ECPDataFlow,
   POINTWISE_TASK: PointwiseDataFlow,
@@ -26,3 +28,5 @@ TASK_TO_DATAFLOW_CLASS_MAP = {
   DEP_PARSING_TASK: DependencyParsingDataFlow,
   MIXSENT_TASK: MixSentDataFlow
 }
+
+TASK_TO_DATAFLOW_CLASS_MAP = PrefixMap(task_to_dataflow_class_map)

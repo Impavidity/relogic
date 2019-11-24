@@ -204,7 +204,7 @@ class RetrievalScorer(Scorer):
   """
 
   """
-  def __init__(self, label_mapping, qrels_file_path, correct_label='1', dump_to_file=None):
+  def __init__(self, label_mapping, qrels_file_path, correct_label='1', dump_to_file=None, ):
     super(RetrievalScorer, self).__init__()
     self.label_mapping = label_mapping
     self._inv_label_mapping = {v: k for k, v in label_mapping.items()}
@@ -230,17 +230,23 @@ class RetrievalScorer(Scorer):
     return 0
 
   def _get_results(self):
+    topic_doc_collection = {}
     for example, preds in zip(self._examples, self._preds):
       preds = softmax(preds)
       score = preds[self.label_mapping[self.correct_label]]
       text_a_id, text_b_id = example.guid.split('-')
-      if self.dump_to_file_handler:
+      if text_a_id not in topic_doc_collection:
+        topic_doc_collection[text_a_id] = {}
+      topic_doc_collection[text_a_id][text_b_id] = max(topic_doc_collection[text_a_id].get(text_b_id, 0), score)
+    for text_a_id in topic_doc_collection:
+      for text_b_id in topic_doc_collection[text_a_id]:
+        score = topic_doc_collection[text_a_id][text_b_id]
         self.dump_to_file_handler.write("{} Q0 {} 0 {} rerank\n".format(text_a_id, text_b_id, score))
 
     self.dump_to_file_handler.flush()
     self.dump_to_file_handler.close()
     dir = os.path.abspath(os.path.dirname(__file__))
-    trec_eval_path = os.path.join(dir, '..', '..', '..', 'evals', 'trec', 'trec_eval.9.0.4/trec_eval')
+    trec_eval_path = os.path.join(dir, '..', '..', '..', 'evals', 'trec_eval', 'trec_eval.9.0.4/trec_eval')
 
     trec_out = subprocess.check_output([trec_eval_path, self.qrels_file_path , self.dump_to_file_path])
     trec_out_lines = str(trec_out, 'utf-8').split('\n')

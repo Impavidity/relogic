@@ -5,6 +5,8 @@ import torch.nn.functional as F
 import torch
 
 def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kwargs):
+  if task.name.startswith(IR_TASK):
+    return F.cross_entropy(logits, label_ids)
   if task.name in ["joint_srl"]:
     if isinstance(label_ids, tuple):
       label_ids, pred_span_label, arg_span_label, pos_tag_ids = label_ids
