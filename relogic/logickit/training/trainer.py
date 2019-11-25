@@ -8,6 +8,7 @@ import json
 
 import torch
 from relogic.logickit.base import utils
+from relogic.logickit.dataflow import DataFlow
 from relogic.logickit.tokenizer.tokenization import BertTokenizer
 from relogic.logickit.tokenizer.fasttext_tokenization import FasttextTokenizer
 from relogic.logickit.tasks import get_task
@@ -145,8 +146,8 @@ class Trainer(object):
   def evaluate_task(self, task, train_set):
     scorer = task.get_scorer(dump_to_file={"output_dir": self.config.output_dir,
                                            "task_name": task.name})
-    data = task.train_set if train_set else task.val_set
-    for i, mb in enumerate(data.get_minibatches(self.config.test_batch_size)):
+    data: DataFlow = task.train_set if train_set else task.val_set
+    for i, mb in enumerate(data.get_minibatches(self.config.tasks[data.task_name]["test_batch_size"])):
       # batch_preds = self.model.test(mb)
       batch_preds = self.model.test_abstract(mb)
 
@@ -178,9 +179,9 @@ class Trainer(object):
       "attn_entropy": attn_entropy,
       "total_token": 0.0
     }
-    data = task.val_set
+    data : DataFlow = task.val_set
     # The output of the model is logits and attention_map
-    for i, mb in enumerate(data.get_minibatches(self.config.test_batch_size)):
+    for i, mb in enumerate(data.get_minibatches(self.config.tasks[data.task_name]["test_batch_size"])):
       batch_preds, attention_map = self.model.analyze(mb, head_mask, params=params)
       extra_output = {}
       extra_output["attention_map"] = attention_map
@@ -217,7 +218,7 @@ class Trainer(object):
       thresholds = np.cumsum([w / np.sum(weights) for w in weights])
 
       labeled_mbs = [
-        dataset.endless_minibatches(self.config.train_batch_size)
+        dataset.endless_minibatches(self.config.tasks[dataset.task_name]["train_batch_size"])
         for dataset in datasets
       ]
       while True:

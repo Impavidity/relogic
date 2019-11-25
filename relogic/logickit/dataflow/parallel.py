@@ -4,7 +4,8 @@ import torch
 
 from relogic.logickit.dataflow import DataFlow, Example, Feature, MiniBatch
 from relogic.logickit.utils import create_tensor
-from relogic.logickit.tokenizer.tokenization import BertTokenizer
+from relogic.logickit.tokenizer import CustomizedBertTokenizer, RobertaXLMTokenizer
+
 
 
 class ParallelExample(Example):
@@ -28,12 +29,13 @@ class ParallelExample(Example):
     self.text_a = text_a
     self.text_b = text_b
     self.alignment = alignment
+    self.padding_id = 0
 
   def process(self, tokenizers, *inputs, **kwargs):
     """Process the sentence pair."""
 
     for tokenizer in tokenizers.values():
-      if isinstance(tokenizer, BertTokenizer):
+      if isinstance(tokenizer, CustomizedBertTokenizer):
         self.text_a_tokens, self.text_a_is_head = tokenizer.tokenize(self.text_a)
         self.text_b_tokens, self.text_b_is_head = tokenizer.tokenize(self.text_b)
 
@@ -68,6 +70,34 @@ class ParallelExample(Example):
         else:
           self.a_selected_indices = None
           self.b_selected_indices = None
+      elif isinstance(tokenizer, RobertaXLMTokenizer):
+        self.padding_id = 1
+        (self.a_tokens, self.a_is_head,
+         self.a_input_ids) = tokenizer.tokenize_and_add_placeholder_and_convert_to_ids(
+          self.text_a, None)
+        (self.b_tokens, self.b_is_head,
+         self.b_input_ids) = tokenizer.tokenize_and_add_placeholder_and_convert_to_ids(
+          self.text_b, None)
+        self.a_segment_ids = [0] * len(self.a_tokens)
+        self.b_segment_ids = [0] * len(self.b_tokens)
+        self.a_input_mask = [1] * len(self.a_input_ids)
+        self.b_input_mask = [1] * len(self.b_input_ids)
+
+        # self.a_head_index = [
+        #                       idx for idx, value in enumerate(self.a_is_head) if value == 1
+        #                     ] + [len(self.a_is_head) - 1]
+        # self.b_head_index = [
+        #                       idx for idx, value in enumerate(self.b_is_head) if value == 1
+        #                     ] + [len(self.b_is_head) - 1]
+        #
+        # if self.alignment is not None:
+        #   self.a_selected_indices = [self.a_head_index[index] for index in self.alignment[0]]
+        #   self.b_selected_indices = [self.b_head_index[index] for index in self.alignment[1]]
+        # else:
+        self.a_selected_indices = None
+        self.b_selected_indices = None
+
+
 
 
   @classmethod
@@ -104,6 +134,8 @@ class ParallelFeature(Feature):
     self.b_input_ids = kwargs.pop("b_input_ids")
     self.a_segment_ids = kwargs.pop("a_segment_ids")
     self.b_segment_ids = kwargs.pop("b_segment_ids")
+    self.a_input_mask = kwargs.pop("a_input_mask")
+    self.b_input_mask = kwargs.pop("b_input_mask")
     self.a_selected_indices = kwargs.pop("a_selected_indices")
     self.b_selected_indices = kwargs.pop("b_selected_indices")
     self.a_is_head = kwargs.pop("a_is_head")
@@ -124,7 +156,7 @@ class ParallelMiniBatch(MiniBatch):
                                           torch.long, device)
     inputs["a_input_mask"] = create_tensor(self.input_features, "a_input_mask",
                                            torch.long, device)
-    inputs["b_input_mask"] = create_tensor(self.input_features, "b_input_maks",
+    inputs["b_input_mask"] = create_tensor(self.input_features, "b_input_mask",
                                            torch.long, device)
     inputs["a_segment_ids"] = create_tensor(self.input_features, "a_segment_ids",
                                             torch.long, device)
@@ -176,8 +208,8 @@ class ParallelDataFlow(DataFlow):
     for idx, example in enumerate(examples):
       a_padding = [0] * (a_max_token_length - example.len_a)
       b_padding = [0] * (b_max_token_length - example.len_b)
-      a_input_ids = example.a_input_ids + a_padding
-      b_input_ids = example.b_input_ids + b_padding
+      a_input_ids = example.a_input_ids + [example.padding_id] * (a_max_token_length - example.len_a)
+      b_input_ids = example.b_input_ids + [example.padding_id] * (b_max_token_length - example.len_b)
       a_segment_ids = example.a_segment_ids + a_padding
       b_segment_ids = example.b_segment_ids + b_padding
       a_input_mask = example.a_input_mask + a_padding
