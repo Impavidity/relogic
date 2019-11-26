@@ -16,6 +16,8 @@ def configure(config):
     config.dataset_type = config.dataset_type.split(',')
     config.qrels_file_path = config.qrels_file_path.split(',')
     # I assume those tasks do not use qrels will put none as placeholder
+    config.train_batch_size = config.train_batch_size.split(',')
+    config.test_batch_size = config.test_batch_size.split(',')
 
     if len(config.train_file) != len(config.task_names):
       config.train_file = [config.train_file[0]] * len(config.task_names)
@@ -28,13 +30,20 @@ def configure(config):
     if len(config.dataset_type) != len(config.task_names):
       config.dataset_type = [config.dataset_type[0]] * len(config.task_names)
 
+    if len(config.train_batch_size) != len(config.task_names):
+      config.train_batch_size = [config.train_batch_size[0]] * len(config.task_names)
+    if len(config.test_batch_size) != len(config.task_names):
+      config.test_batch_size = [config.test_batch_size[0]] * len(config.task_names)
+
     assert len(config.task_names) == len(config.raw_data_path) == len(config.label_mapping_path)
     config.tasks = {}
     for (task, raw_data_path, label_mapping_path, train_file, dev_file, test_file,
-         loss_weight, selected_non_final_layers, dataset_type, qrels_file_path) in zip(
+
+         loss_weight, selected_non_final_layers, dataset_type, qrels_file_path, train_batch_size, test_batch_size) in zip(
           config.task_names, config.raw_data_path, config.label_mapping_path,
           config.train_file, config.dev_file, config.test_file, config.loss_weight,
-          config.selected_non_final_layers, config.dataset_type, config.qrels_file_path):
+          config.selected_non_final_layers, config.dataset_type, config.qrels_file_path,
+      config.train_batch_size, config.test_batch_size):
       config.tasks[task] = {}
       config.tasks[task]["raw_data_path"] = raw_data_path
       config.tasks[task]["label_mapping_path"] = label_mapping_path
@@ -46,6 +55,8 @@ def configure(config):
         int(item) for item in selected_non_final_layers.split(',')]
       config.tasks[task]["dataset_type"] = dataset_type
       config.tasks[task]["qrels_file_path"] = qrels_file_path
+      config.tasks[task]["train_batch_size"] = int(train_batch_size)
+      config.tasks[task]["test_batch_size"] = int(test_batch_size)
 
   if config.output_dir:
     config.progress = os.path.join(config.output_dir, "progress")
@@ -78,6 +89,12 @@ def configure(config):
     config.metrics = None
 
 def update_configure(restore_config, config):
+  # quick fix for batch_size
+  for task_name in restore_config.tasks:
+    if "train_batch_size" not in restore_config.tasks[task_name]:
+      restore_config.tasks[task_name]["train_batch_size"] = restore_config.train_batch_size
+      restore_config.tasks[task_name]["test_batch_size"] = restore_config.test_batch_size
+
   if config.qrels_file_path is not None:
     restore_config.qrels_file_path = config.qrels_file_path
   if config.raw_data_path:

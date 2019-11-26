@@ -109,7 +109,10 @@ def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kw
     return loss
   elif task.name in [MIXSENT_TASK]:
     target = kwargs.pop("target")
-    loss = F.mse_loss(logits, target)
+    # loss = F.mse_loss(logits, target)
+    active_logits = F.softmax(logits.view(-1, logits.size(-1)), -1)
+    active_target = F.softmax(target.view(-1, target.size(-1)), -1)
+    loss = F.kl_div(active_logits.log(), active_target, reduction="batchmean")
     return loss
   else:
     span_boundary, logits = logits

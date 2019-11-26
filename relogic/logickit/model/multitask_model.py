@@ -40,22 +40,26 @@ class Model(BaseModel):
   def setup_training(self, config, tasks):
     # Calculate optimization steps
     size_train_examples = 0
+    config.num_steps_in_one_epoch = 0
     if config.mode == "train" or config.mode == "finetune":
       for task in tasks:
         utils.log("{} : {}  training examples".format(task.name, task.train_set.size))
         if "loss_weight" in config.tasks[task.name]:
           utils.log("loss weight {}".format(config.tasks[task.name]["loss_weight"]))
         size_train_examples += task.train_set.size
+        config.num_steps_in_one_epoch += task.train_set.size // config.tasks[task.name]["train_batch_size"]
 
-    config.num_steps_in_one_epoch = size_train_examples // config.train_batch_size
+        # config.train_batch_size = config.train_batch_size // config.gradient_accumulation_steps
+        # config.test_batch_size = config.test_batch_size // config.gradient_accumulation_steps
+        config.tasks[task.name]["train_batch_size"] =  config.tasks[task.name]["train_batch_size"] // config.gradient_accumulation_steps
+        config.tasks[task.name]["test_batch_size"] = config.tasks[task.name]["test_batch_size"] // config.gradient_accumulation_steps
+        # adjust to real training batch size
+        utils.log("Training batch size: {}".format(config.tasks[task.name]["train_batch_size"]))
+
     if config.num_train_optimization_steps == 0:
-      config.num_train_optimization_steps = size_train_examples // config.train_batch_size * config.epoch_number \
+      config.num_train_optimization_steps = config.num_steps_in_one_epoch * config.epoch_number \
         if config.schedule_lr else -1
     utils.log("Optimization steps : {}".format(config.num_train_optimization_steps))
-    # adjust to real training batch size
-    config.train_batch_size = config.train_batch_size // config.gradient_accumulation_steps
-    utils.log("Training batch size: {}".format(config.train_batch_size))
-    config.test_batch_size = config.test_batch_size // config.gradient_accumulation_steps
 
     # Optimization
     no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']

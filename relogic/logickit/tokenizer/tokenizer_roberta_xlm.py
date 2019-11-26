@@ -47,13 +47,15 @@ class RobertaXLMTokenizer:
   def tokenize_and_add_placeholder_and_convert_to_ids(self, sent, expected_tokenization):
     roberta_ids = self.roberta.encode(sent)
     bpe_tokens = [self.roberta.bpe.decode(self.roberta.task.source_dictionary.string([x])) for x in roberta_ids]
-    alignmet = self.alignment(bpe_tokens, expected_tokenization)
-    is_head = [2]
-    for word in alignmet:
-      is_head.append(1)
-      for _ in word[1:]:
-        is_head.append(0)
-    is_head.append(2)
+
+    if expected_tokenization is not None:
+      alignmet = self.alignment(bpe_tokens, expected_tokenization)
+      is_head = [2]
+      for word in alignmet:
+        is_head.append(1)
+        for _ in word[1:]:
+          is_head.append(0)
+      is_head.append(2)
 
     # Fix for empty
     fixed_bpe_tokens = []
@@ -64,7 +66,12 @@ class RobertaXLMTokenizer:
       if token.strip() != "" or idx == 0 or idx == len(bpe_tokens)-1:
         fixed_bpe_tokens.append(token)
         fixed_roberta_ids.append(roberta_id)
-    assert(len(fixed_bpe_tokens) == len(is_head))
+
+    if expected_tokenization is not None:
+      assert(len(fixed_bpe_tokens) == len(is_head))
+    else:
+      is_head = [0] * len(fixed_bpe_tokens)
+
     return fixed_bpe_tokens, is_head, fixed_roberta_ids
 
 if __name__ == "__main__":
