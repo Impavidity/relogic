@@ -29,9 +29,14 @@ class Predictor(object):
     # ]
     self.model = get_model(config)(config=self.config, tasks=self.tasks)
 
-  def predict(self, structures):
+  def predict(self, structures, selected_task=None):
     # We currently assume it is single task model
-    task: Task = self.tasks[0]
+    sel_task = None
+    if selected_task is not None:
+      for task in self.tasks:
+        if task.name == selected_task:
+          sel_task = task
+    task: Task = self.tasks[0] if selected_task is None else sel_task
     data: DataFlow = task.dataset
     data.update_with_structures(structures)
     print(self.config)

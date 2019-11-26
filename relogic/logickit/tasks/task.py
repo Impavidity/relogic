@@ -16,10 +16,10 @@ class Task(object, metaclass=abc.ABCMeta):
             config.mode == 'train' or config.mode == 'valid' or config.mode == "finetune") else "test")
     else:
       self.val_set = None
-      try:
-        self.dataset: DataFlow = self.loader.get_dataflow()
-      except:
-        self.dataset = None
+    try:
+      self.dataset: DataFlow = self.loader.get_dataflow()
+    except:
+      self.dataset = None
 
   @abc.abstractmethod
   def get_module(self):
