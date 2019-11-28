@@ -6,6 +6,7 @@ python -u -m relogic.main \
 --task_name ir \
 --mode train \
 --output_dir saves/ir/MicroBlog/test  \
+--encoder_type bert \
 --bert_model bert-base-multilingual-cased \
 --raw_data_path tests/datasets/MicroBlog/ \
 --label_mapping_path data/preprocessed_data/binary_classification.json \

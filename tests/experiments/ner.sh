@@ -2,8 +2,8 @@ python -u -m relogic.main \
 --task_name ner \
 --mode train \
 --output_dir saves/ner/CoNLL2002/English/test \
---encoder_type xlmr \
---bert_model xlmr.large.v0 \
+--encoder_type bert \
+--bert_model bert-base-multilingual-cased \
 --raw_data_path tests/datasets/CoNLL2002/English/ \
 --label_mapping_path data/preprocessed_data/ner_BIOES_label_mapping.json \
 --model_name default \
@@ -16,12 +16,11 @@ python -u -m relogic.main \
 --pretokenized \
 --metrics f1 \
 --early_stop_at 5 \
---trainer_config configurations/xlmr_large_config.json \
---hidden_size 1024
+--trainer_config configurations/mbert_config.json
 
 python -u -m relogic.main \
 --mode eval \
---restore_path saves/xlmr/CoNLL2002/English/test \
+--restore_path saves/ner/CoNLL2002/English/test \
 --no_cuda
 
-rm -r saves/xlmr/CoNLL2002/English/test
+rm -r saves/ner/CoNLL2002/English/test
