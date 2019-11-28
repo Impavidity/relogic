@@ -1,6 +1,9 @@
 branches:
   only:
   - master
+cache:
+  directories:
+    - $HOME/.cache/torch
 
 language: python
 python:
