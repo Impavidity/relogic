@@ -20,7 +20,7 @@ python -u -m relogic.main \
 --early_stop_at 5 \
 --qrels_file_path tests/datasets/MicroBlog/qrels.mb.txt \
 --fix_embedding \
---trainer_config configurations/mbert_config.json
+--config_file configurations/mbert_config.json
 
 python -u -m relogic.main \
 --mode eval \

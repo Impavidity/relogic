@@ -15,7 +15,7 @@ from relogic.logickit.training import trainer, training_progress
 from relogic.logickit.serving import Server
 from relogic.logickit.analyzer.heads_importance import compute_heads_importance, mask_heads
 
-if "PUDB" not in os.environ["PUDB"] or os.environ["PUDB"] == "false":
+if "PUDB" not in os.environ or os.environ["PUDB"] == "false":
   import relogic.utils.crash_on_ipy
 
 
@@ -254,6 +254,7 @@ def main():
 
 
   # Configuration
+  parser.add_argument("--config_file", type=str, default=None)
   parser.add_argument("--trainer_config", type=str, default=None)
   parser.add_argument("--module_config", type=str, default=None)
   parser.add_argument("--task_config", type=str, default=None)

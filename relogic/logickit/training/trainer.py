@@ -18,7 +18,7 @@ from relogic.logickit.dataflow import MiniBatch
 import os
 from relogic.logickit.utils.utils import print_2d_tensor
 from relogic.logickit.base.constants import ECP_TASK, IR_TASK, NER_TASK, PARALLEL_MAPPING_TASK, DISTILL_TASKS, PARALLEL_TEACHER_STUDENT_TASK
-from relogic.logickit.base.configuration_trainer import TrainerConfig
+from relogic.logickit.base.configuration import Configuration
 from relogic.logickit.tokenizer import NAME_TO_TOKENIZER_MAP
 
 class Trainer(object):
@@ -34,13 +34,13 @@ class Trainer(object):
     """
     self.config = config
 
-    trainer_config : TrainerConfig = TrainerConfig.load_from_json_file(config.trainer_config)
+    ext_config : Configuration = Configuration.load_from_json_file(config.config_file)
 
     if tokenizers is not None:
       self.tokenizers = tokenizers
     else:
       self.tokenizers = {}
-      for tokenizer_name, params in trainer_config.tokenizers.items():
+      for tokenizer_name, params in ext_config.tokenizer_configs.items():
         self.tokenizers[tokenizer_name] = NAME_TO_TOKENIZER_MAP[tokenizer_name].from_pretrained(**params)
 
     # A quick fix for version migration
@@ -48,7 +48,7 @@ class Trainer(object):
       get_task(self.config, task_name, self.tokenizers)
       for task_name in self.config.task_names
     ]
-    self.model = get_model(config)(config=self.config, tasks=self.tasks)
+    self.model = get_model(config)(config=self.config, tasks=self.tasks, ext_config=ext_config)
 
     if self.config.use_external_teacher:
       # Extension for multi-model distillation
