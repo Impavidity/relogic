@@ -6,6 +6,6 @@
   },
   "encoder": {
     "fix_embedding": true,
-    "fix_layers": ["0-5"]
+    "fix_layers": ["0-5", "8"]
   }
 }

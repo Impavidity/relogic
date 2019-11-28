@@ -17,7 +17,8 @@ class EncoderConfigs(Configs):
         s, e = layer_range.split('-')
         for i in range(int(s), int(e)+1): # inclusive
           self.fix_layers.append(i)
-
+      else:
+        self.fix_layers.append(int(layer_range))
 
 class Configuration:
   def __init__(
