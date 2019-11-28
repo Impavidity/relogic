@@ -4,7 +4,6 @@ from __future__ import print_function
 
 import os
 from relogic.logickit.base import utils
-from relogic.logickit.dataset.minibatching import UnlabeledDataReader
 import torch
 import json
 
