@@ -22,6 +22,6 @@ python -u -m relogic.main \
 python -u -m relogic.main \
 --mode eval \
 --restore_path saves/xlmr/CoNLL2002/English/test \
---local_rank 0
+--no_cuda
 
 rm -r saves/xlmr/CoNLL2002/English/test

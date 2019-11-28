@@ -24,7 +24,7 @@ python -u -m relogic.main \
 python -u -m relogic.main \
 --mode eval \
 --restore_path saves/ir/MicroBlog/test \
---local_rank 0
+--no_cuda
 
 rm -r saves/ir/MicroBlog/test
 
