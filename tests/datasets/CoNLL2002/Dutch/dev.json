@@ -1,0 +1,20 @@
+{"tokens": ["Dat", "is", "verder", "opgelaaid", "door", "windsnelheden", "die", "oplopen", "tot", "35", "kilometer", "per", "uur", "."], "labels": ["O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["Bomaanslag", "op", "Indiase", "trein", ":", "twaalf", "doden"], "labels": ["O", "O", "B-MISC", "O", "O", "O", "O"]}
+{"tokens": ["Ook", "in", "Californi\u00eb", ",", "in", "Sierra", "Nevada", ",", "woeden", "al", "een", "week", "lang", "hevige", "bosbranden", "."], "labels": ["O", "O", "B-LOC", "O", "O", "B-LOC", "I-LOC", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["De", "brand", "heeft", "vooral", "het", "nationale", "park", "van", "de", "Sequoia-indianen", "getroffen", "."], "labels": ["O", "O", "O", "O", "O", "O", "O", "O", "O", "B-MISC", "O", "O"]}
+{"tokens": ["De", "gestrande", "Concorde", "wordt", "nu", "aan", "een", "onderzoek", "onderworpen", "."], "labels": ["O", "O", "B-MISC", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["Dat", "heeft", "de", "luchtvaartpolitie", "GTA", "gemeld", "."], "labels": ["O", "O", "O", "O", "B-ORG", "O", "O"]}
+{"tokens": ["publicatiedatum"], "labels": ["O"]}
+{"tokens": ["De", "stoffelijke", "resten", "die", "vrijdag", "in", "het", "puin", "van", "het", "hotel", "werden", "gevonden", ",", "waren", "niet", "afkomstig", "van", "een", "nieuw", "lijk", ",", "maar", "van", "twee", "inzittenden", "die", "al", "bij", "de", "doden", "waren", "geteld", "."], "labels": ["O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["Een", "bomaanslag", "op", "een", "trein", "in", "de", "noordoostelijke", "Indiase", "deelstaat", "Assam", "heeft", "aan", "minstens", "twaalf", "mensen", "het", "leven", "gekost", "."], "labels": ["O", "O", "O", "O", "O", "O", "O", "O", "B-MISC", "O", "B-LOC", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["1500", "brandweerlieden", "en", "17", "speciale", "helikopters", "proberen", "het", "vuur", "te", "bedwingen", ",", "maar", "naar", "eigen", "zeggen", "zal", "het", "nog", "minstens", "twee", "weken", "duren", "voor", "het", "vuur", "onder", "controle", "is", "."], "labels": ["O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["publicatie"], "labels": ["O"]}
+{"tokens": ["Later", "op", "zondag", "moest", "een", "Britse", "Concorde", "in", "het", "Canadese", "Gander", "een", "noodlanding", "maken", ",", "omdat", "passagiers", "in", "het", "vliegtuig", "brandstof", "roken", "."], "labels": ["O", "O", "O", "O", "O", "B-MISC", "B-MISC", "O", "O", "B-MISC", "B-LOC", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["Algemeen"], "labels": ["O"]}
+{"tokens": ["Bosbranden", "in", "La", "Palma", "en", "Californi\u00eb"], "labels": ["O", "O", "B-LOC", "I-LOC", "O", "B-LOC"]}
+{"tokens": ["De", "Morgen"], "labels": ["B-ORG", "I-ORG"]}
+{"tokens": ["GTA", "sluit", "echter", "niet", "uit", "dat", "nog", "slachtoffers", "worden", "gevonden", "als", "de", "motoren", "worden", "geborgen", "."], "labels": ["B-ORG", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["dinsdag", ",", "1", "augustus", "2000"], "labels": ["O", "O", "O", "O", "O"]}
+{"tokens": ["De", "rebellen", "uit", "Assam", "beschuldigen", "de", "regering", "in", "New", "Delhi", "ervan", "de", "grondstoffen", "uit", "de", "deelstaat", "te", "halen", ",", "zonder", "dat", "de", "plaatselijke", "economie", "daarvan", "profiteert", "."], "labels": ["O", "O", "O", "B-LOC", "O", "O", "O", "O", "B-LOC", "I-LOC", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["Dodental", "Concorde-ramp", "daalt", "tot", "113"], "labels": ["O", "B-MISC", "O", "O", "O"]}
+{"tokens": ["Peter", "Goris"], "labels": ["B-PER", "I-PER"]}

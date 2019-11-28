@@ -6,7 +6,6 @@ from relogic.logickit.base import utils
 from relogic.logickit.model.base_model import BaseModel
 from relogic.logickit.model.optimization import BertAdam, MultipleOptimizer
 import numpy as np
-from relogic.logickit.data_io import generate_input
 from relogic.logickit.inference import get_inference
 from relogic.logickit.dataflow import MiniBatch
 from relogic.logickit.utils.utils import entropy
@@ -131,36 +130,6 @@ class Model(BaseModel):
     self.global_step_unlabeled = 0
 
 
-  def generate_input(self, mb, use_label=True):
-
-    input_ids = torch.tensor([f.input_ids for f in mb.input_features], dtype=torch.long).to(self.device)
-    input_mask = torch.tensor([f.input_mask for f in mb.input_features], dtype=torch.long).to(self.device)
-    if mb.task_name not in ["squad11", "squad20"]:
-      input_head = torch.tensor([f.is_head for f in mb.input_features], dtype=torch.long).to(self.device)
-    else:
-      input_head = None
-    segment_ids = torch.tensor([f.segment_ids for f in mb.input_features], dtype=torch.long).to(self.device)
-    if use_label:
-      label_ids = torch.tensor([f.label_ids for f in mb.input_features], dtype=torch.long).to(self.device)
-    else:
-      label_ids = None
-    extra_args = {}
-    if mb.task_name in ["srl", "srl_conll05", "srl_conll09", "srl_conll12"]:
-      is_predicate_id = torch.tensor([f.is_predicate for f in mb.input_features], dtype=torch.long).to(self.device)
-      extra_args["is_predicate_id"] = is_predicate_id
-    if mb.task_name == 'rel_extraction':
-      subj_indicator = torch.tensor([f.subj_indicator for f in mb.input_features], dtype=torch.long).to(self.device)
-      obj_indicator = torch.tensor([f.obj_indicator for f in mb.input_features], dtype=torch.long).to(self.device)
-      extra_args['subj_indicator'] = subj_indicator
-      extra_args['obj_indicator'] = obj_indicator
-    if mb.task_name == "predicate_sense":
-      temp = torch.tensor([f.label_ids for f in mb.input_features], dtype=torch.long).to(self.device)
-      # hard code 'O' == 0 'X' == 22
-      extra_args["is_predicate_id"] =  (temp != 0) & (temp != 22)
-    if self.config.branching_encoder:
-      extra_args["route_path"] = self.config.task_route_paths[mb.task_name]
-    return input_ids, input_mask, input_head, segment_ids, label_ids, extra_args
-
   def flip_the_coin(self, step):
     if np.random.rand() < min(0.6, 1 / 10000 * step):
       return True
@@ -172,27 +141,11 @@ class Model(BaseModel):
 
   def train_labeled_abstract(self, mb, step):
     self.model.train()
-    if isinstance(mb, MiniBatch):
-      inputs = mb.generate_input(device=self.device, use_label=True)
-      if "input_ids" in inputs and inputs["input_ids"].size(0) == 0:
-        utils.log("Zero Batch")
-        return 0
-    else:
-      if mb.task_name in ["rel_extraction", "srl", "er"]:
-        inputs = generate_input(
-          mb=mb,
-          config=self.config,
-          device=self.device)
-        if inputs["input_ids"].size(0) == 0:
-          utils.log("Zero Batch")
-          return 0
-      else:
-        # TODO: Slow process to change interfaces for all tasks
-        inputs = self.generate_input(mb)
-        if inputs[0].size(0) == 0:
-          utils.log("Zero Batch")
-          return 0
 
+    inputs = mb.generate_input(device=self.device, use_label=True)
+    if "input_ids" in inputs and inputs["input_ids"].size(0) == 0:
+      utils.log("Zero Batch")
+      return 0
 
     outputs = self.model(**inputs)
 
@@ -221,18 +174,9 @@ class Model(BaseModel):
 
   def test_abstract(self, mb):
     self.model.eval()
-    if isinstance(mb, MiniBatch):
-      inputs = mb.generate_input(self.device, use_label=False)
-    else:
-      if mb.task_name in ["rel_extraction", "srl", "er"]:
-        inputs = generate_input(
-          mb=mb,
-          config=self.config,
-          device=self.device,
-          use_label=False)
-      else:
-        # TODO: Slow process to change interfaces for all tasks
-        inputs = self.generate_input(mb, use_label=False)
+
+    inputs = mb.generate_input(self.device, use_label=False)
+
     with torch.no_grad():
       results = self.model(**inputs)
     if isinstance(results, dict):
@@ -250,18 +194,9 @@ class Model(BaseModel):
 
   def analyze(self, mb, head_mask, params):
     self.model.eval()
-    if isinstance(mb, MiniBatch):
-      inputs = mb.generate_input(self.device, use_label=False)
-    else:
-      if mb.task_name in ["rel_extraction", "srl", "er"]:
-        inputs = generate_input(
-          mb=mb,
-          config=self.config,
-          device=self.device,
-          use_label=True)
-      else:
-        # TODO: Slow process to change interfaces for all tasks
-        inputs = self.generate_input(mb, use_label=False)
+
+    inputs = mb.generate_input(self.device, use_label=False)
+
     inputs["extra_args"]["head_mask"] = head_mask
     outputs = self.model(**inputs)
     # We assume here is loss, logits, and attention_map
@@ -278,79 +213,6 @@ class Model(BaseModel):
 
     return logits, torch.stack(all_attentions, dim=0).transpose(0, 1).detach().data.cpu().numpy()
 
-  def train_labeled(self, mb, step):
-    self.model.train()
-
-    input_ids, input_mask, input_head, segment_ids, label_ids, extra_args = self.generate_input(mb)
-    if input_ids.size(0) == 0:
-      return 0
-
-    if self.config.word_dropout:
-      if self.flip_the_coin(self.global_step_labeled):
-        sample = self.gen_masks(label_ids)
-        input_ids = torch.where(sample.to(self.device) < 0.4, torch.tensor(103, dtype=torch.long).to(self.device) * input_mask, input_ids)
-
-    loss = self.model(
-      task_name=mb.task_name,
-      input_ids=input_ids,
-      input_mask=input_mask,
-      input_head=input_head,
-      segment_ids=segment_ids,
-      label_ids=label_ids,
-      extra_args=extra_args)
-    if self.config.multi_gpu:
-      if loss.size(0) > 1:
-        loss = loss.mean()
-    # average over multi-gpu
-    if self.config.gradient_accumulation_steps > 1:
-      loss = loss / self.config.gradient_accumulation_steps
-    loss.backward()
-    if (step + 1) % self.config.gradient_accumulation_steps == 0:
-      if mb.task_name not in ["squad11", "squad20"]:
-        nn.utils.clip_grad_norm_(self.model.parameters(), self.config.grad_clip)
-      self.optimizer.step()
-      self.optimizer.zero_grad()
-      self.global_step_labeled += 1
-    return loss.item()
-
-
-  def train_unlabeled(self, mb, step):
-    self.model.train()
-    input_ids, input_mask, input_head, segment_ids, label_ids, extra_args = self.generate_input(mb, False)
-    teacher_labels = mb.teacher_predictions
-    loss = self.model(
-        task_name=mb.task_name,
-        input_ids=input_ids,
-        input_mask=input_mask,
-        input_head=input_head,
-        segment_ids=segment_ids,
-        label_ids=teacher_labels,
-        extra_args=extra_args)
-    if self.config.gradient_accumulation_steps > 1:
-      loss = loss / self.config.gradient_accumulation_steps
-    loss.backward()
-    if (step + 1) % self.config.gradient_accumulation_steps == 0:
-      nn.utils.clip_grad_norm_(self.model.parameters(), self.config.grad_clip)
-      self.optimizer.step()
-      self.optimizer.zero_grad()
-      self.global_step_unlabeled += 1
-    return loss.item()
-
-  def run_teacher(self, mb):
-    self.teacher.eval()
-    input_ids, input_mask, input_head, segment_ids, label_ids, extra_args = self.generate_input(mb, False)
-    with torch.no_grad():
-      results = self.teacher(
-        task_name=mb.task_name,
-        input_ids=input_ids,
-        input_mask=input_mask,
-        input_head=input_head,
-        segment_ids=segment_ids,
-        label_ids=None,
-        extra_args=extra_args)
-    for task_name, probs in results.items():
-      mb.teacher_predictions[task_name] = probs
-      # TODO: check the output format for probs
 
   def run_teacher_abstract(self, mb: MiniBatch):
     self.teacher.eval()
@@ -381,18 +243,3 @@ class Model(BaseModel):
       self.optimizer.zero_grad()
       self.global_step_unlabeled += 1
     return loss.item()
-
-
-  def test(self, mb):
-    self.model.eval()
-    input_ids, input_mask, input_head, segment_ids, label_ids, extra_args = self.generate_input(mb, False)
-    with torch.no_grad():
-      results = self.model(
-        task_name=mb.task_name,
-        input_ids=input_ids,
-        input_mask=input_mask,
-        input_head=input_head,
-        segment_ids=segment_ids,
-        label_ids=None,
-        extra_args=extra_args)
-    return results

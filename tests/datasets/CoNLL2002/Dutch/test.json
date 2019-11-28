@@ -1,0 +1,20 @@
+{"tokens": ["Dat", "is", "in", "Itali\u00eb", ",", "Spanje", "of", "Engeland", "misschien", "geen", "probleem", ",", "maar", "volgens", "'", "Der", "Kaiser", "'", "in", "Duitsland", "wel", "."], "labels": ["O", "O", "O", "B-LOC", "O", "B-LOC", "O", "B-LOC", "O", "O", "O", "O", "O", "O", "O", "B-PER", "I-PER", "O", "O", "B-LOC", "O", "O"]}
+{"tokens": ["sectie"], "labels": ["O"]}
+{"tokens": ["Z\u00fcrich"], "labels": ["B-LOC"]}
+{"tokens": ["editie"], "labels": ["O"]}
+{"tokens": ["De", "'", "kleine", "'", "clubs", ",", "waarvan", "de", "begroting", "dikwijls", "afhankelijk", "is", "van", "opleiding", "en", "transfers", ",", "klagen", "steen", "en", "been", "over", "dat", "voornemen", "."], "labels": ["O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["Andere", "zijn", "bang", "dat", "de", "salarissen", "straks", "helemaal", "de", "pan", "uitrijzen", "."], "labels": ["O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["auteur"], "labels": ["O"]}
+{"tokens": ["Uefa", "en", "Fifa", "zijn", "bereid", "de", "afschaffing", "van", "de", "transfervergoeding", "te", "aanvaarden", "als", "dat", "enkel", "geldt", "voor", "voetballers", "ouder", "dan", "24", "jaar", "."], "labels": ["B-ORG", "O", "B-ORG", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["De", "EU", "wil", "af", "van", "elke", "vorm", "van", "financi\u00eble", "schadeloosstelling", "."], "labels": ["O", "B-ORG", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["publicatie"], "labels": ["O"]}
+{"tokens": ["De", "nog", "bescheidenere", "competities", ",", "zoals", "de", "Belgische", ",", "durven", "daar", "niet", "eens", "aan", "te", "denken", "."], "labels": ["O", "O", "O", "O", "O", "O", "O", "B-MISC", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["De", "Morgen"], "labels": ["B-ORG", "I-ORG"]}
+{"tokens": ["Europese", "en", "wereldvoetbalbond", "willen", "afschaffing", "transfervergoeding", "aanvaarden", "voor", "spelers", "ouder", "dan", "24", "jaar"], "labels": ["B-MISC", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["14"], "labels": ["O"]}
+{"tokens": ["Dat", "maakt", "het", "voor", "de", "clubs", "nog", "interessant", "om", "te", "blijven", "investeren", "in", "de", "opleiding", "van", "eigen", "talent", "."], "labels": ["O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["Bij", "transfers", "van", "voetballers", "onder", "de", "24", "zou", "het", "bedingen", "van", "een", "vergoeding", "mogelijk", "moeten", "blijven", "."], "labels": ["O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["Dat", "besluit", "zou", "het", "Bosman-arrest", ",", "dat", "bepaalde", "dat", "een", "speler", "aan", "het", "einde", "van", "zijn", "contract", "transfervrij", "was", ",", "qua", "gevolgen", "in", "de", "schaduw", "stellen", "."], "labels": ["O", "O", "O", "O", "B-MISC", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["vrijdag", ",", "1", "september", "2000"], "labels": ["O", "O", "O", "O", "O"]}
+{"tokens": ["Algemeen"], "labels": ["O"]}
+{"tokens": ["De", "speciale", "task", "force", "van", "de", "Europese", "en", "de", "internationale", "bond", "deed", "deze", "concessie", "in", "een", "poging", "de", "plannen", "van", "de", "Europese", "Commissie", "bij", "te", "sturen", "."], "labels": ["O", "O", "O", "O", "O", "O", "B-MISC", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "B-ORG", "I-ORG", "O", "O", "O", "O"]}

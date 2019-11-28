@@ -15,7 +15,8 @@ from relogic.logickit.training import trainer, training_progress
 from relogic.logickit.serving import Server
 from relogic.logickit.analyzer.heads_importance import compute_heads_importance, mask_heads
 
-import relogic.utils.crash_on_ipy
+if "PUDB" not in os.environ["PUDB"] or os.environ["PUDB"] == "false":
+  import relogic.utils.crash_on_ipy
 
 
 def train(config):
