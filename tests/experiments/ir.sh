@@ -10,7 +10,7 @@ python -u -m relogic.main \
 --raw_data_path tests/datasets/MicroBlog/ \
 --label_mapping_path data/preprocessed_data/binary_classification.json \
 --model_name default \
---local_rank 0 \
+--no_cuda \
 --train_batch_size 3 \
 --test_batch_size 3 \
 --learning_rate 1e-5 \

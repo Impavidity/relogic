@@ -6,9 +6,11 @@ before_install:
   - pip install --upgrade pip
   - pip install --upgrade Cython
   - pip install --upgrade pyjnius
+  - pip install torch==1.3.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
 
 install:
   - python setup.py install
   
 script:
-  - echo "Success"
+  - bash tests/experiments/ir.sh
+  - bash tests/experiments/ner.sh

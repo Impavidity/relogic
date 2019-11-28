@@ -7,7 +7,7 @@ python -u -m relogic.main \
 --raw_data_path tests/datasets/CoNLL2002/English/ \
 --label_mapping_path data/preprocessed_data/ner_BIOES_label_mapping.json \
 --model_name default \
---local_rank 0 \
+--no_cuda \
 --learning_rate 1e-5 \
 --train_batch_size 3 \
 --test_batch_size 3 \
