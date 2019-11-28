@@ -14,7 +14,9 @@ def configure(config):
     config.loss_weight = config.loss_weight.split(',')
     config.selected_non_final_layers = config.selected_non_final_layers.split(';')
     config.dataset_type = config.dataset_type.split(',')
-    config.qrels_file_path = config.qrels_file_path.split(',')
+    if config.qrels_file_path is not None:
+      config.qrels_file_path = config.qrels_file_path.split(',')
+
     # I assume those tasks do not use qrels will put none as placeholder
     config.train_batch_size = config.train_batch_size.split(',')
     config.test_batch_size = config.test_batch_size.split(',')
@@ -38,11 +40,10 @@ def configure(config):
     assert len(config.task_names) == len(config.raw_data_path) == len(config.label_mapping_path)
     config.tasks = {}
     for (task, raw_data_path, label_mapping_path, train_file, dev_file, test_file,
-
-         loss_weight, selected_non_final_layers, dataset_type, qrels_file_path, train_batch_size, test_batch_size) in zip(
+         loss_weight, selected_non_final_layers, dataset_type, train_batch_size, test_batch_size) in zip(
           config.task_names, config.raw_data_path, config.label_mapping_path,
           config.train_file, config.dev_file, config.test_file, config.loss_weight,
-          config.selected_non_final_layers, config.dataset_type, config.qrels_file_path,
+          config.selected_non_final_layers, config.dataset_type,
       config.train_batch_size, config.test_batch_size):
       config.tasks[task] = {}
       config.tasks[task]["raw_data_path"] = raw_data_path
@@ -54,9 +55,11 @@ def configure(config):
       config.tasks[task]["selected_non_final_layers"] = None if selected_non_final_layers == "none" else [
         int(item) for item in selected_non_final_layers.split(',')]
       config.tasks[task]["dataset_type"] = dataset_type
-      config.tasks[task]["qrels_file_path"] = qrels_file_path
       config.tasks[task]["train_batch_size"] = int(train_batch_size)
       config.tasks[task]["test_batch_size"] = int(test_batch_size)
+    if config.qrels_file_path is not None:
+      for (task, qrels_file_path) in zip(config.task_names, config.qrels_file_path):
+        config.tasks[task]["qrels_file_path"] = qrels_file_path
 
   if config.output_dir:
     config.progress = os.path.join(config.output_dir, "progress")
