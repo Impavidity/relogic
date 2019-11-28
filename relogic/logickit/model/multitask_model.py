@@ -9,10 +9,11 @@ import numpy as np
 from relogic.logickit.inference import get_inference
 from relogic.logickit.dataflow import MiniBatch
 from relogic.logickit.utils.utils import entropy
+from relogic.logickit.base.configuration import Configuration
 
 class Model(BaseModel):
-  def __init__(self, config, tasks):
-    super(Model, self).__init__(config)
+  def __init__(self, config, tasks, ext_config=None):
+    super(Model, self).__init__(config, ext_config)
     self.tasks = tasks
     utils.log("Building model")
     inference = get_inference(config)(config, tasks)
@@ -63,6 +64,8 @@ class Model(BaseModel):
     # Optimization
     no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
     param_optimizer = list(self.model.named_parameters())
+    # for n, p in param_optimizer:
+    #   print(n)
     optimizers = {}
     optim_type = ""
     if config.sep_optim:
@@ -112,6 +115,49 @@ class Model(BaseModel):
                                               schedule=config.schedule_method,
                                               t_total=config.num_train_optimization_steps)
       optim_type = "normal"
+    elif self.ext_config.encoder_configs.fix_embedding or self.ext_config.encoder_configs.fix_layers:
+      utils.log("Fixing layers from config")
+      print("Fix embedding {}".format(self.ext_config.encoder_configs.fix_embedding))
+      print("Fix layers {}".format(self.ext_config.encoder_configs.fix_layers))
+      self.ext_config: Configuration
+      if config.encoder_type == 'xlmr':
+        prefix = "layers"
+        embed_prefix = "embed_tokens"
+      elif config.encoder_type == "bert":
+        prefix = "layer"
+        embed_prefix = "word_embeddings"
+      else:
+        raise ValueError("Not supported encoder_type {}".format(config.encoder_type))
+      bert_optimizer_grouped_parameters = [
+        {'params': [],
+         'weight_decay': 0.01},
+        {'params': [],
+        'weight_decay': 0.0}]
+
+      for n, p in param_optimizer:
+        if any(nd in n for nd in no_decay):
+          # Checking embedding
+          if embed_prefix in n:
+            if not self.ext_config.encoder_configs.fix_embedding:
+              bert_optimizer_grouped_parameters[1]['params'].append(p)
+            else:
+              print("Skip {}".format(n))
+          if not any(".{}.{}.".format(prefix, l) in n for l in self.ext_config.encoder_configs.fix_layers):
+            bert_optimizer_grouped_parameters[1]['params'].append(p)
+          else:
+            print("Skip {}".format(n))
+
+        else:
+          if embed_prefix in n:
+            if not self.ext_config.encoder_configs.fix_embedding:
+              bert_optimizer_grouped_parameters[0]['params'].append(p)
+            else:
+              print("Skip {}".format(n))
+          if not any(".{}.{}.".format(prefix, l) in n for l in self.ext_config.encoder_configs.fix_layers):
+            bert_optimizer_grouped_parameters[0]['params'].append(p)
+          else:
+            print("Skip {}".format(n))
+
     else:
       utils.log("Optimizing the model using one optimizer")
       bert_optimizer_grouped_parameters = [

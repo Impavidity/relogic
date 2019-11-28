@@ -5,8 +5,9 @@ class BaseModel(object):
   """
   Basic components for models
   """
-  def __init__(self, config):
+  def __init__(self, config, ext_config):
     self.config = config
+    self.ext_config = ext_config
     if config.local_rank == -1 or config.no_cuda:
       self.device = torch.device("cuda" if torch.cuda.is_available() and not config.no_cuda else "cpu")
       n_gpu = torch.cuda.device_count()
