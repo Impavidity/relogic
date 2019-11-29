@@ -5,20 +5,6 @@ import json
 import os
 import re
 
-"""
-{
-  "config_sections": ["key1"],
-  "key1" : {
-      "prompt": "The description",
-      "prompt_type": "Bullet",
-      "choices": [],
-      "branching": {
-        "answer1": "key1.answer1"
-      } 
-  }
-}
-"""
-
 def check_configuration(configuration):
   return True
 
@@ -172,10 +158,6 @@ class ConfiguredPrompt:
         utils.cprint("Invalid input")
     utils.cprint("Done!")
 
-
-
-
-
   @classmethod
   def from_config(cls, config_file):
     with open(config_file) as fin:
@@ -184,7 +166,6 @@ class ConfiguredPrompt:
         return cls(configuration=configuration)
       else:
         raise ValueError("Configuration Error")
-
 
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
