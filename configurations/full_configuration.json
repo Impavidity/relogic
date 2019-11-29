@@ -1,0 +1,72 @@
+{
+  "config_sections": ["tokenizers", "encoder"],
+  "tokenizers" : {
+    "prompt": "What are the tokenizers are you going to use? ",
+    "prompt_type": "Check",
+    "choices": ["customized_bert", "xlmr", "fasttext"],
+    "branching": {
+      "customized_bert": ".customized_bert",
+      "xlmr": ".xlmr",
+      "fasttext": ".fasttext"
+    }
+  },
+  "tokenizers.customized_bert": {
+    "prompt_type": "GoTo",
+    "goto": [".pretrained_model_name_or_path", "do_lower_case", "lang", "pretokenized"]
+  },
+  "tokenizers.customized_bert.pretrained_model_name_or_path": {
+    "prompt_type": "Bullet",
+    "prompt": "Which is the tokenizer you are going to use? ",
+    "choices": ["bert-base-cased", "bert-base-multilingual-cased"]
+  },
+  "do_lower_case": {
+    "prompt_type": "YesNo",
+    "prompt": "Do you do lowercase in the preprocessing? ",
+    "default": "n"
+  },
+  "lang": {
+    "prompt_type": "Input",
+    "prompt": "Is Chinese/Japanese/Korean the language you are working on? If yes, please type zh, otherwise type en. "
+  },
+  "pretokenized": {
+    "prompt_type": "YesNo",
+    "prompt": "Is your data pretokenized with space? ",
+    "default": "n"
+  },
+  "tokenizers.xlmr": {
+    "prompt_type": "GoTo",
+    "goto": [".pretrained_model_name_or_path"]
+  },
+  "tokenizers.xlmr.pretrained_model_name_or_path": {
+    "prompt": "Which is the tokenizer you are going to use? ",
+    "prompt_type": "Bullet",
+    "choices": ["xlmr.base.v0", "xlmr.large.v0"]
+  },
+  "tokenizers.fasttext": {
+    "prompt_type": "GoTo",
+    "goto": [".pretrained_model_name_or_path"]
+  },
+  "tokenizers.fasttext.pretrained_model_name_or_path": {
+    "prompt": "What is the tokenizer you are going to use? ",
+    "prompt_type": "Bullet",
+    "choices": ["wiki-news-300d-1M"]
+  },
+  "encoder": {
+    "prompt_type": "GoTo",
+    "goto": [".encoder_type", ".fix_embedding", ".fix_layers"]
+  },
+  "encoder.encoder_type": {
+    "prompt": "What is the encoder type you want to choose? ",
+    "prompt_type": "Bullet",
+    "choices": ["bert", "xlmr"]
+  },
+  "encoder.fix_embedding": {
+    "prompt": "Are you going to fix the embedding? ",
+    "prompt_type": "YesNo",
+    "default": "n"
+  },
+  "encoder.fix_layers": {
+    "prompt": "Are you going to fix layers? If yes, you can input something like 0-5,8 ; if No, just type Return. ",
+    "prompt_type": "ListInput"
+  }
+}
