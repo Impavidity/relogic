@@ -65,7 +65,7 @@ class PointwiseExample(Example):
   def from_json(cls, example):
     """
     """
-    return cls(guid="{}-{}".format(example["text_a_id"], example["text_b_id"]),
+    return cls(guid="{}-{}".format(example.get("text_a_id", 0), example.get("text_b_id", 0)),
                text_a=example["text_a"],
                text_b=example["text_b"],
                label=example.get("label", None))

@@ -4,20 +4,18 @@ import bisect
 import time
 from relogic.logickit.training.training_scheme import TRAINING_SCHEME
 import numpy as np
-import json
 
 import torch
 from relogic.logickit.base import utils
 from relogic.logickit.dataflow import DataFlow
-from relogic.logickit.tokenizer.tokenization import BertTokenizer
-from relogic.logickit.tokenizer.fasttext_tokenization import FasttextTokenizer
 from relogic.logickit.tasks import get_task
 from relogic.logickit.model import get_model
 from relogic.logickit.training.training_progress import TrainingProgress
 from relogic.logickit.dataflow import MiniBatch
 import os
 from relogic.logickit.utils.utils import print_2d_tensor
-from relogic.logickit.base.constants import ECP_TASK, IR_TASK, NER_TASK, PARALLEL_MAPPING_TASK, DISTILL_TASKS, PARALLEL_TEACHER_STUDENT_TASK
+from relogic.logickit.base.constants import (
+  DISTILL_TASKS, TRAIN_GENERATOR, TRAIN_DISCRIMINATOR, SKIP_EVAL_TASK)
 from relogic.logickit.base.configuration import Configuration
 from relogic.logickit.tokenizer import NAME_TO_TOKENIZER_MAP
 
@@ -35,6 +33,7 @@ class Trainer(object):
     self.config = config
 
     ext_config : Configuration = Configuration.load_from_json_file(config.config_file)
+    self.ext_config = ext_config
 
     if tokenizers is not None:
       self.tokenizers = tokenizers
@@ -57,8 +56,68 @@ class Trainer(object):
         for task_name in teacher_config.task_names
       ]
       self.teacher_model = get_model(teacher_config)(config=teacher_config, tasks=self.teacher_tasks)
-
   def train(self, progress: TrainingProgress):
+    if self.config.adversarial_training:
+      self.adversarial_train(progress)
+    else:
+      self._train(progress)
+
+  def adversarial_train(self, progress: TrainingProgress):
+    heading = lambda s: utils.heading(s, '(' + self.config.model_name + ')')
+    trained_on_sentences = 0
+    start_time = time.time()
+    generator_loss_total, generator_loss_count = 0, 0
+    discriminator_loss_total, discriminator_loss_count = 0, 0
+    step = 0
+
+    for turn, labeled_mb, unlabeled_mb in self.get_training_mbs():
+      labeled_mb: MiniBatch
+      unlabeled_mb: MiniBatch
+      if turn == TRAIN_DISCRIMINATOR:
+        loss = self.model.train_discriminator(labeled_mb, unlabeled_mb)
+        discriminator_loss_total += loss
+        discriminator_loss_count += 1
+      if turn == TRAIN_GENERATOR:
+        loss = self.model.train_generator(labeled_mb, unlabeled_mb)
+        generator_loss_total += loss
+        generator_loss_count += 1
+
+      step += 1
+      if labeled_mb is not None:
+        trained_on_sentences += labeled_mb.size
+      if unlabeled_mb is not None:
+        trained_on_sentences += unlabeled_mb.size
+
+      # Use simplified version of logging.
+      # TODO: Will check if we need to the original version
+      if step % self.config.print_every == 0:
+        utils.log(
+          "step {:} - "
+          "generator loss {:.3f} - "
+          "discriminator loss {:.3f} - "
+          "{:.1f} sentences per second".format(
+            step,
+            generator_loss_total / generator_loss_count,
+            discriminator_loss_total / discriminator_loss_count,
+            trained_on_sentences / (time.time() - start_time)))
+        generator_loss_total, generator_loss_count = 0, 0
+        discriminator_loss_total, discriminator_loss_count = 0, 0
+
+      if step % self.config.eval_dev_every == 0:
+        heading("EVAL on DEV")
+        self.evaluate_all_tasks(progress.history)
+        progress.save_if_best_dev_model(self.model.model)
+        progress.add_evaluated_step(self.model.global_step_labeled)
+
+
+      if self.config.early_stop_at > 0 and step >= self.config.early_stop_at:
+        utils.log("Early stop at step {}".format(step))
+        break
+
+
+
+
+  def _train(self, progress: TrainingProgress):
     heading = lambda s: utils.heading(s, '(' + self.config.model_name + ')')
     trained_on_sentences = 0
     start_time = time.time()
@@ -67,31 +126,19 @@ class Trainer(object):
     step = 0
     # self.evaluate_all_tasks(progress.history)
     for mb in self.get_training_mbs():
-      if isinstance(mb, MiniBatch):
-        if mb.task_name not in DISTILL_TASKS:
-          loss = self.model.train_labeled_abstract(mb, step)
-          supervised_loss_total += loss
-          supervised_loss_count += 1
-        else:
-          if self.config.use_external_teacher:
-            self.teacher_model.run_teacher_abstract(mb)
-          else:
-            self.model.run_teacher_abstract(mb)
-          loss = self.model.train_unlabeled_abstract(mb, step)
-          unsupervised_loss_total += loss
-          unsupervised_loss_count += 1
-          mb.teacher_predictions.clear()
+      if mb.task_name not in DISTILL_TASKS:
+        loss = self.model.train_labeled_abstract(mb, step)
+        supervised_loss_total += loss
+        supervised_loss_count += 1
       else:
-        if mb.task_name != "unlabeled":
-          loss = self.model.train_labeled_abstract(mb, step)
-          supervised_loss_total += loss
-          supervised_loss_count += 1
-        if mb.task_name == 'unlabeled':
-          self.model.run_teacher(mb)
-          loss = self.model.train_unlabeled(mb, step)
-          unsupervised_loss_total += loss
-          unsupervised_loss_count += 1
-          mb.teacher_predictions.clear()
+        if self.config.use_external_teacher:
+          self.teacher_model.run_teacher_abstract(mb)
+        else:
+          self.model.run_teacher_abstract(mb)
+        loss = self.model.train_unlabeled_abstract(mb, step)
+        unsupervised_loss_total += loss
+        unsupervised_loss_count += 1
+        mb.teacher_predictions.clear()
 
       step += 1
       trained_on_sentences += mb.size
@@ -135,6 +182,8 @@ class Trainer(object):
   def evaluate_all_tasks(self, history=None, train_set=False):
     results = []
     for task in self.tasks:
+      if task.name in SKIP_EVAL_TASK:
+        continue
       results.append(self.evaluate_task(task, train_set))
       if history is not None:
         results[-1].append(('step', self.model.global_step_labeled))
@@ -149,21 +198,25 @@ class Trainer(object):
     data: DataFlow = task.train_set if train_set else task.val_set
     for i, mb in enumerate(data.get_minibatches(self.config.tasks[data.task_name]["test_batch_size"])):
       # batch_preds = self.model.test(mb)
-      batch_preds = self.model.test_abstract(mb)
+      outputs = self.model.test_abstract(mb)
+      task_outputs = outputs[task.name]
+      scorer.update(mb, task_outputs, task_outputs.get("loss", 0), {})
+      # TODO: This code will break a lot!
+      # TODO: But we need to migrate this!
 
-      if isinstance(batch_preds, dict):
-        scorer.update(mb, batch_preds, 0, None)
-      else:
-        # Slow Migration towards the return interface
-        extra_output = {}
-        if self.config.output_attentions:
-          batch_preds, attention_map = batch_preds
-          extra_output["attention_map"] = attention_map
-        if isinstance(batch_preds, tuple):
-          loss, batch_preds = batch_preds
-        else:
-          loss = 0
-        scorer.update(mb, batch_preds, loss, extra_output)
+      # if isinstance(batch_preds, dict):
+      #   scorer.update(mb, batch_preds, 0, None)
+      # else:
+      #   # Slow Migration towards the return interface
+      #   extra_output = {}
+      #   if self.config.output_attentions:
+      #     batch_preds, attention_map = batch_preds
+      #     extra_output["attention_map"] = attention_map
+      #   if isinstance(batch_preds, tuple):
+      #     loss, batch_preds = batch_preds
+      #   else:
+      #     loss = 0
+      #   scorer.update(mb, batch_preds, loss, extra_output)
       if i % 100 == 0:
         utils.log("{} batch processed.".format(i))
     results = scorer.get_results()
@@ -210,6 +263,7 @@ class Trainer(object):
     return results
 
   def get_training_mbs(self):
+    # training_scheme_config = self.ext_config.training_scheme
     if self.config.training_scheme is not None:
       yield from TRAINING_SCHEME[self.config.training_scheme](self.config, self.tasks)
     else:

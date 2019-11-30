@@ -4,9 +4,10 @@ from relogic.logickit.tasks.span_extraction import SpanExtraction, SpanGCN
 from relogic.logickit.tasks.span_extraction import ECPExtraction
 from relogic.logickit.tasks.parsing import Parsing
 from relogic.logickit.tasks.unsupervised import Unsupervised
+from relogic.logickit.tasks.feature_extraction import FeatureExtraction
 from relogic.logickit.base.constants import (ECP_TASK, IR_TASK, NER_TASK, PARALLEL_MAPPING_TASK,
                                              PARALLEL_TEACHER_STUDENT_TASK, PAIRWISE_TASK, ENTITY_TYPE_CLASSIFICATION,
-                                             DEP_PARSING_TASK, MIXSENT_TASK)
+                                             DEP_PARSING_TASK, MIXSENT_TASK, LANGUAGE_IDENTIFICATION_IR)
 from relogic.common.prefix_map import PrefixMap
 
 task_name_to_class_map = {
@@ -18,7 +19,8 @@ task_name_to_class_map = {
   PARALLEL_MAPPING_TASK: Unsupervised,
   PARALLEL_TEACHER_STUDENT_TASK: Unsupervised,
   MIXSENT_TASK: Unsupervised,
-  DEP_PARSING_TASK:Parsing
+  DEP_PARSING_TASK:Parsing,
+  LANGUAGE_IDENTIFICATION_IR: Unsupervised
 }
 
 TASK_NAME_TO_CLASS_MAP = PrefixMap(task_name_to_class_map)

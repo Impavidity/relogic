@@ -87,6 +87,29 @@ linker.link("Obama", "en_wikipedia").ranked_uris
 linker.link("范冰冰", "zh_baike").ranked_uris
 ```
 
+## Adversarial Training
+
+The basic training procedure of adversarial training is as follows
+
+```python
+# 5 discriminator update + 1 generator update
+if update_discriminator:
+  real_encode = network(source_language_sample)
+  fake_encode = network(target_language_sample)
+  AdvAgent.update(real_encode["output"].detach(), fake_encode["output"].detach())
+  # Because we only consider to update discriminator
+if update_generator:
+  optim.zero_grad()
+  real_encode = network(source_language_sample)
+  fake_encode = network(target_language_sample)
+  adversarial_loss = AdvAgent.gen_loss(real_encode["output"], fake_encode["output"])
+  label_loss = cross_entropy_loss(real_encode["output"], gold_label)
+  loss = label_loss + adversarial_loss
+  loss.backward()
+  clip_grad_norm_(network.parameters(), clip)
+  optim.step()
+```
+
 ## Documentation
 
 - What is the docsting style to follow?

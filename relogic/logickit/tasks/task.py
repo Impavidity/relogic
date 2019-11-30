@@ -7,6 +7,8 @@ class Task(object, metaclass=abc.ABCMeta):
     self.config = config
     self.name = name
     self.loader = loader
+    self.has_module = True
+    self.has_scorer = True
     if config.mode == 'train' or config.mode == 'finetune':
       self.train_set = self.loader.get_dataset("train")
     else:

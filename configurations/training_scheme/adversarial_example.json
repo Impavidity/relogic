@@ -1,0 +1,5 @@
+{
+  "n_critic": 5,
+  "source_task": "ir",
+  "target_task": "language_identification_ir"
+}

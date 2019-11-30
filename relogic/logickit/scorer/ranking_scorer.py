@@ -222,6 +222,8 @@ class RetrievalScorer(Scorer):
 
   def update(self, mbs, predictions, loss, extra):
     super(RetrievalScorer, self).update(mbs, predictions, loss, extra)
+    # TODO: we are going to migrate the interface !
+    predictions = predictions["logits"]
     for example, preds in zip(mbs.examples, predictions):
       self._examples.append(example)
       self._preds.append(preds.data.cpu().numpy())

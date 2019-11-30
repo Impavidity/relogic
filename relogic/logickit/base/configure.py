@@ -112,12 +112,14 @@ def update_configure(restore_config, config):
     # assert len(config.raw_data_path) == len(config.tasks)
     for name, raw_data_path in zip(task_names, config.raw_data_path):
       restore_config.tasks[name]["raw_data_path"] = raw_data_path
-  if config.test_file != ",".join(restore_config.test_file):
-    assert config.task_names is not None
+  if config.task_names is not None:
 
     config.test_file = config.test_file.split(",")
     task_names = config.task_names.split(",")
-
-    for name, test_file in zip(task_names, config.test_file):
-      restore_config.tasks[name]["test_file"] = test_file
+    if len(config.test_file) == len(task_names):
+      print("=========")
+      print("We assume you are going to update the test file "
+            "because you specify the task_names and test_file at the same time")
+      for name, test_file in zip(task_names, config.test_file):
+        restore_config.tasks[name]["test_file"] = test_file
     

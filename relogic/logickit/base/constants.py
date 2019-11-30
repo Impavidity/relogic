@@ -37,14 +37,25 @@ PARALLEL_MAPPING_TASK = "parallel_mapping"
 PARALLEL_TEACHER_STUDENT_TASK = "parallel_teacher_student"
 MIXSENT_TASK = "mixsent"
 
+LANGUAGE_IDENTIFICATION_IR = "language_identification_ir"
+
 
 SINGLETON = []
-SIAMESE = [PARALLEL_MAPPING_TASK]
+SIAMESE = []
 TRIPLET = [PAIRWISE_TASK]
 
 DISTILL_TASKS = ["parallel_teacher_student", "mixsent"]
 
+ENCODING_TASK = "encoding"
+
 AUXILIARY_TRAINING = "auxiliary_training"
 ITERATIVE_TRAINING = "iterative_training"
+ADVERSARIAL_TRAINING = "adversarial_training"
+
+TRAIN_DISCRIMINATOR = "train_discriminator"
+TRAIN_GENERATOR = "train_generator"
+
+SKIP_LOSS_TASK = [LANGUAGE_IDENTIFICATION_IR]
+SKIP_EVAL_TASK = [LANGUAGE_IDENTIFICATION_IR]
 
 
