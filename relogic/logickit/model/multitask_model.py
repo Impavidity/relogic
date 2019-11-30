@@ -10,9 +10,11 @@ from relogic.logickit.inference import get_inference
 from relogic.logickit.dataflow import MiniBatch
 from relogic.logickit.utils.utils import entropy
 from relogic.logickit.base.configuration import Configuration
+from relogic.logickit.inference.adversarial import Adversarial
+
 
 class Model(BaseModel):
-  def __init__(self, config, tasks, ext_config=None):
+  def __init__(self, config, tasks, ext_config: Configuration=None):
     super(Model, self).__init__(config, ext_config)
     self.tasks = tasks
     utils.log("Building model")
@@ -36,6 +38,10 @@ class Model(BaseModel):
         m.inplace = True
 
     inference.apply(inplace_relu)
+
+    if config.adversarial_training:
+      self.adversarial_agent = Adversarial(config=ext_config.adversarial_configs).to(self.device)
+
 
   def setup_training(self, config, tasks):
     # Calculate optimization steps
@@ -157,6 +163,12 @@ class Model(BaseModel):
             bert_optimizer_grouped_parameters[0]['params'].append(p)
           else:
             print("Skip {}".format(n))
+      optimizers["bert_optimizer"] = BertAdam(bert_optimizer_grouped_parameters,
+                                              lr=config.learning_rate,
+                                              warmup=config.warmup_proportion,
+                                              schedule=config.schedule_method,
+                                              t_total=config.num_train_optimization_steps)
+      optim_type = "normal"
 
     else:
       utils.log("Optimizing the model using one optimizer")
@@ -185,7 +197,7 @@ class Model(BaseModel):
     sample = torch.rand(label_ids.size())
     return sample
 
-  def train_labeled_abstract(self, mb, step):
+  def train_labeled_abstract(self, mb: MiniBatch, step):
     self.model.train()
 
     inputs = mb.generate_input(device=self.device, use_label=True)
@@ -197,7 +209,7 @@ class Model(BaseModel):
 
     # TODO: Slow process Migrating Interface ...
     if isinstance(outputs, dict):
-      loss = outputs["loss"]
+      loss = outputs[mb.task_name]["loss"]
     else:
       if self.config.output_attentions:
         loss, _, _ = outputs
@@ -216,6 +228,58 @@ class Model(BaseModel):
       self.optimizer.step()
       self.optimizer.zero_grad()
       self.global_step_labeled += 1
+    return loss.item()
+
+  def train_discriminator(self, labeled_mb, unlabeled_mb):
+    self.model.train()
+    self.adversarial_agent.train()
+    labeled_inputs = labeled_mb.generate_input(device=self.device, use_label=False)
+    unlabeled_inputs = unlabeled_mb.generate_input(device=self.device, use_label=False)
+    # We want to overwrite the task name here.
+    # We only want to get the feature of encoder,
+    # we do not want to do the decoder.
+    labeled_inputs["task_name"] = unlabeled_inputs["task_name"]
+    # unlabeled_inputs["task_name"] = "encoding"
+    labeled_features = self.model(**labeled_inputs)
+    unlabeled_features = self.model(**unlabeled_inputs)
+    # we delay the detach operation in the discriminator
+    labeled_loss, unlabeled_loss = self.adversarial_agent.update(
+        labeled_features[labeled_inputs["task_name"]]["logits"].detach(),
+        unlabeled_features[unlabeled_inputs["task_name"]]["logits"].detach(),
+        1.0, 0.0)
+    # We name it as `logits` because we aggregate sequence of vector into a vector.
+    # TODO: change it if it's not binary case
+    # In the update operation, the following things will be done
+    # 1. Discriminator will be called
+    # 2. Loss will be calculated
+    # 3. Backward function will be called
+    # 4. Optimizer step function will be called
+    return labeled_loss + unlabeled_loss
+
+
+  def train_generator(self, labeled_mb: MiniBatch, unlabeled_mb: MiniBatch):
+    self.model.train()
+    self.adversarial_agent.train()
+    labeled_inputs = labeled_mb.generate_input(device=self.device, use_label=True)
+    unlabeled_inputs = unlabeled_mb.generate_input(device=self.device, use_label=False)
+
+    # A quick hack on reuse encoder output, will reorganize this later
+    original_labeled_input_task_name = labeled_inputs["task_name"]
+    labeled_inputs["task_name"] = ",".join([labeled_inputs["task_name"], unlabeled_inputs["task_name"]])
+    labeled_outputs = self.model(**labeled_inputs)
+    labeled_loss = labeled_outputs[original_labeled_input_task_name]["loss"]
+    # unlabeled_inputs["task_name"] = "encoding"
+    unlabeled_outputs = self.model(**unlabeled_inputs)
+    discriminator_loss = self.adversarial_agent.gen_loss(
+      labeled_outputs[unlabeled_inputs["task_name"]]["logits"],
+      unlabeled_outputs[unlabeled_inputs["task_name"]]["logits"],
+      1.0, 0.0)
+    loss = labeled_loss + discriminator_loss
+    loss.backward()
+    nn.utils.clip_grad_norm_(self.model.parameters(), self.config.grad_clip)
+    # For the adversarial training, we now do not support the loss accumulation
+    self.optimizer.step()
+    self.optimizer.zero_grad()
     return loss.item()
 
   def test_abstract(self, mb):
