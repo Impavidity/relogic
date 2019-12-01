@@ -50,6 +50,8 @@ class Configuration:
     self.task_configs = task_configs
     self.encoder_configs = encoder_configs
     self.adversarial_configs = adversarial_configs
+    print("----")
+    print(self.adversarial_configs.__dict__)
 
 
   @property

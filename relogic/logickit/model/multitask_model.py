@@ -243,7 +243,7 @@ class Model(BaseModel):
     labeled_features = self.model(**labeled_inputs)
     unlabeled_features = self.model(**unlabeled_inputs)
     # we delay the detach operation in the discriminator
-    labeled_loss, unlabeled_loss = self.adversarial_agent.update(
+    labeled_loss, unlabeled_loss, real_acc, fake_acc = self.adversarial_agent.update(
         labeled_features[labeled_inputs["task_name"]]["logits"].detach(),
         unlabeled_features[unlabeled_inputs["task_name"]]["logits"].detach(),
         1.0, 0.0)
@@ -254,7 +254,7 @@ class Model(BaseModel):
     # 2. Loss will be calculated
     # 3. Backward function will be called
     # 4. Optimizer step function will be called
-    return labeled_loss + unlabeled_loss
+    return labeled_loss, unlabeled_loss, real_acc, fake_acc
 
 
   def train_generator(self, labeled_mb: MiniBatch, unlabeled_mb: MiniBatch):
@@ -280,7 +280,7 @@ class Model(BaseModel):
     # For the adversarial training, we now do not support the loss accumulation
     self.optimizer.step()
     self.optimizer.zero_grad()
-    return loss.item()
+    return labeled_loss.item(), discriminator_loss.item()
 
   def test_abstract(self, mb):
     self.model.eval()

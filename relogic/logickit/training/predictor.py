@@ -42,9 +42,10 @@ class Predictor(object):
     print(self.config)
     print("Updated the structures")
     # results = []
-    for i, mb in enumerate(data.get_minibatches(self.config.test_batch_size)):
+    for i, mb in enumerate(data.get_minibatches(self.config.tasks[task.name]["test_batch_size"])):
       # batch_preds = self.model.test(mb)
       batch_preds = self.model.test_abstract(mb)
+      batch_preds = batch_preds[task.name]["logits"]
       labels = data.decode_to_labels(batch_preds, mb)
       yield batch_preds, labels
       # results.append(batch_preds.data.cpu().numpy())

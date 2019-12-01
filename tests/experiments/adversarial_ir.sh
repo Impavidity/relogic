@@ -17,6 +17,7 @@ python -u -m relogic.main \
 --learning_rate 1e-5 \
 --epoch_number 3 \
 --eval_dev_every 5 \
+--print_every 5 \
 --early_stop_at 10 \
 --qrels_file_path tests/datasets/MicroBlog/qrels.mb.txt,none \
 --fix_embedding \

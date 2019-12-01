@@ -32,38 +32,12 @@ class Adversarial(nn.Module):
     if config.soft_label and config.type == "GAN":
       self.real = np.random.uniform(0.7, 1.0)
       self.fake = np.random.uniform(0.0, 0.3)
+      print("The soft label is {} and {}".format(self.real, self.fake))
 
     if config.type == "GR":
       self.criterion = nn.CrossEntropyLoss()
     else:
       self.criterion = nn.BCEWithLogitsLoss()
-
-  def loss(self, input, label):
-    output = self.discriminator(input)
-    assert (output.dim() == 2)
-
-    if self.config.type == "WGAN":
-      loss = torch.mean(output)
-    else:
-      if self.config.type == "GAN":
-        label = torch.empty(*output.size()).fill_(label).type_as(output)
-      elif self.config.type == "GR":
-        label = torch.empty(output.size(0)).fill_(label).type_as(output).long()
-      loss = self.criterion(output, label)
-    return output, loss
-
-  # def accuracy(self, output, label, sample_type):
-  #   label = 1
-  #   if sample_type == "real":
-  #     preds = (torch.sigmoid(output) >= 0.5).long().cpu()
-  #   else:
-  #     preds = (torch.sigmoid(output) < 0.5).long().cpu()
-  #
-  #   labels = torch.LongTensor([label])
-  #   labels = labels.expand(*preds.size())
-  #   n_correct = preds.eq(labels).sum().item()
-  #   acc = 1.0 * n_correct / output.size(0)
-  #   return acc
 
   def loss(self, input, label):
     output = self.discriminator(features=input)
@@ -76,6 +50,7 @@ class Adversarial(nn.Module):
         label = torch.empty(*output.size()).fill_(label).type_as(output)
       elif self.config.type == "GR":
         label = torch.empty(output.size(0)).fill_(label).type_as(output).long()
+
       loss = self.criterion(output, label)
     return output, loss
 
@@ -95,7 +70,26 @@ class Adversarial(nn.Module):
     loss.backward()
     self.optim.step()
 
-    return real_loss.item(), fake_loss.item()
+    real_acc, fake_acc = 0, 0
+    if self.config.type in ["GR", "GAN"]:
+      real_acc = self.accuracy(real_output, real_id)
+      fake_acc = self.accuracy(fake_output, fake_id)
+
+    return real_loss.item(), fake_loss.item(), real_acc, fake_acc
+
+  def accuracy(self, output, label):
+    if self.config.type == "GAN":
+      if label > 0.5:
+        preds = (torch.sigmoid(output) >= 0.5).long().cpu()
+      else:
+        preds = (torch.sigmoid(output) < 0.5).long().cpu()
+      label = 1
+
+    labels = torch.LongTensor([label])
+    labels = labels.expand(*preds.size())
+    n_correct = preds.eq(labels).sum().item()
+    acc = 1.0 * n_correct / output.size(0)
+    return acc
 
   def gen_loss(self, real_in, fake_in, real_id, fake_id):
     """Functions to calculate loss to update the Generator.
