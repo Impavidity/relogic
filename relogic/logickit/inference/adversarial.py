@@ -39,33 +39,6 @@ class Adversarial(nn.Module):
     else:
       self.criterion = nn.BCEWithLogitsLoss()
 
-  # def loss(self, input, label):
-  #   output = self.discriminator(input)
-  #   assert (output.dim() == 2)
-  #
-  #   if self.config.type == "WGAN":
-  #     loss = torch.mean(output)
-  #   else:
-  #     if self.config.type == "GAN":
-  #       label = torch.empty(*output.size()).fill_(label).type_as(output)
-  #     elif self.config.type == "GR":
-  #       label = torch.empty(output.size(0)).fill_(label).type_as(output).long()
-  #     loss = self.criterion(output, label)
-  #   return output, loss
-
-  # def accuracy(self, output, label, sample_type):
-  #   label = 1
-  #   if sample_type == "real":
-  #     preds = (torch.sigmoid(output) >= 0.5).long().cpu()
-  #   else:
-  #     preds = (torch.sigmoid(output) < 0.5).long().cpu()
-  #
-  #   labels = torch.LongTensor([label])
-  #   labels = labels.expand(*preds.size())
-  #   n_correct = preds.eq(labels).sum().item()
-  #   acc = 1.0 * n_correct / output.size(0)
-  #   return acc
-
   def loss(self, input, label):
     output = self.discriminator(features=input)
     assert (output.dim() == 2)
