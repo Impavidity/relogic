@@ -66,21 +66,33 @@ class Trainer(object):
     heading = lambda s: utils.heading(s, '(' + self.config.model_name + ')')
     trained_on_sentences = 0
     start_time = time.time()
-    generator_loss_total, generator_loss_count = 0, 0
-    discriminator_loss_total, discriminator_loss_count = 0, 0
+    generator_supervised_loss_total, generator_supervised_loss_count = 0, 0
+    generator_dis_loss_total, generator_dis_loss_count = 0, 0
+    discriminator_positive_loss_total, discriminator_positive_loss_count = 0, 0
+    discriminator_negative_loss_total, discriminator_negative_loss_count = 0, 0
+    real_acc_total, real_acc_count = 0, 0
+    fake_acc_total, fake_acc_count = 0, 0
     step = 0
 
     for turn, labeled_mb, unlabeled_mb in self.get_training_mbs():
       labeled_mb: MiniBatch
       unlabeled_mb: MiniBatch
       if turn == TRAIN_DISCRIMINATOR:
-        loss = self.model.train_discriminator(labeled_mb, unlabeled_mb)
-        discriminator_loss_total += loss
-        discriminator_loss_count += 1
+        positive_loss, negative_loss, real_acc, fake_acc = self.model.train_discriminator(labeled_mb, unlabeled_mb)
+        discriminator_positive_loss_total += positive_loss
+        discriminator_positive_loss_count += 1
+        discriminator_negative_loss_total += negative_loss
+        discriminator_negative_loss_count += 1
+        real_acc_total += real_acc
+        real_acc_count += 1
+        fake_acc_total += fake_acc
+        fake_acc_count += 1
       if turn == TRAIN_GENERATOR:
-        loss = self.model.train_generator(labeled_mb, unlabeled_mb)
-        generator_loss_total += loss
-        generator_loss_count += 1
+        supervised_loss, dis_loss = self.model.train_generator(labeled_mb, unlabeled_mb)
+        generator_supervised_loss_total += supervised_loss
+        generator_supervised_loss_count += 1
+        generator_dis_loss_total += dis_loss
+        generator_dis_loss_count += 1
 
       step += 1
       if labeled_mb is not None:
@@ -93,15 +105,27 @@ class Trainer(object):
       if step % self.config.print_every == 0:
         utils.log(
           "step {:} - "
-          "generator loss {:.3f} - "
-          "discriminator loss {:.3f} - "
+          "generator supervised loss {:.3f} - "
+          "generator dis loss {:.3f} - "
+          "discriminator positive loss {:.3f} - "
+          "discriminator negative loss {:.3f} - "
+          "discriminator real accuracy {:.3f} - "
+          "discriminator fake accuracy {:.3f} - "
           "{:.1f} sentences per second".format(
             step,
-            generator_loss_total / generator_loss_count,
-            discriminator_loss_total / discriminator_loss_count,
+            generator_supervised_loss_total / max(1, generator_supervised_loss_count),
+            generator_dis_loss_total / max(1, generator_dis_loss_count),
+            discriminator_positive_loss_total / max(1, discriminator_positive_loss_count),
+            discriminator_negative_loss_total / max(1, discriminator_negative_loss_count),
+            real_acc_total / max(1, real_acc_count),
+            fake_acc_total / max(1, fake_acc_count),
             trained_on_sentences / (time.time() - start_time)))
-        generator_loss_total, generator_loss_count = 0, 0
-        discriminator_loss_total, discriminator_loss_count = 0, 0
+        generator_supervised_loss_total, generator_supervised_loss_count = 0, 0
+        generator_dis_loss_total, generator_dis_loss_count = 0, 0
+        discriminator_positive_loss_total, discriminator_positive_loss_count = 0, 0
+        discriminator_negative_loss_total, discriminator_negative_loss_count = 0, 0
+        real_acc_total, real_acc_count = 0, 0
+        fake_acc_total, fake_acc_count = 0, 0
 
       if step % self.config.eval_dev_every == 0:
         heading("EVAL on DEV")
