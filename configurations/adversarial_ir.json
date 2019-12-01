@@ -1,0 +1,17 @@
+{
+  "tokenizers": {
+    "customized_bert": {
+      "pretrained_model_name_or_path": "bert-base-multilingual-cased",
+      "do_lower_case": false,
+      "lang": "zh",
+      "pretokenized": true
+    }
+  },
+  "adversarial": {
+    "type": "GAN",
+    "discriminator_type": "LR",
+    "soft_label": true,
+    "adversarial_lr": 5e-4,
+    "hidden_size": 768
+  }
+}

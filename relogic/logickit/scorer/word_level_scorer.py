@@ -11,6 +11,8 @@ class WordLevelScorer(Scorer, metaclass=abc.ABCMeta):
 
   def update(self, mbs, predictions, loss, extra):
     # TODO: need to double check
+    # TODO migrate interface!!!
+    predictions = predictions["logits"]
     super(WordLevelScorer, self).update(mbs, predictions, loss, extra)
     n_words = 0
     for example, preds in zip(mbs.examples, predictions):

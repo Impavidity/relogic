@@ -39,7 +39,8 @@ class Inference(nn.Module):
     utils.log("Build Task Modules")
     self.tasks_modules = nn.ModuleDict()
     for task in tasks:
-      self.tasks_modules.update([(task.name, task.get_module())])
+      if task.has_module:
+        self.tasks_modules.update([(task.name, task.get_module())])
     self.task_dict = dict([(task.name, task) for task in self.tasks])
     self.dummy_input = torch.rand(1, 10, requires_grad=True)
 
@@ -98,8 +99,14 @@ class Inference(nn.Module):
 
 
   def forward(self, *inputs, **kwargs):
-    task_name = kwargs.get("task_name")
+    task_name = kwargs.pop("task_name")
 
+    outputs_dict = {}
+
+    # parallel teacher student task will use its own outputs_dict
+    # It will iterate on each task, and get its output from decoder,
+    # and save it on the `results`. The key is the task_name and value
+    # is the tensor.
     if task_name == PARALLEL_TEACHER_STUDENT_TASK:
       teacher_prediction = kwargs.pop("teacher_predictions", None)
       if teacher_prediction is None:
@@ -143,36 +150,56 @@ class Inference(nn.Module):
             losses[task.name] = loss
         return reduce(lambda x,y:x+y, losses.values()), None
 
-    # elif task_name in SIAMESE:
-    #   return self.siamese_forward(*inputs, **kwargs)
+    elif task_name in SIAMESE:
+      outputs_dict[task_name] = self.siamese_forward(*inputs, **kwargs, task_name=task_name)
 
     elif task_name == MIXSENT_TASK:
-      return self.mixsent_forward(*inputs, **kwargs)
+      outputs_dict[task_name] = self.mixsent_forward(*inputs, **kwargs, task_name=task_name)
+
     elif task_name in TRIPLET:
-      return self.triplet_forward(*inputs, **kwargs)
-    elif task_name in [DEP_PARSING_TASK]:
-      arguments = self.get_arguments(prefix="", kwargs=kwargs)
-      features = self.encoding(**arguments)
-      outputs = self.decoding(**arguments, **kwargs, features=features, task_name=task_name)
-      return outputs
+      outputs_dict[task_name] = self.triplet_forward(*inputs, **kwargs, task_name=task_name)
+
+      # elif task_name in [DEP_PARSING_TASK]:
+      #   arguments = self.get_arguments(prefix="", kwargs=kwargs)
+      #   features = self.encoding(**arguments)
+      #   outputs = self.decoding(**arguments, **kwargs, features=features, task_name=task_name)
+      #   outputs_dict[task_name] = outputs
+
+      # elif task_name == ENCODING_TASK:
+      #   # For encoding task, for now, we only consider singleton.
+      #   arguments = self.get_arguments(prefix="", kwargs=kwargs)
+      #   features = self.encoder(**arguments)
+      #   return {"features": features}
 
     else:
+      # Currently we can only one-forward-multitask here
+      # And the interface is not compatible with dependency parsing and some other multi-outputs task.
+      # TODO: Restructure the inference to fix
       arguments = self.get_arguments(prefix="", kwargs=kwargs)
       features = self.encoding(**arguments)
-      logits = self.decoding(**arguments, **kwargs, features=features, task_name=task_name)
+      task_names = task_name.split(',')
+      for task_name in task_names:
+        logits = self.decoding(**arguments, **kwargs, features=features, task_name=task_name)
 
-      if arguments["label_ids"] is not None:
-        # if task_name in ["joint_srl"]:
-        #   loss = self.task_dict[task_name].compute_loss()
-        # else:
-        loss = get_loss(
-          task=self.task_dict[task_name],
-          logits=logits,
-          config=self.config,
-          **arguments, **kwargs)
-        return loss, logits
-      else:
-        return logits.detach()
+        if arguments["label_ids"] is not None:
+          if task_name not in SKIP_LOSS_TASK:
+          # if task_name in ["joint_srl"]:
+          #   loss = self.task_dict[task_name].compute_loss()
+          # else:
+            loss = get_loss(
+              task=self.task_dict[task_name],
+              logits=logits,
+              config=self.config,
+              **arguments, **kwargs)
+            outputs_dict[task_name] = {
+              "loss": loss,
+              "logits": logits}
+          else:
+            outputs_dict[task_name] = {"logits": logits}
+        else:
+          outputs_dict[task_name] = {"logits": logits.detach()}
+
+    return outputs_dict
 
 
     # input_ids = kwargs.pop("input_ids")
@@ -288,7 +315,7 @@ class Inference(nn.Module):
 
     loss = (logits * logits).sum() / logits.size(0)
 
-    return loss, logits
+    return {"loss": loss, "logits": logits}
 
   def triplet_forward(self, *inputs, **kwargs):
     task_name = kwargs.pop("task_name")
@@ -343,9 +370,9 @@ class Inference(nn.Module):
       negative_distance = self.distance(logits, n_logits)
       loss = self.loss_max_margin(positive_distance, negative_distance, target= extra_args["target"])
 
-      return loss, None
+      return {"loss": loss}
     else:
-      return logits
+      return {"logits": logits}
 
 
   def mixsent_forward(self, *inputs, **kwargs):
@@ -397,4 +424,4 @@ class Inference(nn.Module):
             mask=mask,
             **arguments, **kwargs)
           losses[task.name] = loss
-      return reduce(lambda x,y: x+y, losses.values()), None
+      return {"loss": reduce(lambda x,y: x+y, losses.values())}

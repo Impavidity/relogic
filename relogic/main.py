@@ -246,6 +246,7 @@ def main():
   parser.add_argument("--loss_weight", type=str, default='1')
   parser.add_argument("--select_index_method", type=str, default="cls")
   parser.add_argument("--use_cosine_loss", default=False, action="store_true")
+  parser.add_argument("--adversarial_training", default=None, type=str)
   # We allow to set same training steps for different dataset
   # Need to combine to CUDA_VISIBLE_DEVICES
 

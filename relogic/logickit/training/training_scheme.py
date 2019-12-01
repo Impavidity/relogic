@@ -1,4 +1,6 @@
-from relogic.logickit.base.constants import AUXILIARY_TRAINING, ITERATIVE_TRAINING
+from relogic.logickit.base.constants import (
+  AUXILIARY_TRAINING, ITERATIVE_TRAINING, ADVERSARIAL_TRAINING,
+  TRAIN_DISCRIMINATOR, TRAIN_GENERATOR)
 import numpy as np
 import bisect
 import json
@@ -44,7 +46,30 @@ def iterative_training(config, tasks):
         for task in stage_tasks:
           yield next(mbs[task])
 
+def adversarial_training(config, tasks):
+  training_scheme = json.load(open(config.training_scheme_file))
+  # Let's assume that we only have one source_task and one target_task
+  source_task = training_scheme["source_task"]
+  target_task = training_scheme["target_task"]
+  discriminator_training_data = {
+    task.name: task.train_set.endless_minibatches(
+      config.tasks[task.name]["train_batch_size"],
+      sequential=(config.tasks[task.name]["dataset_type"] == "sequential")) for task in tasks}
+  generator_training_data = {
+    task.name: task.train_set.endless_minibatches(
+      config.tasks[task.name]["train_batch_size"],
+      sequential=(config.tasks[task.name]["dataset_type"] == "sequential")) for task in tasks}
+
+  n_critic = training_scheme["n_critic"]
+
+  while True:
+    for i in range(n_critic):
+      yield TRAIN_DISCRIMINATOR, next(discriminator_training_data[source_task]), next(discriminator_training_data[target_task])
+    yield TRAIN_GENERATOR, next(generator_training_data[source_task]), next(generator_training_data[target_task])
+
+
 TRAINING_SCHEME = {
   AUXILIARY_TRAINING: auxiliary_training,
   ITERATIVE_TRAINING: iterative_training,
+  ADVERSARIAL_TRAINING: adversarial_training,
 }
