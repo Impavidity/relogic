@@ -197,7 +197,10 @@ class Inference(nn.Module):
           else:
             outputs_dict[task_name] = {"logits": logits}
         else:
-          outputs_dict[task_name] = {"logits": logits.detach()}
+          if task_name in SKIP_LOSS_TASK:
+            outputs_dict[task_name] = {"logits": logits}
+          else:
+            outputs_dict[task_name] = {"logits": logits.detach()}
 
     return outputs_dict
 

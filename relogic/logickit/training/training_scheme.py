@@ -60,12 +60,19 @@ def adversarial_training(config, tasks):
       config.tasks[task.name]["train_batch_size"],
       sequential=(config.tasks[task.name]["dataset_type"] == "sequential")) for task in tasks}
 
-  n_critic = training_scheme["n_critic"]
+  n_critic_dis = training_scheme["n_critic_dis"]
+  n_critic_gen = training_scheme["n_critic_gen"]
+
+  print("----------------")
+  print("Training Scheme")
+  print(training_scheme)
 
   while True:
-    for i in range(n_critic):
+    for i in range(n_critic_dis):
       yield TRAIN_DISCRIMINATOR, next(discriminator_training_data[source_task]), next(discriminator_training_data[target_task])
-    yield TRAIN_GENERATOR, next(generator_training_data[source_task]), next(generator_training_data[target_task])
+    for i in range(n_critic_gen):
+      yield TRAIN_GENERATOR, next(generator_training_data[source_task]), next(generator_training_data[target_task])
+
 
 
 TRAINING_SCHEME = {
