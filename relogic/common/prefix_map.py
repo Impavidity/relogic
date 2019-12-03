@@ -11,5 +11,5 @@ class PrefixMap(object):
         else:
           raise ValueError("{} is a common prefix of {} and {}".format(item, selected_key, key))
     if data is None:
-      raise ValueError("{} is not in the map")
+      raise ValueError("{} is not in the map".format(item))
     return data

@@ -21,25 +21,23 @@ class AccuracyScorer(WordLevelScorer):
       self.dump_to_file_handler = open(self.dump_to_file_path, 'w')
 
     correct, count = 0, 0
-    data_to_dump = []
     for example, preds in zip(self._examples, self._preds):
       confidences = [max(softmax(token_level)) for token_level in preds.data.cpu().numpy()]
       preds = preds.argmax(-1).data.cpu().numpy()
       preds = [self._inv_label_mapping[y_pred] for y_pred in preds]
       preds = filter_head_prediction(sentence_tags=preds, is_head=example.is_head)
-      assert len(example.label) == len(preds)
-      for y_true, y_pred in zip(example.label, preds):
+      assert len(example.labels) == len(preds)
+      for y_true, y_pred in zip(example.labels, preds):
         if y_true not in self.ignore_list:
           count += 1
           correct += 1 if y_pred == y_true else 0
+
       if self.dump_to_file_path:
-        data_to_dump.append((int(example.guid), example.raw_tokens, example.label, preds, confidences))
-    if self.dump_to_file_path:
-      data_to_dump = sorted(data_to_dump, key=lambda x: x[0])
-      for idx, raw_tokens, sent_labels, pred_labels, confidences in data_to_dump:
-        for word, gold, pred, confidence in zip(raw_tokens, sent_labels, pred_labels, confidences):
-          self.dump_to_file_handler.write("{} {} {} {}\n".format(word, gold, pred, confidence))
-        self.dump_to_file_handler.write("\n")
+        self.dump_to_file_handler.write(
+          json.dumps({
+            "tokens": example.raw_tokens,
+            "labels": example.labels,
+            "predicted_labels": preds}) + "\n")
 
     if self.dump_to_file_path:
       self.dump_to_file_handler.close()
@@ -85,7 +83,6 @@ class EntityLevelF1Scorer(F1Score):
       self.dump_to_file_handler = open(self.dump_to_file_path, "w")
 
     self._n_correct, self._n_predicted, self._n_gold = 0, 0, 0
-    data_to_dump = []
     for example, preds in zip(self._examples, self._preds):
       preds_tags = preds.argmax(-1).data.cpu().numpy()
       confidences = [max(softmax(token_level)) for token_level in preds.data.cpu().numpy()]
