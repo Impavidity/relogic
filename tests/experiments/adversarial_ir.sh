@@ -31,7 +31,7 @@ python -u -m relogic.main \
 python -u -m relogic.main \
 --mode eval \
 --restore_path ${output_dir}  \
---local_rank 0
+--no_cuda
 
 rm -r ${output_dir}
 
