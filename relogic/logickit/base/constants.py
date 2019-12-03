@@ -29,6 +29,7 @@ PAIRWISE_TASK = "pairwise"
 IR_TASK = "ir"
 
 NER_TASK = "ner"
+POS_TASK = "pos"
 ENTITY_TYPE_CLASSIFICATION = "entity_type_classification"
 SEQUENCE_LABELING_TASK = "sequence_labeling"
 DEP_PARSING_TASK = "dep_parsing"

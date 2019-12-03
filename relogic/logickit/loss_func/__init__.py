@@ -81,7 +81,7 @@ def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kw
       label_loss += loss
 
     return label_loss
-  elif task.name in [NER_TASK]:
+  elif task.name in [NER_TASK, POS_TASK]:
     active_loss = input_head[:, :logits.size(1)].contiguous().view(-1) == 1
     # I use logits.size(1) to get the label length. It is OK to filter extra things
     active_logits = logits.view(-1, logits.size(-1))[active_loss]

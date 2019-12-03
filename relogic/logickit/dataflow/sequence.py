@@ -23,7 +23,7 @@ class SequenceExample(Example):
     self.text = text
     self.raw_tokens = text.split()
     self.labels = labels
-    self.label_padding = "X"
+    self.label_padding = "_X_"
     self.lang = lang
     self.padding_id = 0
 

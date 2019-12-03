@@ -1,13 +1,13 @@
-output_dir=saves/ner/conll2002/en/test
+output_dir=saves/ner/conll2006/pos/es/test
 
 python -u -m relogic.main \
---task_name ner \
+--task_name pos \
 --mode train \
 --output_dir ${output_dir} \
---encoder_type xlmr \
---bert_model xlmr.base.v0  \
---raw_data_path tests/datasets/conll2002/en/ \
---label_mapping_path data/preprocessed_data/ner_BIOES_label_mapping.json \
+--encoder_type bert \
+--bert_model bert-base-multilingual-cased  \
+--raw_data_path tests/datasets/conll2006/pos/es/ \
+--label_mapping_path data/preprocessed_data/conll0607_pos_label_mapping.json \
 --model_name default \
 --no_cuda \
 --learning_rate 1e-5 \
@@ -16,9 +16,9 @@ python -u -m relogic.main \
 --epoch_number 3 \
 --eval_dev_every 5 \
 --pretokenized \
---metrics f1 \
+--metrics accuracy \
 --early_stop_at 5 \
---config_file configurations/ner_configuration.json
+--config_file configurations/mbert_config.json
 
 python -u -m relogic.main \
 --mode eval \
