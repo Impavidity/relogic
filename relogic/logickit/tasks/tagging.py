@@ -43,4 +43,4 @@ class Tagging(Task):
     if self.name in ["predicate_sense"]:
       return AccuracyScorer(ignore_list=['O'], label_mapping=self.loader.label_mapping, dump_to_file=dump_to_file)
     if self.name in [POS_TASK]:
-      return AccuracyScorer(label_mapping=self.loader.label_mapping, dump_to_file=dump_to_file)
+      return AccuracyScorer(ignore_list=['_'], label_mapping=self.loader.label_mapping, dump_to_file=dump_to_file)
