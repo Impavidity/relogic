@@ -21,7 +21,9 @@ class XLMRobertaEncoder(nn.Module):
     return sequence_output
 
   @classmethod
-  def from_pretrained(cls, pretrained_model_name_or_path):
+  def from_pretrained(cls, pretrained_model_name_or_path, output_attentions=False):
+    assert(not output_attentions)
+    # Need to figure out how to output attention from XLMR
     return cls(pretrained_model_name_or_path)
 
 
@@ -72,7 +74,9 @@ class XLMEncoder(nn.Module):
     return sequence_output
 
   @classmethod
-  def from_pretrained(cls, pretrained_model_name_or_path):
+  def from_pretrained(cls, pretrained_model_name_or_path, output_attentions=False):
+    assert(not output_attentions)
+    # TODO: Figure out how to output attention map from XLM
     return cls(pretrained_model_name_or_path)
 
 

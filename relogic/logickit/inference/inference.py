@@ -31,7 +31,9 @@ class Inference(nn.Module):
         config.bert_model, encoder_structure=config.branching_structure)
     else:
       utils.log("Build {}:{} Encoder".format(config.encoder_type, config.bert_model))
-      self.encoder = get_encoder(config.encoder_type).from_pretrained(config.bert_model)
+      self.encoder = get_encoder(config.encoder_type).from_pretrained(
+        config.bert_model,
+        output_attentions=config.output_attentions)
 
 
 
@@ -75,7 +77,21 @@ class Inference(nn.Module):
       no_dropout=no_dropout,
       langs=langs)
 
-    return features
+    results = {}
+
+    if isinstance(features, tuple):
+      # Return Feature and Attention Map
+      features, attention_map = features
+      results["attention_map"] = attention_map
+
+    if isinstance(features, list):
+      # Return selected non final layers
+      selected_non_final_layers_features = features[:-1]
+      features = features[-1]
+      results["selected_non_final_layers_features"] = selected_non_final_layers_features
+    results["features"] = features
+
+    return results
 
   def decoding(self, **kwargs):
     task_name = kwargs.get("task_name")
@@ -113,28 +129,21 @@ class Inference(nn.Module):
         # Run teacher Part
         results = {}
         arguments = self.get_arguments(prefix="a_", kwargs=kwargs)
-        features = self.encoding(**arguments)
+        encoding_results = self.encoding(**arguments)
         for task in self.tasks:
           if task.name != task_name:
-            if isinstance(features, list):
-              result = features[0]
-            else:
-              result = features
-            # result = self.decoding(**arguments, **kwargs, features=features, task_name=task.name)
+            result = encoding_results["features"]
             results[task.name] = result.detach()# result.detach()
         return results
 
       else:
         arguments = self.get_arguments(prefix="b_", kwargs=kwargs)
-        features = self.encoding(**arguments)
+        encoding_results = self.encoding(**arguments)
+
         losses = {}
         for task in self.tasks:
           if task.name != task_name:
-            # result = self.decoding(**arguments, features=features, task_name=task.name)
-            if isinstance(features, list):
-              result = features[0]
-            else:
-              result = features
+            result = encoding_results["features"]
             logits, target, mask = self.decoding(
               task_name=task_name,
               student_results=result,
@@ -176,7 +185,8 @@ class Inference(nn.Module):
       # And the interface is not compatible with dependency parsing and some other multi-outputs task.
       # TODO: Restructure the inference to fix
       arguments = self.get_arguments(prefix="", kwargs=kwargs)
-      features = self.encoding(**arguments)
+      encoding_results = self.encoding(**arguments)
+      features = encoding_results["features"]
       task_names = task_name.split(',')
       for task_name in task_names:
         logits = self.decoding(**arguments, **kwargs, features=features, task_name=task_name)
@@ -201,6 +211,8 @@ class Inference(nn.Module):
             outputs_dict[task_name] = {"logits": logits}
           else:
             outputs_dict[task_name] = {"logits": logits.detach()}
+      if self.config.output_attentions:
+        outputs_dict[task_name]["attention_map"] = encoding_results["attention_map"]
 
     return outputs_dict
 
@@ -294,7 +306,7 @@ class Inference(nn.Module):
     selected_non_final_layers = extra_args.get("selected_non_final_layers", None)
 
     # BERT encoding
-    a_features = self.encoder(
+    a_encoding_results = self.encoder(
       input_ids=a_input_ids,
       token_type_ids=a_segment_ids,
       attention_mask=a_input_mask,
@@ -302,13 +314,16 @@ class Inference(nn.Module):
       selected_non_final_layers=selected_non_final_layers,
       route_path=route_path)
 
-    b_features = self.encoder(
+    b_encoding_results = self.encoder(
       input_ids=b_input_ids,
       token_type_ids=b_segment_ids,
       attention_mask=b_input_mask,
       output_all_encoded_layers=output_all_encoded_layers,
       selected_non_final_layers=selected_non_final_layers,
       route_path=route_path)
+
+    a_features = a_encoding_results["features"]
+    b_features = b_encoding_results["features"]
 
     logits = self.tasks_modules[task_name](
       a_features=a_features,
@@ -339,7 +354,7 @@ class Inference(nn.Module):
 
     is_inference = kwargs.pop("is_inference")
 
-    features = self.encoder(
+    encoding_results = self.encoder(
       input_ids=input_ids,
       token_type_ids=segment_ids,
       attention_mask=input_mask,
@@ -347,10 +362,12 @@ class Inference(nn.Module):
       selected_non_final_layers=selected_non_final_layers,
       route_path=route_path)
 
+    features = encoding_results["features"]
+
     logits = self.tasks_modules[task_name](features)
 
     if not is_inference:
-      p_features = self.encoder(
+      p_encoding_results = self.encoder(
         input_ids=p_input_ids,
         token_type_ids=p_segment_ids,
         attention_mask=p_input_mask,
@@ -358,13 +375,16 @@ class Inference(nn.Module):
         selected_non_final_layers=selected_non_final_layers,
         route_path=route_path)
 
-      n_features = self.encoder(
+      n_encoding_results = self.encoder(
         input_ids=n_input_ids,
         token_type_ids=n_segment_ids,
         attention_mask=n_input_mask,
         output_all_encoded_layers=output_all_encoded_layers,
         selected_non_final_layers=selected_non_final_layers,
         route_path=route_path)
+
+      p_features = p_encoding_results["features"]
+      n_features = n_encoding_results["features"]
 
       p_logits = self.tasks_modules[task_name](p_features)
       n_logits = self.tasks_modules[task_name](n_features)
@@ -385,18 +405,20 @@ class Inference(nn.Module):
       # Run teacher Part
       results = {}
       arguments_a = self.get_arguments(prefix="a_", kwargs=kwargs)
-      features_a = self.encoding(**arguments_a)
+      a_encdoing_results = self.encoding(**arguments_a)
+      a_features = a_encdoing_results["features"]
       arguments_b = self.get_arguments(prefix="b_", kwargs=kwargs)
-      features_b = self.encoding(**arguments_b)
+      b_encoding_results = self.encoding(**arguments_b)
+      b_features = b_encoding_results["features"]
       for task in self.tasks:
         if task.name != task_name:
-          if isinstance(features_a, list):
-            features_a = features_a[0]
-            features_b = features_b[0]
+          # if isinstance(a_features, list):
+          #   features_a = features_a[0]
+          #   features_b = features_b[0]
           # else:
           #   features = features
-          result_a = self.decoding(**arguments_a, **kwargs, features=features_a, task_name=task.name)
-          result_b = self.decoding(**arguments_b, **kwargs, features=features_b, task_name=task.name)
+          result_a = self.decoding(**arguments_a, **kwargs, features=a_features, task_name=task.name)
+          result_b = self.decoding(**arguments_b, **kwargs, features=b_features, task_name=task.name)
           # TODO: Detach !!!
           results[task.name] = {
             "a": result_a.detach(),
@@ -407,12 +429,11 @@ class Inference(nn.Module):
     else:
       # Run student and compute the loss
       arguments = self.get_arguments(prefix="c_", kwargs=kwargs)
-      features = self.encoding(**arguments)
+      encoding_results = self.encoding(**arguments)
+      features = encoding_results["features"]
       losses = {}
       for task in self.tasks:
         if task.name != task_name:
-          if isinstance(features, list):
-            features = features[0]
           result = self.decoding(**arguments, **kwargs, features=features, task_name=task.name)
           logits, target, mask = self.decoding(
             task_name=task_name,
