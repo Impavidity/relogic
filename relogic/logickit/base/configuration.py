@@ -1,6 +1,12 @@
 from dataclasses import dataclass
 import json
 from typing import Dict
+import logging
+from types import SimpleNamespace
+import os
+import relogic
+
+logger = logging.getLogger(__name__)
 
 class Configs:
   def __init__(self):
@@ -24,7 +30,7 @@ class EncoderConfigs(Configs):
 class AdversarialConfigs(Configs):
   def __init__(self, adversarial_configs: Dict):
     super().__init__()
-
+    self.activate = len(adversarial_configs) > 0
     self.type = adversarial_configs.get("type")
     self.discriminator_type = adversarial_configs.get("discriminator_type")
     self.discriminator_lr = adversarial_configs.get("adversarial_lr")
@@ -50,8 +56,8 @@ class Configuration:
     self.task_configs = task_configs
     self.encoder_configs = encoder_configs
     self.adversarial_configs = adversarial_configs
-    print("----")
-    print(self.adversarial_configs.__dict__)
+    if self.adversarial_configs.activate:
+      logger.info(self.adversarial_configs.__dict__)
 
 
   @property
@@ -80,4 +86,22 @@ class Configuration:
   def load_from_json_file(cls, config_path):
     return cls.load_from_json(json.load(open(config_path)))
 
+class Argument:
+  def __init__(self):
+    pass
 
+  @classmethod
+  def restore_from_model_path(cls, model_path, config_name="general_config.json", mode="deployment"):
+    with open(os.path.join(model_path, config_name)) as f:
+      restore_config = SimpleNamespace(**json.load(f))
+    restore_config.mode = "deployment"
+    restore_config.adversarial_training = False
+    for task in restore_config.tasks:
+      origin_label_path = restore_config.tasks[task]["label_mapping_path"]
+      if origin_label_path != "none":
+        label_mapping_path = origin_label_path.split("/")[-2:]
+        absolute_label_mapping_path = os.path.join(os.path.dirname(relogic.__file__), "..", "data", *label_mapping_path)
+        restore_config.tasks[task]["label_mapping_path"] = absolute_label_mapping_path
+    restore_config.config_file = os.path.join(os.path.dirname(relogic.__file__), "..", restore_config.config_file)
+    restore_config.training_scheme_file = os.path.join(os.path.dirname(relogic.__file__), "..", restore_config.training_scheme_file)
+    return restore_config
