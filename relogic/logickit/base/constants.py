@@ -27,7 +27,7 @@ POINTWISE_TASK = "pointwise"
 PAIRWISE_TASK = "pairwise"
 
 IR_TASK = "ir"
-
+DOCIR_TASK = "doc_ir"
 NER_TASK = "ner"
 POS_TASK = "pos"
 ENTITY_TYPE_CLASSIFICATION = "entity_type_classification"
