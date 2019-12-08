@@ -19,7 +19,4 @@ install:
   - python setup.py install
   
 script:
-  - bash tests/experiments/ir.sh
-  - bash tests/experiments/ner.sh
-  - bash tests/experiments/adversarial_ir.sh
-  - bash tests/experiments/pos.sh
+  - bash tests/run_tests.sh
