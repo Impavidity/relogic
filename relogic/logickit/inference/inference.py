@@ -186,11 +186,11 @@ class Inference(nn.Module):
       # TODO: Restructure the inference to fix
       arguments = self.get_arguments(prefix="", kwargs=kwargs)
       encoding_results = self.encoding(**arguments)
-      features = encoding_results["features"]
+      features = encoding_results.pop("features")
       task_names = task_name.split(',')
       for task_name in task_names:
-        logits = self.decoding(**arguments, **kwargs, features=features, task_name=task_name)
-
+        logits = self.decoding(**arguments, **kwargs, features=features, task_name=task_name,
+                               encoding_results=encoding_results)
         if arguments["label_ids"] is not None:
           if task_name not in SKIP_LOSS_TASK:
           # if task_name in ["joint_srl"]:

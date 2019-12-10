@@ -49,7 +49,7 @@ class DocPointwiseExample(Example):
 
   @classmethod
   def from_structure(cls, structure):
-    return cls(guid="", text_a=structure.text_a, text_bs=structure.text_bs)
+    return cls(guid="", text_a=structure.text_a, text_bs=structure.text_b)
 
   @classmethod
   def from_json(cls, example):

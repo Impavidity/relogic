@@ -11,7 +11,12 @@ class GenRepr(nn.Module):
     self.task_name = task_name
 
   def forward(self, *inputs, **kwargs):
-    features = kwargs.pop("features")
+    encoding_results = kwargs.pop("encoding_results", None)
+    if encoding_results is not None and "selected_non_final_layers_features" in encoding_results:
+      features = encoding_results["encoding_results"][0]
+      # We assume only one layer for now
+    else:
+      features = kwargs.pop("features")
 
     text_mask = (kwargs["input_mask"]).float()
 

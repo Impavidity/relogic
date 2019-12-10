@@ -103,5 +103,6 @@ class Argument:
         absolute_label_mapping_path = os.path.join(os.path.dirname(relogic.__file__), "..", "data", *label_mapping_path)
         restore_config.tasks[task]["label_mapping_path"] = absolute_label_mapping_path
     restore_config.config_file = os.path.join(os.path.dirname(relogic.__file__), "..", restore_config.config_file)
-    restore_config.training_scheme_file = os.path.join(os.path.dirname(relogic.__file__), "..", restore_config.training_scheme_file)
+    if restore_config.training_scheme_file:
+      restore_config.training_scheme_file = os.path.join(os.path.dirname(relogic.__file__), "..", restore_config.training_scheme_file)
     return restore_config
