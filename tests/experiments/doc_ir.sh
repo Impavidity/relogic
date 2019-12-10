@@ -19,7 +19,7 @@ python -u -m relogic.main \
 --learning_rate 1e-5 \
 --epoch_number 3 \
 --eval_dev_every 5 \
---early_stop_at 20 \
+--early_stop_at 5 \
 --qrels_file_path tests/datasets/doc_microblog/qrels.doc_mb.txt \
 --fix_embedding \
 --config_file configurations/mbert_config.json

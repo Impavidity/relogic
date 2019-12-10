@@ -26,7 +26,8 @@ python -u -m relogic.main \
 --config_file configurations/adversarial_ir.json \
 --adversarial_training GAN \
 --training_scheme adversarial_training \
---training_scheme_file configurations/training_scheme/adversarial_example.json
+--training_scheme_file configurations/training_scheme/adversarial_example.json \
+--selected_non_final_layers 2;2
 
 python -u -m relogic.main \
 --mode eval \
