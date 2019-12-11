@@ -105,6 +105,10 @@ class SingletonMiniBatch(MiniBatch):
     # }
     inputs["extra_args"] = {}
 
+    if self.config.tasks[self.task_name]["selected_non_final_layers"] is not None:
+      inputs["extra_args"]["selected_non_final_layers"] = self.config.tasks[self.task_name]["selected_non_final_layers"]
+
+
     return inputs
 
 class SingletonDataFlow(DataFlow):
