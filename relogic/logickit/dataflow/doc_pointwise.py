@@ -139,5 +139,5 @@ class DocPointwiseDataFlow(DataFlow):
                          label_ids=label_ids))
     return features
 
-  def decode_to_label(self, preds, mbs: DocPointwiseMiniBatch):
+  def decode_to_labels(self, preds, mbs: DocPointwiseMiniBatch):
     return None

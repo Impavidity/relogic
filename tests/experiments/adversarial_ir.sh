@@ -10,7 +10,7 @@ python -u -m relogic.main \
 --output_dir ${output_dir}  \
 --encoder_type bert \
 --bert_model bert-base-multilingual-cased \
---raw_data_path tests/datasets/microblog/,tests/datasets/language_identification \
+--raw_data_path tests/datasets/microblog/,tests/datasets/language_identification_ir \
 --label_mapping_path data/preprocessed_data/binary_classification.json,none \
 --model_name default \
 --no_cuda \
@@ -26,7 +26,7 @@ python -u -m relogic.main \
 --config_file configurations/adversarial_ir.json \
 --adversarial_training GAN \
 --training_scheme adversarial_training \
---training_scheme_file configurations/training_scheme/adversarial_example.json \
+--training_scheme_file configurations/training_scheme/adversarial_example_ir.json \
 --selected_non_final_layers 2;2
 
 python -u -m relogic.main \

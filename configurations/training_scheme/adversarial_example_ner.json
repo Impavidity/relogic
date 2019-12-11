@@ -1,0 +1,6 @@
+{
+  "n_critic_dis": 5,
+  "n_critic_gen": 1,
+  "source_task": "ner",
+  "target_task": "language_identification_seq"
+}
