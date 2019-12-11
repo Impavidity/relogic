@@ -71,6 +71,7 @@ def eval(config):
     model_path = os.path.join(config.restore_path,
                               restore_config.model_name + ".ckpt")
   restore_config.mode = config.mode
+  restore_config.output_features = config.output_features
   restore_config.local_rank = config.local_rank
   restore_config.no_cuda = config.no_cuda
   restore_config.buckets = config.buckets
@@ -92,6 +93,13 @@ def eval(config):
     server.start()
   elif config.mode == "analysis":
     analyze(config, model_trainer)
+  elif config.mode == "feature_extraction":
+    task_ = None
+    for task in model_trainer.tasks:
+      if task.name == config.selected_task:
+        task_ = task
+    model_trainer.feature_extraction(
+      task=task_, dump_file=config.feature_dump_file)
   else:
     model_trainer.evaluate_all_tasks()
 
@@ -100,13 +108,15 @@ def analyze(config, model_trainer):
   mask_heads(config, model_trainer)
 
 
+
+
 def main():
   utils.heading("SETUP")
   parser = argparse.ArgumentParser()
 
   # IO
   parser.add_argument(
-    "--mode", default=None, choices=["train", "valid", "eval", "finetune", "analysis"])
+    "--mode", default=None, choices=["train", "valid", "eval", "finetune", "analysis", "feature_extraction"])
   parser.add_argument("--output_dir", type=str, default="data/models")
   parser.add_argument("--max_seq_length", type=int, default=450)
   parser.add_argument("--max_query_length", type=int, default=64)
@@ -260,6 +270,11 @@ def main():
   parser.add_argument("--module_config", type=str, default=None)
   parser.add_argument("--task_config", type=str, default=None)
 
+  #
+  parser.add_argument("--selected_task", type=str)
+  parser.add_argument("--feature_dump_file", type=str)
+  parser.add_argument("--output_features", default=False, action="store_true")
+
   args = parser.parse_args()
 
   if not args.mode:
@@ -301,6 +316,8 @@ def main():
   elif args.mode == "serving":
     eval(args)
   elif args.mode == "analysis":
+    eval(args)
+  elif args.mode == "feature_extraction":
     eval(args)
 
 

@@ -329,3 +329,17 @@ class Trainer(object):
       restore_state_dict[key] = self.model.model.state_dict()[key]
     self.teacher_model.model.load_state_dict(restore_state_dict)
     utils.log("Teacher Model Restored from {}".format(model_path))
+
+  def feature_extraction(self, task, dump_file):
+    data = task.val_set
+    fout = open(dump_file, 'wb')
+    features = []
+    for i, mb in enumerate(data.get_minibatches(self.config.tasks[data.task_name]["test_batch_size"])):
+      # batch_preds = self.model.test(mb)
+      batch_preds = self.model.test_abstract(mb)
+      features.append(batch_preds[task.name]["features"].cpu().detach())
+      if i % 100 == 0:
+        utils.log("{} batch processed.".format(i))
+    features = torch.cat(features, dim=0).numpy()
+    np.savez(fout, X=np.array(features))
+    fout.close()

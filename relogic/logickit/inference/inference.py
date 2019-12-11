@@ -211,8 +211,11 @@ class Inference(nn.Module):
             outputs_dict[task_name] = {"logits": logits}
           else:
             outputs_dict[task_name] = {"logits": logits.detach()}
+        if self.config.output_features:
+          outputs_dict[task_name]["features"] = logits
       if self.config.output_attentions:
         outputs_dict[task_name]["attention_map"] = encoding_results["attention_map"]
+
 
     return outputs_dict
 
