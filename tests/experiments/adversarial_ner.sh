@@ -23,7 +23,7 @@ python -u -m relogic.main \
 --training_scheme adversarial_training \
 --training_scheme_file configurations/training_scheme/adversarial_example_ner.json \
 --early_stop_at 20 \
---selected_non_final_layers 8;8
+--selected_non_final_layers '8;8'
 
 python -u -m relogic.main \
 --mode eval \
