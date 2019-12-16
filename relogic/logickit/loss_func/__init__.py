@@ -6,9 +6,15 @@ import torch
 
 def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kwargs):
   if task.name.startswith(IR_TASK):
-    return F.cross_entropy(logits, label_ids)
+    if config.regression:
+      return F.binary_cross_entropy_with_logits(logits.squeeze(1), label_ids)
+    else:
+      return F.cross_entropy(logits, label_ids)
   if task.name.startswith(DOCIR_TASK):
-    return F.cross_entropy(logits, label_ids[0].unsqueeze(0))
+    if config.regression:
+      return F.binary_cross_entropy_with_logits(logits.squeeze(1), label_ids[0].unsqueeze(0))
+    else:
+      return F.cross_entropy(logits, label_ids[0].unsqueeze(0))
   if task.name in ["joint_srl"]:
     if isinstance(label_ids, tuple):
       label_ids, pred_span_label, arg_span_label, pos_tag_ids = label_ids

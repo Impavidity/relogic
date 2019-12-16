@@ -24,6 +24,10 @@ def softmax(x):
   e_x = np.exp(x - np.max(x))
   return e_x / e_x.sum(axis=-1)
 
+def sigmoid(x):
+  """Compute sigmoid values"""
+  return np.exp(-np.logaddexp(0, -x))
+
 def gen_position_indicator(span, length):
   indicator = [0] * length
   for idx, i in enumerate(range(span[0], -1, -1)):

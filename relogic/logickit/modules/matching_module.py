@@ -6,7 +6,10 @@ class MatchingModule(nn.Module):
     super(MatchingModule, self).__init__()
     self.config = config
     self.task_name = task_name
-    self.n_classes = n_classes
+    if self.config.regression:
+      self.n_classes = 1
+    else:
+      self.n_classes = n_classes
     self.to_logits = nn.Linear(config.hidden_size, self.n_classes)
 
   # def forward(self, input, input_mask=None, segment_ids=None, extra_args=None, **kwargs):

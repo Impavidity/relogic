@@ -181,6 +181,8 @@ def main():
   # Parallel Mapping
   parser.add_argument("--parallel_mapping_mode", default="alignment", type=str)
 
+  # Information Retrieval
+  parser.add_argument("--regression", default=False, action="store_true")
 
   # Reading Comprehension
   parser.add_argument("--null_score_diff_threshold", default=1.0)

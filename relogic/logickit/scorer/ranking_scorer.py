@@ -1,5 +1,5 @@
 from relogic.logickit.scorer.scorer import Scorer
-from relogic.logickit.utils.utils import softmax
+from relogic.logickit.utils.utils import softmax, sigmoid
 import torch.nn.functional as F
 import torch
 from tqdm import tqdm
@@ -204,7 +204,7 @@ class RetrievalScorer(Scorer):
   """
 
   """
-  def __init__(self, label_mapping, qrels_file_path, correct_label='1', dump_to_file=None, ):
+  def __init__(self, label_mapping, qrels_file_path, correct_label='1', dump_to_file=None, regression=False):
     super(RetrievalScorer, self).__init__()
     self.label_mapping = label_mapping
     self._inv_label_mapping = {v: k for k, v in label_mapping.items()}
@@ -212,6 +212,7 @@ class RetrievalScorer(Scorer):
     self._preds = []
     self.correct_label = correct_label
     self.qrels_file_path = qrels_file_path
+    self.regression = regression
     # Because we need to leverage trec_eval to calculate the scores, so dump_to_file can not be None
     if dump_to_file:
       self.dump_to_file_path = os.path.join(dump_to_file["output_dir"], dump_to_file["task_name"] + "_dump.json")
@@ -234,9 +235,12 @@ class RetrievalScorer(Scorer):
   def _get_results(self):
     topic_doc_collection = {}
     for example, preds in zip(self._examples, self._preds):
-      preds = softmax(preds)
-      score = preds[self.label_mapping[self.correct_label]]
-      text_a_id, text_b_id = example.guid.split('-')
+      if self.regression:
+        score = sigmoid(preds)[0]
+      else:
+        preds = softmax(preds)
+        score = preds[self.label_mapping[self.correct_label]]
+      text_a_id, text_b_id = example.guid.split('|')
       if text_a_id not in topic_doc_collection:
         topic_doc_collection[text_a_id] = {}
       topic_doc_collection[text_a_id][text_b_id] = max(topic_doc_collection[text_a_id].get(text_b_id, 0), score)
