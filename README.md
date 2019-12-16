@@ -110,6 +110,14 @@ if update_generator:
   optim.step()
 ```
 
+## Data Exploration
+
+It is recommended to use
+```commandline
+cat data.json | jq . | less
+```
+to explore the data file.
+
 ## Documentation
 
 - What is the docsting style to follow?

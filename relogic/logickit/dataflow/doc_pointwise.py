@@ -20,7 +20,7 @@ class DocPointwiseExample(Example):
     self.sent_label = sent_label
     self.sent_num = len(self.text_bs)
 
-  def process(self, tokenizers, *inputs, **kwargs):
+  def process(self, tokenizers, *inputs, regression=False, **kwargs):
     for tokenizer in tokenizers.values():
       if isinstance(tokenizer, BertTokenizer):
         self.text_a_tokens, self.text_a_is_head = tokenizer.tokenize(self.text_a)
@@ -44,8 +44,12 @@ class DocPointwiseExample(Example):
           self.input_mask_list.append([1] * len(self.input_ids_list[i]))
 
         if self.label is not None:
-          label_mapping = kwargs.get("label_mapping")
-          self.label_ids = label_mapping[self.label]
+          if regression:
+            # Regression Problem with sigmoid loss function
+            self.label_ids = float(self.label)
+          else:
+            label_mapping = kwargs.get("label_mapping")
+            self.label_ids = label_mapping[self.label]
 
   @classmethod
   def from_structure(cls, structure):
@@ -53,7 +57,7 @@ class DocPointwiseExample(Example):
 
   @classmethod
   def from_json(cls, example):
-    return cls(guid="{}-{}".format(example.get("text_a_id", 0), example.get("text_b_id", 0)),
+    return cls(guid="{}|{}".format(example.get("text_a_id", 0), example.get("text_b_id", 0)),
                text_a=example["text_a"],
                text_bs=example["text_b"],
                label=example.get("label", None))
@@ -89,8 +93,12 @@ class DocPointwiseMiniBatch(MiniBatch):
     inputs["input_head"] = create_tensor(self.input_features, "is_head",
                                          torch.long, device)
     if use_label:
-      inputs["label_ids"] = create_tensor(self.input_features, "label_ids",
-                                          torch.long, device)
+      if self.config.regression:
+        inputs["label_ids"] = create_tensor(self.input_features, "label_ids",
+                                            torch.float, device)
+      else:
+        inputs["label_ids"] = create_tensor(self.input_features, "label_ids",
+                                            torch.long, device)
     else:
       inputs["label_ids"] = None
     inputs["extra_args"] = {}
@@ -111,7 +119,8 @@ class DocPointwiseDataFlow(DataFlow):
   def process_example(self, example: DocPointwiseExample):
     example.process(tokenizers=self.tokenizers,
                     label_mapping=self.label_mapping,
-                    max_seq_length=self.config.max_seq_length)
+                    max_seq_length=self.config.max_seq_length,
+                    regression=self.config.regression)
 
   def convert_examples_to_features(self, examples: List[DocPointwiseExample]):
     examples: List[DocPointwiseExample]

@@ -39,7 +39,8 @@ class Classification(Task):
         self.loader.label_mapping,
         qrels_file_path=self.config.qrels_file_path if isinstance(self.config.qrels_file_path, str)
             else self.config.tasks[self.name]["qrels_file_path"],
-        dump_to_file=dump_to_file)
+        dump_to_file=dump_to_file,
+        regression=self.config.regression)
     elif self.name in ["rel_extraction"]:
       return RelationF1Scorer(self.loader.label_mapping, dump_to_file=dump_to_file)
     elif self.name in ["pair_matching", PAIRWISE_TASK]:

@@ -28,7 +28,7 @@ class PointwiseExample(Example):
     self.text_b = text_b
     self.label = label
 
-  def process(self, tokenizers, *inputs, **kwargs):
+  def process(self, tokenizers, *inputs, regression=False, **kwargs):
     """Process the sentence pair.
 
     :param tokenizers:
@@ -54,8 +54,13 @@ class PointwiseExample(Example):
         self.input_mask = [1] * len(self.input_ids)
 
         if self.label is not None:
-          label_mapping = kwargs.get("label_mapping")
-          self.label_ids = label_mapping[self.label]
+          if regression:
+            # Regression Problem with sigmoid loss function
+            self.label_ids = float(self.label)
+          else:
+            label_mapping = kwargs.get("label_mapping")
+            self.label_ids = label_mapping[self.label]
+
 
   @classmethod
   def from_structure(cls, structure):
@@ -65,7 +70,7 @@ class PointwiseExample(Example):
   def from_json(cls, example):
     """
     """
-    return cls(guid="{}-{}".format(example.get("text_a_id", 0), example.get("text_b_id", 0)),
+    return cls(guid="{}|{}".format(example.get("text_a_id", 0), example.get("text_b_id", 0)),
                text_a=example["text_a"],
                text_b=example["text_b"],
                label=example.get("label", None))
@@ -109,8 +114,12 @@ class PointwiseMiniBatch(MiniBatch):
     inputs["input_head"] = create_tensor(self.input_features, "is_head",
                                           torch.long, device)
     if use_label:
-      inputs["label_ids"] = create_tensor(self.input_features, "label_ids",
-                                          torch.long, device)
+      if self.config.regression:
+        inputs["label_ids"] = create_tensor(self.input_features, "label_ids",
+                                            torch.float, device)
+      else:
+        inputs["label_ids"] = create_tensor(self.input_features, "label_ids",
+                                            torch.long, device)
     else:
       inputs["label_ids"] = None
 
@@ -136,7 +145,8 @@ class PointwiseDataFlow(DataFlow):
   def process_example(self, example: PointwiseExample):
     """Process Pointwise example"""
     example.process(tokenizers=self.tokenizers,
-                    label_mapping=self.label_mapping)
+                    label_mapping=self.label_mapping,
+                    regression=self.config.regression)
 
   def convert_examples_to_features(self, examples: List[PointwiseExample]):
     examples: List[PointwiseExample]
