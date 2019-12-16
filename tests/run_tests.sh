@@ -1,3 +1,5 @@
+set -e
+
 bash tests/experiments/ir.sh
 bash tests/experiments/ner.sh
 bash tests/experiments/adversarial_ir.sh
