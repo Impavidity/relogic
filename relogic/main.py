@@ -181,14 +181,13 @@ def main():
   # Parallel Mapping
   parser.add_argument("--parallel_mapping_mode", default="alignment", type=str)
 
-  # Information Retrieval
-  parser.add_argument("--regression", default=False, action="store_true")
-
   # Reading Comprehension
   parser.add_argument("--null_score_diff_threshold", default=1.0)
 
   # Information Retrieval
   parser.add_argument("--qrels_file_path", type=str, default=None)
+  parser.add_argument("--regression", default=False, action="store_true")
+  parser.add_argument("--word_level_interaction", default=False, action="store_true")
 
   # Modeling
   parser.add_argument("--use_gcn", dest="use_gcn", default=False, action="store_true")
