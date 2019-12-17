@@ -21,8 +21,10 @@ class Classification(Task):
     if self.name in ["matching"]:
       return MatchingModule(self.config, self.name, self.n_classes)
     elif self.name.startswith(IR_TASK):
-      # return MatchingModule(self.config, self.name, self.n_classes)
-      return IRMatchingModule(self.config, self.name, self.n_classes)
+      if self.config.word_level_interaction:
+        return IRMatchingModule(self.config, self.name, self.n_classes)
+      else:
+        return MatchingModule(self.config, self.name, self.n_classes)
     elif self.name.startswith(DOCIR_TASK):
       return AggMatchingModule(self.config, self.name, self.n_classes)
     elif self.name in ["pair_matching", PAIRWISE_TASK]:
