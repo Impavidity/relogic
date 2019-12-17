@@ -53,6 +53,15 @@ class PointwiseExample(Example):
         self.input_ids = tokenizer.convert_tokens_to_ids(self.tokens)
         self.input_mask = [1] * len(self.input_ids)
 
+        self.text_a_indices = []
+        self.text_b_indices = []
+        for idx, ind in enumerate(self.text_a_is_head):
+          if ind == 1:
+            self.text_a_indices.append(idx + 1)
+        for idx, ind in enumerate(self.text_b_is_head):
+          if ind == 1:
+            self.text_b_indices.append(idx + len(self.text_a_is_head) + 2)
+
         if self.label is not None:
           if regression:
             # Regression Problem with sigmoid loss function
@@ -89,7 +98,10 @@ class PointwiseFeature(Feature):
     # BERT based feature
     self.input_ids = kwargs.pop("input_ids")
     self.input_mask = kwargs.pop("input_mask")
+    self.is_head = kwargs.pop("is_head")
     self.segment_ids = kwargs.pop("segment_ids")
+    self.text_a_indices = kwargs.pop("text_a_indices")
+    self.text_b_indices = kwargs.pop("text_b_indices")
     self.label_ids = kwargs.pop("label_ids")
 
 class PointwiseMiniBatch(MiniBatch):
@@ -113,6 +125,10 @@ class PointwiseMiniBatch(MiniBatch):
                                           torch.long, device)
     inputs["input_head"] = create_tensor(self.input_features, "is_head",
                                           torch.long, device)
+    inputs["text_a_indices"] = create_tensor(self.input_features, "text_a_indices",
+                                             torch.long, device)
+    inputs["text_b_indices"] = create_tensor(self.input_features, "text_b_indices",
+                                             torch.long, device)
     if use_label:
       if self.config.regression:
         inputs["label_ids"] = create_tensor(self.input_features, "label_ids",
@@ -154,13 +170,19 @@ class PointwiseDataFlow(DataFlow):
 
     # BERT based variables
     max_token_length = max([example.len for example in examples])
-
+    max_text_a_indices_length = max([len(example.text_a_indices) for example in examples])
+    max_text_b_indices_length = max([len(example.text_b_indices) for example in examples])
     for idx, example in enumerate(examples):
       # BERT based feature process
       padding = [0] * (max_token_length - example.len)
       input_ids = example.input_ids + padding
       input_mask = example.input_mask + padding
       segment_ids = example.segment_ids + padding
+      is_head = example.is_head + padding
+      a_indices_padding = [0] * (max_text_a_indices_length - len(example.text_a_indices))
+      b_indices_padding = [0] * (max_text_b_indices_length - len(example.text_b_indices))
+      text_a_indices = example.text_a_indices + a_indices_padding
+      text_b_indices = example.text_b_indices + b_indices_padding
       if hasattr(example, "label_ids"):
         label_ids = example.label_ids
       else:
@@ -170,6 +192,9 @@ class PointwiseDataFlow(DataFlow):
         PointwiseFeature(input_ids=input_ids,
                          input_mask=input_mask,
                          segment_ids=segment_ids,
+                         is_head=is_head,
+                         text_a_indices=text_a_indices,
+                         text_b_indices=text_b_indices,
                          label_ids=label_ids))
     return features
 
