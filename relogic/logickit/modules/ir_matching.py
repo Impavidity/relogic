@@ -32,23 +32,33 @@ class IRMatchingModule(nn.Module):
     query_token_size = text_a_indices.size(1)
     doc_token_size = text_b_indices.size(1)
     query_vector = utils.batched_index_select_tensor(features, text_a_indices)
+    # select query vector based on the query indices
     doc_vector = utils.batched_index_select_tensor(features, text_b_indices)
+    # select doc vector based on the doc indices
 
     exp_query_vector = query_vector.unsqueeze(2).repeat(1, 1, doc_token_size, 1)
+    # expand the query vector into the shape (batch_size, max_query_token_size, max_doc_token_size, dim)
     exp_doc_vector = doc_vector.unsqueeze(1).repeat(1, query_token_size, 1, 1)
+    # expand the doc vector into the shape (batch_size, max_query_token_size, max_doc_token_size, dim)
     sim = F.cosine_similarity(exp_query_vector.view(-1, query_vector.size(-1)),
       exp_doc_vector.view(-1, doc_vector.size(-1))).view(batch_size, query_token_size, doc_token_size)
+    # convert both tensors into (-1, dim) shape and compute the consine similarity between these two tensors
+    # and then convert it back into (batch_size, max_query_token_size, max_doc_token_size)
 
     scaled_doc_vector = sim.unsqueeze(-1) * exp_doc_vector
+    # scale the document vector
     exp_text_b_mask = text_b_mask.unsqueeze(1).repeat(1, query_token_size, 1).unsqueeze(-1)
     exp_text_b_lengths = text_b_lengths.unsqueeze(-1).repeat(1, query_token_size).unsqueeze(-1)
     per_query_token_based_doc_repr = torch.sum(scaled_doc_vector * exp_text_b_mask, dim=-2) / exp_text_b_lengths
+    # compute the average repr of document, this repr is based each query token
 
     exp_text_a_mask = text_a_mask.unsqueeze(-1)
     exp_text_a_lengths = text_a_lengths.unsqueeze(-1)
     query_based_doc_repr = torch.sum(per_query_token_based_doc_repr * exp_text_a_mask, dim=-2) / exp_text_a_lengths
+    # aggregate document repr based on all query tokens
 
     query_vector_avg = torch.sum(query_vector * exp_text_a_mask , dim=-2) / exp_text_a_lengths
+    # aggregate the query repr
 
     feat = torch.cat([query_vector_avg, query_based_doc_repr], dim=-1)
     logits = self.to_logits(feat)
