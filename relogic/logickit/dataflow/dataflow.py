@@ -164,7 +164,6 @@ class DataFlow(object, metaclass=abc.ABCMeta):
   def endless_minibatches(self, minibatch_size, sequential=False, bucket=True):
     """Generate endless minibatches with given batch size."""
 
-    print("Use {} dataset for {}".format("sequential" if sequential else "bucket", self.task_name))
     if sequential:
       print("Use sequential dataset for {}".format(self.task_name))
     elif not bucket:
