@@ -296,7 +296,7 @@ class Trainer(object):
       thresholds = np.cumsum([w / np.sum(weights) for w in weights])
 
       labeled_mbs = [
-        dataset.endless_minibatches(self.config.tasks[dataset.task_name]["train_batch_size"])
+        dataset.endless_minibatches(self.config.tasks[dataset.task_name]["train_batch_size"], bucket=not self.config.no_bucket)
         for dataset in datasets
       ]
       while True:

@@ -161,15 +161,15 @@ class DataFlow(object, metaclass=abc.ABCMeta):
         examples.append(json.loads(line))
     self.update_with_jsons(examples)
 
-  def endless_minibatches(self, minibatch_size, sequential=False):
+  def endless_minibatches(self, minibatch_size, sequential=False, bucket=True):
     """Generate endless minibatches with given batch size."""
 
     print("Use {} dataset for {}".format("sequential" if sequential else "bucket", self.task_name))
     while True:
-      for minibatch in self.get_minibatches(minibatch_size, sequential=sequential):
+      for minibatch in self.get_minibatches(minibatch_size, sequential=sequential, bucket=bucket):
         yield minibatch
 
-  def get_minibatches(self, minibatch_size, sequential=True):
+  def get_minibatches(self, minibatch_size, sequential, bucket):
     """Generate list of batch size based on examples.
 
     There are two modes for generating batches. One is sequential,
@@ -186,6 +186,15 @@ class DataFlow(object, metaclass=abc.ABCMeta):
       while index < self.size:
         yield self._make_minibatch(
             np.array(range(index, min(index + minibatch_size, self.size))))
+        index += minibatch_size
+    elif not bucket:
+      indices = list(range(self.size))
+      random.shuffle(indices)
+      indices = np.array(indices)
+      index = 0
+      while index < self.size:
+        yield self._make_minibatch(
+            indices[index: min(index + minibatch_size, self.size)])
         index += minibatch_size
     else:
       by_bucket = collections.defaultdict(list)
