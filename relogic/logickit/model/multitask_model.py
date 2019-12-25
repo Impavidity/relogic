@@ -62,9 +62,13 @@ class Model(BaseModel):
         # adjust to real training batch size
         utils.log("Training batch size: {}".format(config.tasks[task.name]["train_batch_size"]))
 
-    if config.num_train_optimization_steps == 0:
-      config.num_train_optimization_steps = config.num_steps_in_one_epoch * config.epoch_number \
+    calculated_num_train_optimization_steps = config.num_steps_in_one_epoch * config.epoch_number \
         if config.schedule_lr else -1
+    if config.num_train_optimization_steps == 0:
+      config.num_train_optimization_steps = calculated_num_train_optimization_steps
+    else:
+      utils.log("Overwriting the training steps to {} instead of {} because of the configuration".format(
+        config.num_train_optimization_steps, calculated_num_train_optimization_steps))
     utils.log("Optimization steps : {}".format(config.num_train_optimization_steps))
 
     # Optimization

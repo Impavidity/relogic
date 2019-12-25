@@ -314,6 +314,11 @@ class Trainer(object):
     for key in self.config.ignore_parameters:
       # restore_state_dict.pop(key)
       restore_state_dict[key] = self.model.model.state_dict()[key]
+    if self.ext_config.param_configs.param_assignment is not None:
+      for source_key, target_key in self.ext_config.param_configs.param_assignment.items():
+        restore_state_dict[target_key] = restore_state_dict[source_key]
+        restore_state_dict.pop(source_key)
+        utils.log("Replace {} with {}".format(target_key, source_key))
     self.model.model.load_state_dict(restore_state_dict)
     utils.log("Model Restored from {}".format(model_path))
 

@@ -40,7 +40,13 @@ class AdversarialConfigs(Configs):
     self.scale = adversarial_configs.get("scale", 0.01)
     self.hidden_size = adversarial_configs.get("hidden_size", 798)
 
-
+class ParamConfigs(Configs):
+  def __init__(self, param_configs: Dict):
+    super().__init__()
+    self.param_assignment = param_configs.get("param_assignment", None)
+    if self.param_assignment is not None:
+      logger.info("The following parameters will be replaced")
+      logger.info(self.param_assignment)
 
 
 class Configuration:
@@ -50,12 +56,14 @@ class Configuration:
         module_configs: Dict,
         task_configs: Dict,
         encoder_configs: EncoderConfigs,
-        adversarial_configs: AdversarialConfigs):
+        adversarial_configs: AdversarialConfigs,
+        param_configs):
     self.tokenizer_configs = tokenizer_configs
     self.module_configs = module_configs
     self.task_configs = task_configs
     self.encoder_configs = encoder_configs
     self.adversarial_configs = adversarial_configs
+    self.param_configs = param_configs
     if self.adversarial_configs.activate:
       logger.info(self.adversarial_configs.__dict__)
 
@@ -75,7 +83,8 @@ class Configuration:
       module_configs = config.get("modules"),
       task_configs = config.get("tasks"),
       encoder_configs = EncoderConfigs(config.get("encoder", dict({}))),
-      adversarial_configs = AdversarialConfigs(config.get("adversarial", dict({})))
+      adversarial_configs = AdversarialConfigs(config.get("adversarial", dict({}))),
+      param_configs = ParamConfigs(config.get("param", dict({})))
     )
 
   @classmethod
