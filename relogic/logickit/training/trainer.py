@@ -56,6 +56,24 @@ class Trainer(object):
         for task_name in teacher_config.task_names
       ]
       self.teacher_model = get_model(teacher_config)(config=teacher_config, tasks=self.teacher_tasks)
+
+    if config.param_initialization is not None:
+      self.initialization_from_pretrained(self.config.param_initialization)
+
+
+  def initialization_from_pretrained(self, model_path):
+    pretrained_dict = torch.load(
+      model_path, map_location=lambda storage, location: storage)
+    model_dict = self.model.model.state_dict()
+    if self.ext_config.param_configs.param_assignment is not None:
+      for source_key, target_key in self.ext_config.param_configs.param_assignment.items():
+        model_dict[target_key] = pretrained_dict[source_key].to(self.model.device)
+        utils.log("Replace {} with {}".format(target_key, source_key))
+    self.model.model.load_state_dict(model_dict)
+    utils.log("Initialize models Restored from {}".format(model_path))
+    utils.log("With keys {}".format(pretrained_dict.keys()))
+
+
   def train(self, progress: TrainingProgress):
     if self.config.adversarial_training:
       self.adversarial_train(progress)
@@ -314,11 +332,6 @@ class Trainer(object):
     for key in self.config.ignore_parameters:
       # restore_state_dict.pop(key)
       restore_state_dict[key] = self.model.model.state_dict()[key]
-    if self.ext_config.param_configs.param_assignment is not None:
-      for source_key, target_key in self.ext_config.param_configs.param_assignment.items():
-        restore_state_dict[target_key] = restore_state_dict[source_key]
-        restore_state_dict.pop(source_key)
-        utils.log("Replace {} with {}".format(target_key, source_key))
     self.model.model.load_state_dict(restore_state_dict)
     utils.log("Model Restored from {}".format(model_path))
 

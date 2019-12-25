@@ -174,12 +174,15 @@ class DataFlow(object, metaclass=abc.ABCMeta):
       for minibatch in self.get_minibatches(minibatch_size, sequential=sequential, bucket=bucket):
         yield minibatch
 
-  def get_minibatches(self, minibatch_size, sequential, bucket):
+  def get_minibatches(self, minibatch_size, sequential=True, bucket=False):
     """Generate list of batch size based on examples.
 
     There are two modes for generating batches. One is sequential,
     which follows the original example sequence in the dataset.
     The other mode is based on bucketing, to save the memory consumption.
+
+    NOTICE: The default value here is for evaluation. Because the evaluation interface will directly call this.
+    The traning interface will call endless_minibatches.
 
     Args:
       minibatch_size (int): Batch size.
