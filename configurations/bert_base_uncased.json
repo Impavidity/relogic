@@ -1,0 +1,8 @@
+{
+  "tokenizers": {
+    "customized_bert": {
+      "pretrained_model_name_or_path": "bert-base-uncased",
+      "do_lower_case": true
+    }
+  }
+}

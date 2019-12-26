@@ -86,27 +86,39 @@ class EntityLevelF1Scorer(F1Score):
     for example, preds in zip(self._examples, self._preds):
       preds_tags = preds.argmax(-1).data.cpu().numpy()
       confidences = [max(softmax(token_level)) for token_level in preds.data.cpu().numpy()]
-      sent_spans, sent_labels = get_span_labels(
-        sentence_tags = example.labels)
-      span_preds, pred_labels = get_span_labels(
-        sentence_tags=preds_tags,
-        is_head = example.is_head,
-        segment_id = example.segment_ids,
-        inv_label_mapping = self._inv_label_mapping)
-      self._n_correct += len(sent_spans & span_preds)
-      self._n_gold += len(sent_spans)
-      self._n_predicted += len(span_preds)
-      if self.dump_to_file_path:
-        if len(example.raw_tokens) != len(sent_labels) or len(example.raw_tokens) != len(pred_labels):
-          print(len(example.raw_tokens), example.raw_tokens)
-          print(len(sent_labels), sent_labels)
-          print(len(pred_labels), pred_labels)
-          exit()
-        self.dump_to_file_handler.write(
-          json.dumps({
-            "tokens": example.raw_tokens,
-            "labels": sent_labels,
-            "predicted_labels": pred_labels}) + "\n")
+      if example.labels is None:
+        span_preds, pred_labels = get_span_labels(
+          sentence_tags=preds_tags,
+          is_head=example.is_head,
+          segment_id=example.segment_ids,
+          inv_label_mapping=self._inv_label_mapping)
+        if self.dump_to_file_path:
+          self.dump_to_file_handler.write(
+            json.dumps({
+              "tokens": example.raw_tokens,
+              "predicted_labels": pred_labels}) + "\n")
+      else:
+        sent_spans, sent_labels = get_span_labels(
+          sentence_tags = example.labels)
+        span_preds, pred_labels = get_span_labels(
+          sentence_tags=preds_tags,
+          is_head = example.is_head,
+          segment_id = example.segment_ids,
+          inv_label_mapping = self._inv_label_mapping)
+        self._n_correct += len(sent_spans & span_preds)
+        self._n_gold += len(sent_spans)
+        self._n_predicted += len(span_preds)
+        if self.dump_to_file_path:
+          if len(example.raw_tokens) != len(sent_labels) or len(example.raw_tokens) != len(pred_labels):
+            print(len(example.raw_tokens), example.raw_tokens)
+            print(len(sent_labels), sent_labels)
+            print(len(pred_labels), pred_labels)
+            exit()
+          self.dump_to_file_handler.write(
+            json.dumps({
+              "tokens": example.raw_tokens,
+              "labels": sent_labels,
+              "predicted_labels": pred_labels}) + "\n")
 
     if self.dump_to_file_path:
       self.dump_to_file_handler.close()

@@ -49,15 +49,15 @@ class IRMatchingModule(nn.Module):
     # scale the document vector
     exp_text_b_mask = text_b_mask.unsqueeze(1).repeat(1, query_token_size, 1).unsqueeze(-1)
     exp_text_b_lengths = text_b_lengths.unsqueeze(-1).repeat(1, query_token_size).unsqueeze(-1)
-    per_query_token_based_doc_repr = torch.sum(scaled_doc_vector * exp_text_b_mask, dim=-2) / exp_text_b_lengths
+    per_query_token_based_doc_repr = torch.sum(scaled_doc_vector * exp_text_b_mask, dim=-2) / (exp_text_b_lengths + 1)
     # compute the average repr of document, this repr is based each query token
 
     exp_text_a_mask = text_a_mask.unsqueeze(-1)
     exp_text_a_lengths = text_a_lengths.unsqueeze(-1)
-    query_based_doc_repr = torch.sum(per_query_token_based_doc_repr * exp_text_a_mask, dim=-2) / exp_text_a_lengths
+    query_based_doc_repr = torch.sum(per_query_token_based_doc_repr * exp_text_a_mask, dim=-2) / (exp_text_a_lengths + 1)
     # aggregate document repr based on all query tokens
 
-    query_vector_avg = torch.sum(query_vector * exp_text_a_mask , dim=-2) / exp_text_a_lengths
+    query_vector_avg = torch.sum(query_vector * exp_text_a_mask , dim=-2) / (exp_text_a_lengths + 1)
     # aggregate the query repr
 
     feat = torch.cat([query_vector_avg, query_based_doc_repr], dim=-1)
