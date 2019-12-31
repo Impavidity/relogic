@@ -79,7 +79,19 @@ class Model(BaseModel):
     #   print(n)
     optimizers = {}
     optim_type = ""
-    if config.sep_optim:
+    if config.only_adam:
+      """
+      This optimization method can only support finetuning all.
+      This is for the adaptation of [CEDR](https://github.com/Georgetown-IR-Lab/cedr).
+      Will extend this for other settings, such as layer fixing
+      """
+      utils.log("Optimizing with Adam with {} and {} learninig rate".format(config.learning_rate, config.adam_learning_rate))
+      modules_parameters = {"params": [p for n, p in param_optimizer if "bert" not in n]}
+      bert_optimizer_grouped_parameters = {"params": [p for n, p in param_optimizer if "bert" in n], "lr": config.learning_rate}
+      optimizers["optimizer"] = torch.optim.Adam(
+        [modules_parameters, bert_optimizer_grouped_parameters], lr=config.adam_learning_rate)
+      optim_type = "only_adam"
+    elif config.sep_optim:
       utils.log("Optimizing the module using Adam optimizer ..")
       modules_parameters = [p for n, p in param_optimizer if "bert" not in n]
       bert_optimizer_grouped_parameters = [

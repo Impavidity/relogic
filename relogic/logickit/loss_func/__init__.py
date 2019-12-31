@@ -24,7 +24,7 @@ def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kw
       positive_distance,
       negative_distance,
       margin=config.max_margin,
-      target=-distance.new_ones(batch_size // 2))
+      target=distance.new_ones(batch_size // 2))
     return loss
 
   if task.name in ["joint_srl"]:

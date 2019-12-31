@@ -268,8 +268,8 @@ class RetrievalScorer(Scorer):
     return [("map", mean_average_precision)]
 
 class GCNDocRetrievalScorer(RetrievalScorer):
-  def __init__(self, qrels_file_path, dump_to_file=None):
-    super().__init__(label_mapping=None, qrels_file_path=qrels_file_path, dump_to_file=dump_to_file)
+  def __init__(self, *inputs, **kwargs):
+    super().__init__(*inputs, **kwargs)
 
   def score_aggregation(self):
     topic_doc_collection = {}
@@ -283,7 +283,7 @@ class GCNDocRetrievalScorer(RetrievalScorer):
         topic_doc_collection[text_a_id] = {}
     assert len(topic_doc_ids) == len(self._preds)
     for (topic_id, doc_id), preds in zip(topic_doc_ids, self._preds):
-      topic_doc_collection[topic_id][doc_id] = preds
+      topic_doc_collection[topic_id][doc_id] = preds # [self.label_mapping[self.correct_label]]
     return topic_doc_collection
 
 

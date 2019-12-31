@@ -57,12 +57,18 @@ class DocGCN(nn.Module):
     self.gated_gcn = GAT(
       input_dim=config.hidden_size,
       hidden_dim=config.hidden_size,
-      num_layers=3,
+      num_layers=config.gcn_layer_num,
       heads=[1] * config.gcn_layer_num,
       feat_drop=0,
       attn_drop=0,
       negative_slope=0.2,
       residual=False)
+    # self.to_logits = nn.Sequential(
+    #     nn.Linear(config.hidden_size * 2, 300),
+    #     nn.ReLU(),
+    #     nn.Linear(300, 2))
+    # self.to_logits = nn.Linear(config.hidden_size, 300)
+
 
   def extract_token_features(self, features, token_span_indices, features_mask, token_span_indices_mask):
     token_repr = self.average_span_extractor(
@@ -137,8 +143,14 @@ class DocGCN(nn.Module):
     all_query_features = (features * query_mask).sum(1)
     query_features = self.average_span_extractor(all_query_features, doc_sent_spans).squeeze(0)
 
-    distance = F.pairwise_distance(query_features, avg, p=1)
+    # f = torch.cat([query_features, avg], dim=-1)
+    # logits = self.to_logits(f)
+    # query_features = self.to_logits(query_features)
+    # doc_extracted_feature = self.to_logits(avg)
+    # distance = F.pairwise_distance(query_features, avg, p=1)
+    distance = F.cosine_similarity(query_features, avg)
 
     return distance
+    # return logits
 
 

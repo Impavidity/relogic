@@ -43,16 +43,18 @@ class Classification(Task):
       return RecallScorer(self.loader.label_mapping, topk=self.config.topk, dump_to_file=dump_to_file)
     elif self.name.startswith(IR_TASK) or self.name.startswith(DOCIR_TASK):
       return RetrievalScorer(
-        self.loader.label_mapping,
+        label_mapping=self.loader.label_mapping,
         qrels_file_path=self.config.qrels_file_path if isinstance(self.config.qrels_file_path, str)
             else self.config.tasks[self.name]["qrels_file_path"],
         dump_to_file=dump_to_file,
         regression=self.config.regression)
     elif self.name == GCN_DOC:
       return GCNDocRetrievalScorer(
+        label_mapping=self.loader.label_mapping,
         qrels_file_path=self.config.qrels_file_path if isinstance(self.config.qrels_file_path, str)
         else self.config.tasks[self.name]["qrels_file_path"],
-        dump_to_file=dump_to_file)
+        dump_to_file=dump_to_file,
+        regression=self.config.regression)
     elif self.name in ["rel_extraction"]:
       return RelationF1Scorer(self.loader.label_mapping, dump_to_file=dump_to_file)
     elif self.name in ["pair_matching", PAIRWISE_TASK]:
