@@ -37,6 +37,7 @@ SEQUENCE_CLASSIFICATION_TASK = "sequence_classification"
 PARALLEL_MAPPING_TASK = "parallel_mapping"
 PARALLEL_TEACHER_STUDENT_TASK = "parallel_teacher_student"
 MIXSENT_TASK = "mixsent"
+GCN_DOC = "gcn_doc"
 
 LANGUAGE_IDENTIFICATION_IR = "language_identification_ir"
 LANGUAGE_IDENTIFICATION_SEQ = "language_identification_seq"

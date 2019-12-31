@@ -19,14 +19,19 @@ class PointwiseExample(Example):
   Args:
     guid (str): global unique identifier for this pair. This information is usually used
       in the ranking problem.
-    text (str):
+    text_a (str): Query tokens
+    text_b (str): Candidate tokens
+    sequence_labels (List[str]): This annotation is for evidence supporting in the matching task.
   """
-  def __init__(self, guid: str, text_a: str, text_b:str, label=None):
+  def __init__(self, guid: str, text_a: str, text_b:str, label=None,
+               sequence_labels=None, selected_indices=None):
     super(PointwiseExample, self).__init__()
     self.guid = guid
     self.text_a = text_a
     self.text_b = text_b
     self.label = label
+    self.sequence_labels = sequence_labels
+    self.selected_indices = selected_indices
 
   def process(self, tokenizers, *inputs, regression=False, **kwargs):
     """Process the sentence pair.
@@ -70,6 +75,21 @@ class PointwiseExample(Example):
             label_mapping = kwargs.get("label_mapping")
             self.label_ids = label_mapping[self.label]
 
+        if self.sequence_labels is not None:
+          self.sequence_labels_ids = []
+
+        if self.selected_indices is not None:
+          # Need to process span info
+          self.text_b_full_token_spans = []
+          offset = len(self.text_a_is_head) + 2
+          start = -1
+          for idx, ind in enumerate(self.text_b_is_head):
+            if ind == 1:
+              if start != -1:
+                end = idx
+                self.text_b_full_token_spans.append((offset + start, offset + end))
+              start = idx
+          self.text_b_full_token_spans.append((offset + start, offset + len(self.text_b_is_head)))
 
   @classmethod
   def from_structure(cls, structure):
@@ -82,6 +102,7 @@ class PointwiseExample(Example):
     return cls(guid="{}|{}".format(example.get("text_a_id", 0), example.get("text_b_id", 0)),
                text_a=example["text_a"],
                text_b=example["text_b"],
+               selected_indices=example.get("selected_indices", None),
                label=example.get("label", None))
 
   @property
@@ -100,9 +121,11 @@ class PointwiseFeature(Feature):
     self.input_mask = kwargs.pop("input_mask")
     self.is_head = kwargs.pop("is_head")
     self.segment_ids = kwargs.pop("segment_ids")
-    self.text_a_indices = kwargs.pop("text_a_indices")
-    self.text_b_indices = kwargs.pop("text_b_indices")
-    self.label_ids = kwargs.pop("label_ids")
+    self.text_a_indices = kwargs.pop("text_a_indices", None)
+    self.text_b_indices = kwargs.pop("text_b_indices", None)
+    self.label_ids = kwargs.pop("label_ids", None)
+    self.token_spans = kwargs.pop("token_spans", None)
+    self.selected_indices = kwargs.pop("selected_indices", None)
 
 class PointwiseMiniBatch(MiniBatch):
   """
@@ -110,6 +133,7 @@ class PointwiseMiniBatch(MiniBatch):
   """
   def __init__(self, *inputs, **kwargs):
     super(PointwiseMiniBatch, self).__init__(*inputs, **kwargs)
+    self.extra_features = kwargs.pop("extra_features", None)
 
   def generate_input(self, device, use_label):
     """Generate tensors based on PointwiseFeatures
@@ -129,6 +153,10 @@ class PointwiseMiniBatch(MiniBatch):
                                              torch.long, device)
     inputs["text_b_indices"] = create_tensor(self.input_features, "text_b_indices",
                                              torch.long, device)
+    inputs["token_spans"] = create_tensor(self.input_features, "token_spans",
+                                          torch.long, device)
+    inputs["selected_indices"] = create_tensor(self.input_features, "selected_indices",
+                                               torch.long, device)
     if use_label:
       if self.config.regression:
         inputs["label_ids"] = create_tensor(self.input_features, "label_ids",
@@ -142,7 +170,14 @@ class PointwiseMiniBatch(MiniBatch):
     inputs["extra_args"] = {}
     if self.config.tasks[self.task_name]["selected_non_final_layers"] is not None:
       inputs["extra_args"]["selected_non_final_layers"] = self.config.tasks[self.task_name]["selected_non_final_layers"]
-
+    if self.extra_features is not None:
+      # we currently assume it is document level label and edge data
+      if use_label:
+        inputs["label_ids"] = create_tensor(self.extra_features, "label_ids",
+                                            torch.long, device)
+      inputs["extra_args"]["edge_data"] = [feature.edge_data for feature in self.extra_features]
+      inputs["extra_args"]["doc_span"] = create_tensor(self.extra_features, "doc_span",
+                                                       torch.long, device)
     return inputs
 
 class PointwiseDataFlow(DataFlow):

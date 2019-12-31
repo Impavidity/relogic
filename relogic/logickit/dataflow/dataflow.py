@@ -8,6 +8,7 @@ import abc
 import collections
 import json
 import random
+random.seed(1234)
 from typing import Dict
 
 import numpy as np

@@ -11,6 +11,7 @@ from relogic.logickit.dataflow import MiniBatch
 from relogic.logickit.utils.utils import entropy
 from relogic.logickit.base.configuration import Configuration
 from relogic.logickit.inference.adversarial import Adversarial
+from pytorch_memlab import MemReporter
 
 
 class Model(BaseModel):
@@ -208,9 +209,10 @@ class Model(BaseModel):
     if "input_ids" in inputs and inputs["input_ids"].size(0) == 0:
       utils.log("Zero Batch")
       return 0
-
+    # reporter = MemReporter(self.model)
     outputs = self.model(**inputs)
-
+    # print('========= before backward =========')
+    # reporter.report()
     # TODO: Slow process Migrating Interface ...
     if isinstance(outputs, dict):
       loss = outputs[mb.task_name]["loss"]
@@ -232,6 +234,8 @@ class Model(BaseModel):
       self.optimizer.step()
       self.optimizer.zero_grad()
       self.global_step_labeled += 1
+    # print('========= after backward =========')
+    # reporter.report()
     return loss.item()
 
   def train_discriminator(self, labeled_mb, unlabeled_mb):

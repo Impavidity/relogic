@@ -189,6 +189,9 @@ def main():
   parser.add_argument("--regression", default=False, action="store_true")
   parser.add_argument("--word_level_interaction", default=False, action="store_true")
 
+  # GCN
+  parser.add_argument("--gcn_layer_num", type=int, default=3)
+
   # Modeling
   parser.add_argument("--use_gcn", dest="use_gcn", default=False, action="store_true")
   parser.add_argument("--fix_embedding", default=False, action="store_true")

@@ -15,6 +15,18 @@ def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kw
       return F.binary_cross_entropy_with_logits(logits.squeeze(1), label_ids[0].unsqueeze(0))
     else:
       return F.cross_entropy(logits, label_ids[0].unsqueeze(0))
+  if task.name == GCN_DOC:
+    distance = logits
+    batch_size = distance.size(0)
+    positive_distance = distance[: batch_size // 2]
+    negative_distance = distance[batch_size // 2:]
+    loss = F.margin_ranking_loss(
+      positive_distance,
+      negative_distance,
+      margin=config.max_margin,
+      target=-distance.new_ones(batch_size // 2))
+    return loss
+
   if task.name in ["joint_srl"]:
     if isinstance(label_ids, tuple):
       label_ids, pred_span_label, arg_span_label, pos_tag_ids = label_ids

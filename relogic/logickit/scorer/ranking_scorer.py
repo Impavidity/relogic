@@ -204,10 +204,11 @@ class RetrievalScorer(Scorer):
   """
 
   """
-  def __init__(self, label_mapping, qrels_file_path, correct_label='1', dump_to_file=None, regression=False):
+  def __init__(self, label_mapping=None, qrels_file_path=None, correct_label='1', dump_to_file=None, regression=False):
     super(RetrievalScorer, self).__init__()
-    self.label_mapping = label_mapping
-    self._inv_label_mapping = {v: k for k, v in label_mapping.items()}
+    if label_mapping is not None:
+      self.label_mapping = label_mapping
+      self._inv_label_mapping = {v: k for k, v in label_mapping.items()}
     self._examples = []
     self._preds = []
     self.correct_label = correct_label
@@ -232,7 +233,7 @@ class RetrievalScorer(Scorer):
   def get_loss(self):
     return 0
 
-  def _get_results(self):
+  def score_aggregation(self):
     topic_doc_collection = {}
     for example, preds in zip(self._examples, self._preds):
       if self.regression:
@@ -244,6 +245,10 @@ class RetrievalScorer(Scorer):
       if text_a_id not in topic_doc_collection:
         topic_doc_collection[text_a_id] = {}
       topic_doc_collection[text_a_id][text_b_id] = max(topic_doc_collection[text_a_id].get(text_b_id, 0), score)
+    return topic_doc_collection
+
+  def _get_results(self):
+    topic_doc_collection = self.score_aggregation()
     for text_a_id in topic_doc_collection:
       for text_b_id in topic_doc_collection[text_a_id]:
         score = topic_doc_collection[text_a_id][text_b_id]
@@ -261,6 +266,25 @@ class RetrievalScorer(Scorer):
     # p_30 = float(trec_out_lines[25].split('\t')[-1])
 
     return [("map", mean_average_precision)]
+
+class GCNDocRetrievalScorer(RetrievalScorer):
+  def __init__(self, qrels_file_path, dump_to_file=None):
+    super().__init__(label_mapping=None, qrels_file_path=qrels_file_path, dump_to_file=dump_to_file)
+
+  def score_aggregation(self):
+    topic_doc_collection = {}
+    topic_doc_ids = []
+    for example in self._examples:
+      example = example[0]
+      text_a_id, text_b_id = example.guid.split('|')
+      doc_id = text_b_id.rsplit("-", 1)[0]
+      topic_doc_ids.append((text_a_id, doc_id))
+      if text_a_id not in topic_doc_collection:
+        topic_doc_collection[text_a_id] = {}
+    assert len(topic_doc_ids) == len(self._preds)
+    for (topic_id, doc_id), preds in zip(topic_doc_ids, self._preds):
+      topic_doc_collection[topic_id][doc_id] = preds
+    return topic_doc_collection
 
 
 

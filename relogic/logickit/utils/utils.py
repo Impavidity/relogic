@@ -212,7 +212,7 @@ def masked_softmax(vector: torch.Tensor,
     mask = mask.float()
     while mask.dim() < vector.dim():
       mask = mask.unsqueeze(1)
-    masked_vector = vector.masked_fill((1 - mask).byte(), mask_fill_value)
+    masked_vector = vector.masked_fill((1 - mask).bool(), mask_fill_value)
     result = torch.softmax(masked_vector, dim=dim)
   return result
 
