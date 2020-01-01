@@ -79,10 +79,16 @@ class PointwiseExample(Example):
   def from_json(cls, example):
     """
     """
-    return cls(guid="{}|{}".format(example.get("text_a_id", 0), example.get("text_b_id", 0)),
+    if isinstance(example["text_a"], str) and isinstance(example["text_b"], str):
+      return cls(guid="{}|{}".format(example.get("text_a_id", 0), example.get("text_b_id", 0)),
                text_a=example["text_a"],
                text_b=example["text_b"],
                label=example.get("label", None))
+    else:
+      return cls(guid="{}|{}".format(example.get("text_a_id", 0), example.get("text_b_id", 0)),
+                 text_a=" ".join(example["text_a"]),
+                 text_b=" ".join(example["text_b"]),
+                 label=example.get("label", None))
 
   @property
   def len(self):
