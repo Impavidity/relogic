@@ -188,6 +188,7 @@ def main():
   parser.add_argument("--qrels_file_path", type=str, default=None)
   parser.add_argument("--regression", default=False, action="store_true")
   parser.add_argument("--word_level_interaction", default=False, action="store_true")
+  parser.add_argument("--doc_ir_model", default="baseline_avg", type=str)
 
   # GCN
   parser.add_argument("--gcn_layer_num", type=int, default=3)

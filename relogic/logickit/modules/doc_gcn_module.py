@@ -53,16 +53,26 @@ class DocGCN(nn.Module):
   def __init__(self, config, task_name, n_classes):
     super().__init__()
     self.config = config
-    self.average_span_extractor = AverageSpanExtractor(input_dim=config.hidden_size)
-    self.gated_gcn = GAT(
-      input_dim=config.hidden_size,
-      hidden_dim=config.hidden_size,
-      num_layers=config.gcn_layer_num,
-      heads=[1] * config.gcn_layer_num,
-      feat_drop=0,
-      attn_drop=0,
-      negative_slope=0.2,
-      residual=False)
+    if config.doc_ir_model == "baseline_avg" or config.doc_ir_model == "baseline_max_pool":
+      self.to_logits = nn.Sequential(
+        nn.Linear(config.hidden_size, 300),
+        nn.ReLU(),
+        nn.Linear(300, 2))
+    elif config.doc_ir_model == "baseline_self_attention":
+      pass
+    elif config.doc_ir_model == "doc_gcn_cosine":
+      self.average_span_extractor = AverageSpanExtractor(input_dim=config.hidden_size)
+      self.gated_gcn = GAT(
+        input_dim=config.hidden_size,
+        hidden_dim=config.hidden_size,
+        num_layers=config.gcn_layer_num,
+        heads=[1] * config.gcn_layer_num,
+        feat_drop=0,
+        attn_drop=0,
+        negative_slope=0.2,
+        residual=False)
+    elif config.doc_ir_model == "doc_gcn_entropy":
+      pass
     # self.to_logits = nn.Sequential(
     #     nn.Linear(config.hidden_size * 2, 300),
     #     nn.ReLU(),
@@ -97,7 +107,7 @@ class DocGCN(nn.Module):
       graphs.append(new_g)
     return graphs
 
-  def forward(self, *inputs, **kwargs):
+  def doc_gcn_cosine(self, *inputs, **kwargs):
     features = kwargs.pop("features")
     extra_args = kwargs.pop("extra_args")
     # [CLS] description [SEP] text [SEP]
@@ -152,5 +162,30 @@ class DocGCN(nn.Module):
 
     return distance
     # return logits
+
+  def baseline_avg(self, *inputs, **kwargs):
+    features = kwargs.pop("features")
+    extra_args = kwargs.pop("extra_args")
+    doc_sent_spans = extra_args.pop("doc_span")
+    cls_features = torch.stack([features[span[0]: span[1], 0].mean(0) for span in doc_sent_spans], 0)
+    score = self.to_logits(cls_features)
+    return score
+
+  def baseline_max_pool(self, *inputs, **kwargs):
+    features = kwargs.pop("features")
+    extra_args = kwargs.pop("extra_args")
+    doc_sent_spans = extra_args.pop("doc_span")
+    cls_features = torch.stack([features[span[0]: span[1], 0].max(dim=0)[0] for span in doc_sent_spans], 0)
+    score = self.to_logits(cls_features)
+    return score
+
+
+  def forward(self, *inputs, **kwargs):
+    if self.config.doc_ir_model == "baseline_avg":
+      return self.baseline_avg(*inputs, **kwargs)
+    elif self.config.doc_ir_model == "baseline_max_pool":
+      return self.baseline_max_pool(*inputs, **kwargs)
+    elif self.config.doc_ir_model == "doc_gcn_cosine":
+      return self.doc_gcn_cosine(*inputs, **kwargs)
 
 

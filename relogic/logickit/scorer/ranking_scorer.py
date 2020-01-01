@@ -283,7 +283,7 @@ class GCNDocRetrievalScorer(RetrievalScorer):
         topic_doc_collection[text_a_id] = {}
     assert len(topic_doc_ids) == len(self._preds)
     for (topic_id, doc_id), preds in zip(topic_doc_ids, self._preds):
-      topic_doc_collection[topic_id][doc_id] = preds # [self.label_mapping[self.correct_label]]
+      topic_doc_collection[topic_id][doc_id] = preds[self.label_mapping[self.correct_label]] # preds #
     return topic_doc_collection
 
 

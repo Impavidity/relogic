@@ -24,13 +24,14 @@ class PointwiseExample(Example):
     sequence_labels (List[str]): This annotation is for evidence supporting in the matching task.
   """
   def __init__(self, guid: str, text_a: str, text_b:str, label=None,
-               sequence_labels=None, selected_indices=None):
+               sequence_labels=None, selected_a_indices=None, selected_indices=None):
     super(PointwiseExample, self).__init__()
     self.guid = guid
     self.text_a = text_a
     self.text_b = text_b
     self.label = label
     self.sequence_labels = sequence_labels
+    self.selected_a_indices = selected_a_indices
     self.selected_indices = selected_indices
 
   def process(self, tokenizers, *inputs, regression=False, **kwargs):
@@ -90,6 +91,18 @@ class PointwiseExample(Example):
                 self.text_b_full_token_spans.append((offset + start, offset + end))
               start = idx
           self.text_b_full_token_spans.append((offset + start, offset + len(self.text_b_is_head)))
+        if self.selected_a_indices is not None:
+          self.text_a_full_token_spans = []
+          offset = 1 # [CLS]
+          start = -1
+          for idx, ind in enumerate(self.text_a_is_head):
+            if ind == 1:
+              if start != -1:
+                end = idx
+                self.text_a_full_token_spans.append((offset + start, offset + end))
+              start = idx
+          self.text_a_full_token_spans.append((offset + start, offset + len(self.text_a_is_head)))
+
 
   @classmethod
   def from_structure(cls, structure):
@@ -103,6 +116,7 @@ class PointwiseExample(Example):
                text_a=example["text_a"],
                text_b=example["text_b"],
                selected_indices=example.get("selected_indices", None),
+               selected_a_indices=example.get("selected_a_indices", None),
                label=example.get("label", None))
 
   @property
@@ -126,6 +140,9 @@ class PointwiseFeature(Feature):
     self.label_ids = kwargs.pop("label_ids", None)
     self.token_spans = kwargs.pop("token_spans", None)
     self.selected_indices = kwargs.pop("selected_indices", None)
+
+    self.token_a_spans = kwargs.pop("token_a_spans", None)
+    self.selected_a_indices = kwargs.pop("selected_a_indices", None)
 
 class PointwiseMiniBatch(MiniBatch):
   """
@@ -157,6 +174,10 @@ class PointwiseMiniBatch(MiniBatch):
                                           torch.long, device)
     inputs["selected_indices"] = create_tensor(self.input_features, "selected_indices",
                                                torch.long, device)
+    inputs["token_a_spans"] = create_tensor(self.input_features, "token_a_spans",
+                                            torch.long, device)
+    inputs["selected_a_indices"] = create_tensor(self.input_features, "selected_a_indices",
+                                                 torch.long, device)
     if use_label:
       if self.config.regression:
         inputs["label_ids"] = create_tensor(self.input_features, "label_ids",
@@ -207,6 +228,8 @@ class PointwiseDataFlow(DataFlow):
     max_token_length = max([example.len for example in examples])
     max_text_a_indices_length = max([len(example.text_a_indices) for example in examples])
     max_text_b_indices_length = max([len(example.text_b_indices) for example in examples])
+    max_a_full_token_length = max([len(example.text_a_full_token_spans) for example in examples])
+    max_selected_a_indices_length = max([len(example.selected_a_indices) for example in examples])
     for idx, example in enumerate(examples):
       # BERT based feature process
       padding = [0] * (max_token_length - example.len)
@@ -218,6 +241,15 @@ class PointwiseDataFlow(DataFlow):
       b_indices_padding = [0] * (max_text_b_indices_length - len(example.text_b_indices))
       text_a_indices = example.text_a_indices + a_indices_padding
       text_b_indices = example.text_b_indices + b_indices_padding
+      if example.selected_a_indices is not None:
+        # Need to do the selection, so the token span and indices are needed.
+        token_a_spans = example.text_a_full_token_spans + [(1, 0)] * (
+              max_a_full_token_length - len(example.text_a_full_token_spans))
+        selected_a_indices = example.selected_a_indices + [-1] * (
+              max_selected_a_indices_length - len(example.selected_a_indices))
+      else:
+        token_a_spans = None
+        selected_a_indices = None
       if hasattr(example, "label_ids"):
         label_ids = example.label_ids
       else:
@@ -230,6 +262,8 @@ class PointwiseDataFlow(DataFlow):
                          is_head=is_head,
                          text_a_indices=text_a_indices,
                          text_b_indices=text_b_indices,
+                         token_a_spans=token_a_spans,
+                         selected_a_indices=selected_a_indices,
                          label_ids=label_ids))
     return features
 

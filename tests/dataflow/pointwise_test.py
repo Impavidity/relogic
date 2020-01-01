@@ -10,7 +10,8 @@ config = SimpleNamespace(
   **{
     "buckets": [(0, 15), (15, 40), (40, 450)],
     "max_seq_length": 450,
-    "label_mapping_path": "data/preprocessed_data/binary_classification.json"
+    "label_mapping_path": "data/preprocessed_data/binary_classification.json",
+    "regression": False
   })
 
 tokenizers = {
@@ -27,11 +28,13 @@ examples = [{
   "text_a": "bbc world service staff cuts",
   "text_b":
   "gossip day by day : bbc world service to cut five language services",
+  "selected_a_indices": [0, 1, 2, 3, 4],
   "label": "1"
 }, {
   "text_a": "barbara walters chicken pox",
   "text_b":
   "stoke city : begovic wilkinson shawcross wilson wilkinson walters whelan nzonzi kightly jerome crouch",
+  "selected_a_indices": [0, 1, 2, 3],
   "label": "0"
 }]
 

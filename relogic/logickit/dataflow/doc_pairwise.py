@@ -1,7 +1,7 @@
 from typing import List, Dict
 import random
 import torch
-
+from tqdm import tqdm
 from relogic.logickit.dataflow import DataFlow, Example, Feature, MiniBatch
 from relogic.logickit.tokenizer.tokenization import BertTokenizer
 from relogic.logickit.utils import create_tensor, truncate_seq_pair
@@ -142,7 +142,7 @@ class DocPairwiseDataFlow(DataFlow):
       # 1. select topic based on batch size
       # 2. select positive example and negative example for each topic
       positive_candidates = []
-      for topic_id in self.positive_candidates:
+      for topic_id in tqdm(self.positive_candidates):
         for doc_id in self.positive_candidates[topic_id]:
           positive_candidates.append((topic_id, doc_id))
       # To make it deterministic

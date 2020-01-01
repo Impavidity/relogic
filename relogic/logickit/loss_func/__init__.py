@@ -15,7 +15,7 @@ def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kw
       return F.binary_cross_entropy_with_logits(logits.squeeze(1), label_ids[0].unsqueeze(0))
     else:
       return F.cross_entropy(logits, label_ids[0].unsqueeze(0))
-  if task.name == GCN_DOC:
+  if task.name == GCN_DOC and config.doc_ir_model == "gcn_doc_cosine":
     distance = logits
     batch_size = distance.size(0)
     positive_distance = distance[: batch_size // 2]
@@ -26,6 +26,12 @@ def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kw
       margin=config.max_margin,
       target=distance.new_ones(batch_size // 2))
     return loss
+  if task.name == GCN_DOC and (config.doc_ir_model == "baseline_avg" or config.doc_ir_model == "baseline_max_pool"):
+    return F.cross_entropy(logits, label_ids)
+    # batch_size = logits.size(0) // 2
+    # scores = logits.reshape(batch_size, 2)
+    # loss = torch.mean(1. - scores.softmax(dim=1)[:, 0])  # pariwse softmax
+    # return loss
 
   if task.name in ["joint_srl"]:
     if isinstance(label_ids, tuple):
