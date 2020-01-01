@@ -36,11 +36,17 @@ class MatchingModule(nn.Module):
         sequence_mask=masks,
         span_indices_mask=selected_indices_mask)
       # (batch_size, selected_span_size, dim)
-      masked_selected_spans_features = (1.0 - selected_indices_mask.unsqueeze(-1).float()) * 10000.0
-      min_pooled = (selected_spans_features + masked_selected_spans_features).min(dim=1)[0]
-      # token_a_spans = token_a_spans[selected_a_indices]
+      if self.config.pooling_method == "min":
+        masked_selected_spans_features = (1.0 - selected_indices_mask.unsqueeze(-1).float()) * 10000.0
+        pooled = (selected_spans_features + masked_selected_spans_features).min(dim=1)[0]
+        # token_a_spans = token_a_spans[selected_a_indices]
+      elif self.config.pooling_method == "max":
+        masked_selected_spans_features = (1.0 - selected_indices_mask.unsqueeze(-1).float()) * -10000.0
+        pooled = (selected_spans_features + masked_selected_spans_features).max(dim=1)[0]
+      elif self.config.pooling_method == "mean":
+        pooled = selected_spans_features.sum(1) / torch.sum(selected_indices_mask.float(), dim=-1).unsqueeze(-1)
 
-      logits = self.to_logits(torch.cat([features[:, 0], min_pooled], dim=-1))
+      logits = self.to_logits(torch.cat([features[:, 0], pooled], dim=-1))
     else:
       logits = self.to_logits(features[:, 0])
 

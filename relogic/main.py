@@ -196,6 +196,7 @@ def main():
   # Modeling
   parser.add_argument("--use_gcn", dest="use_gcn", default=False, action="store_true")
   parser.add_argument("--fix_embedding", default=False, action="store_true")
+  parser.add_argument("--pooling_method", default="max", type=str)
 
   # Model
   parser.add_argument("--bert_model", type=str)
