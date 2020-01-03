@@ -228,8 +228,12 @@ class PointwiseDataFlow(DataFlow):
     max_token_length = max([example.len for example in examples])
     max_text_a_indices_length = max([len(example.text_a_indices) for example in examples])
     max_text_b_indices_length = max([len(example.text_b_indices) for example in examples])
-    max_a_full_token_length = max([len(example.text_a_full_token_spans) for example in examples])
-    max_selected_a_indices_length = max([len(example.selected_a_indices) for example in examples])
+    try:
+      max_a_full_token_length = max([len(example.text_a_full_token_spans) for example in examples])
+      max_selected_a_indices_length = max([len(example.selected_a_indices) for example in examples])
+    except:
+      max_a_full_token_length = 0
+      max_selected_a_indices_length = 0
     for idx, example in enumerate(examples):
       # BERT based feature process
       padding = [0] * (max_token_length - example.len)
