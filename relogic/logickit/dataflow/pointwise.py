@@ -106,7 +106,10 @@ class PointwiseExample(Example):
 
   @classmethod
   def from_structure(cls, structure):
-    return cls(guid="", text_a=structure.text_a, text_b=structure.text_b)
+    return cls(guid="",
+               text_a=structure.text_a,
+               text_b=structure.text_b,
+               selected_a_indices=structure.selected_a_indices)
 
   @classmethod
   def from_json(cls, example):

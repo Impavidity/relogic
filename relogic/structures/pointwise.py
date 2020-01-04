@@ -7,3 +7,4 @@ from relogic.structures.structure import Structure
 class Pointwise(Structure):
   text_a: str = None
   text_b: str = None
+  selected_a_indices: list = None

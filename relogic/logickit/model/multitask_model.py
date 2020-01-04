@@ -11,7 +11,7 @@ from relogic.logickit.dataflow import MiniBatch
 from relogic.logickit.utils.utils import entropy
 from relogic.logickit.base.configuration import Configuration
 from relogic.logickit.inference.adversarial import Adversarial
-from pytorch_memlab import MemReporter
+# from pytorch_memlab import MemReporter
 
 
 class Model(BaseModel):
