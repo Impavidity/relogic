@@ -11,7 +11,11 @@ config = SimpleNamespace(
     "buckets": [(0, 15), (15, 40), (40, 450)],
     "max_seq_length": 450,
     "label_mapping_path": "data/preprocessed_data/binary_classification.json",
-    "regression": False
+    "regression": False,
+    "doc_ir_model": "evidence",
+    "tasks": {
+      POINTWISE_TASK: {"selected_non_final_layers": 8}
+    }
   })
 
 tokenizers = {
@@ -29,6 +33,7 @@ examples = [{
   "text_b":
   "gossip day by day : bbc world service to cut five language services",
   "selected_a_indices": [0, 1, 2, 3, 4],
+  "sequence_labels": ["I", "I", "I", "I", "O", "O", "O", "O", "O", "O", "O", "O", "O"],
   "label": "1"
 }, {
   "text_a": "barbara walters chicken pox",

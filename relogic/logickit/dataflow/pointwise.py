@@ -6,6 +6,13 @@ from relogic.logickit.dataflow import DataFlow, Example, Feature, MiniBatch
 from relogic.logickit.tokenizer.tokenization import BertTokenizer
 from relogic.logickit.utils import create_tensor, truncate_seq_pair
 
+# A quick hard code
+
+SEQUENCE_LABEL_MAPPING = {
+  "_X_": 0,
+  "I": 1,
+  "O": 2
+}
 
 class PointwiseExample(Example):
   """Pointwise Example contains the attributes and functionality of
@@ -33,6 +40,7 @@ class PointwiseExample(Example):
     self.sequence_labels = sequence_labels
     self.selected_a_indices = selected_a_indices
     self.selected_indices = selected_indices
+    self.sequence_label_padding = "_X_"
 
   def process(self, tokenizers, *inputs, regression=False, **kwargs):
     """Process the sentence pair.
@@ -77,7 +85,12 @@ class PointwiseExample(Example):
             self.label_ids = label_mapping[self.label]
 
         if self.sequence_labels is not None:
-          self.sequence_labels_ids = []
+          label_mapping = SEQUENCE_LABEL_MAPPING
+          self.sequence_label_padding_id = label_mapping[self.sequence_label_padding]
+          self.sequence_labels_ids = [self.sequence_label_padding_id] * len(self.input_ids)
+          assert len(self.text_b_indices) == len(self.sequence_labels)
+          for idx, label in zip(self.text_b_indices, self.sequence_labels):
+            self.sequence_labels_ids[idx] = label_mapping[label]
 
         if self.selected_indices is not None:
           # Need to process span info
@@ -120,6 +133,7 @@ class PointwiseExample(Example):
                text_b=example["text_b"],
                selected_indices=example.get("selected_indices", None),
                selected_a_indices=example.get("selected_a_indices", None),
+               sequence_labels=example.get("sequence_labels", None),
                label=example.get("label", None))
 
   @property
@@ -141,6 +155,7 @@ class PointwiseFeature(Feature):
     self.text_a_indices = kwargs.pop("text_a_indices", None)
     self.text_b_indices = kwargs.pop("text_b_indices", None)
     self.label_ids = kwargs.pop("label_ids", None)
+    self.sequence_labels_ids = kwargs.pop("sequence_labels_ids", None)
     self.token_spans = kwargs.pop("token_spans", None)
     self.selected_indices = kwargs.pop("selected_indices", None)
 
@@ -188,6 +203,9 @@ class PointwiseMiniBatch(MiniBatch):
       else:
         inputs["label_ids"] = create_tensor(self.input_features, "label_ids",
                                             torch.long, device)
+      if hasattr(self.config, "doc_ir_model") and self.config.doc_ir_model == "evidence":
+        inputs["label_ids"] = (inputs["label_ids"], create_tensor(
+          self.input_features, "sequence_labels_ids", torch.long, device))
     else:
       inputs["label_ids"] = None
 
@@ -262,6 +280,14 @@ class PointwiseDataFlow(DataFlow):
       else:
         label_ids = None
 
+      if hasattr(self.config, "doc_ir_model") and self.config.doc_ir_model == "evidence":
+        if hasattr(example, "sequence_labels_ids"):
+          sequence_labels_ids = example.sequence_labels_ids + padding
+        else:
+          sequence_labels_ids = [0] * example.len + padding
+      else:
+        sequence_label_ids = None
+
       features.append(
         PointwiseFeature(input_ids=input_ids,
                          input_mask=input_mask,
@@ -271,7 +297,8 @@ class PointwiseDataFlow(DataFlow):
                          text_b_indices=text_b_indices,
                          token_a_spans=token_a_spans,
                          selected_a_indices=selected_a_indices,
-                         label_ids=label_ids))
+                         label_ids=label_ids,
+                         sequence_labels_ids=sequence_labels_ids))
     return features
 
   def decode_to_labels(self, preds, mbs: PointwiseMiniBatch):

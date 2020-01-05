@@ -208,7 +208,6 @@ class RetrievalScorer(Scorer):
     super(RetrievalScorer, self).__init__()
     if label_mapping is not None:
       self.label_mapping = label_mapping
-      self._inv_label_mapping = {v: k for k, v in label_mapping.items()}
     self._examples = []
     self._preds = []
     self.correct_label = correct_label

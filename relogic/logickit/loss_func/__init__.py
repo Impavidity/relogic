@@ -6,10 +6,24 @@ import torch
 
 def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kwargs):
   if task.name.startswith(IR_TASK):
+    sequence_loss = 0
+    if config.doc_ir_model == "evidence":
+      assert isinstance(logits, tuple)
+      logits, sequence_logits = logits
+      label_ids, sequence_label_ids = label_ids
+
+      active_loss = sequence_label_ids.view(-1) > 0
+      # I use logits.size(1) to get the label length. It is OK to filter extra things
+      active_logits = sequence_logits.view(-1, sequence_logits.size(-1))[active_loss]
+      active_labels = sequence_label_ids.view(-1)[active_loss]
+      if active_logits.size(0) != 0:
+        sequence_loss = F.cross_entropy(active_logits, active_labels)
     if config.regression:
-      return F.binary_cross_entropy_with_logits(logits.squeeze(1), label_ids)
+      entropy_loss = F.binary_cross_entropy_with_logits(logits.squeeze(1), label_ids)
     else:
-      return F.cross_entropy(logits, label_ids)
+      entropy_loss = F.cross_entropy(logits, label_ids)
+    return entropy_loss + sequence_loss
+
   if task.name.startswith(DOCIR_TASK):
     if config.regression:
       return F.binary_cross_entropy_with_logits(logits.squeeze(1), label_ids[0].unsqueeze(0))

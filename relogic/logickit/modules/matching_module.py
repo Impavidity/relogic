@@ -15,8 +15,13 @@ class MatchingModule(nn.Module):
     if config.doc_ir_model == "keyword_selection":
       self.to_logits = nn.Linear(config.hidden_size * 2, self.n_classes)
       self.average_span_extractor = AverageSpanExtractor(input_dim=config.hidden_size)
-    else:
+    elif config.doc_ir_model == "cls":
       self.to_logits = nn.Linear(config.hidden_size, self.n_classes)
+    elif config.doc_ir_model == "evidence":
+      self.to_logits = nn.Linear(config.hidden_size, self.n_classes)
+      self.to_sequence_logits = nn.Linear(config.hidden_size, 3)
+    else:
+      pass
 
 
   # def forward(self, input, input_mask=None, segment_ids=None, extra_args=None, **kwargs):
@@ -47,7 +52,17 @@ class MatchingModule(nn.Module):
         pooled = selected_spans_features.sum(1) / torch.sum(selected_indices_mask.float(), dim=-1).unsqueeze(-1)
 
       logits = self.to_logits(torch.cat([features[:, 0], pooled], dim=-1))
-    else:
+    elif self.config.doc_ir_model == "cls":
       logits = self.to_logits(features[:, 0])
+    elif self.config.doc_ir_model == "evidence":
+      sequence_features = kwargs.pop("encoding_results").pop("selected_non_final_layers_features")[0]
+      logits = self.to_logits(features[:, 0])
+      sequence_logits = self.to_sequence_logits(sequence_features)
+      if self.training:
+        return logits, sequence_logits
+      else:
+        return logits
+    else:
+      raise NotImplementedError("Unknown model {}".format(self.config.doc_ir_model))
 
     return logits
