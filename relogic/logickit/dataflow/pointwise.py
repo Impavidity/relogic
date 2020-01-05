@@ -286,7 +286,7 @@ class PointwiseDataFlow(DataFlow):
         else:
           sequence_labels_ids = [0] * example.len + padding
       else:
-        sequence_label_ids = None
+        sequence_labels_ids = None
 
       features.append(
         PointwiseFeature(input_ids=input_ids,
