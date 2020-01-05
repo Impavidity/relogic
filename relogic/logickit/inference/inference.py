@@ -13,6 +13,7 @@ from torch.utils.checkpoint import checkpoint
 import numpy as np
 import torch
 from functools import reduce
+import os
 
 class Inference(nn.Module):
   """
@@ -31,7 +32,7 @@ class Inference(nn.Module):
         config.bert_model, encoder_structure=config.branching_structure)
     else:
       utils.log("Build {}:{} Encoder".format(config.encoder_type, config.bert_model))
-      if config.bert_model_path is not None:
+      if config.bert_model_path is not None and os.path.exists(config.bert_model_path):
         self.encoder = get_encoder(config.encoder_type).from_pretrained(
           config.bert_model_path,
           output_attentions=config.output_attentions)
