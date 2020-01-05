@@ -200,6 +200,7 @@ def main():
 
   # Model
   parser.add_argument("--bert_model", type=str)
+  parser.add_argument("--bert_model_path", type=str, default=None)
   parser.add_argument("--encoder_type", type=str, default="bert", choices=["bert", "xlm", "xlmr"])
   parser.add_argument("--hidden_size", type=int, default=768)
   parser.add_argument("--projection_size", type=int, default=300)

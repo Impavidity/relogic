@@ -31,9 +31,14 @@ class Inference(nn.Module):
         config.bert_model, encoder_structure=config.branching_structure)
     else:
       utils.log("Build {}:{} Encoder".format(config.encoder_type, config.bert_model))
-      self.encoder = get_encoder(config.encoder_type).from_pretrained(
-        config.bert_model,
-        output_attentions=config.output_attentions)
+      if config.bert_model_path is not None:
+        self.encoder = get_encoder(config.encoder_type).from_pretrained(
+          config.bert_model_path,
+          output_attentions=config.output_attentions)
+      else:
+        self.encoder = get_encoder(config.encoder_type).from_pretrained(
+          config.bert_model,
+          output_attentions=config.output_attentions)
 
 
 
