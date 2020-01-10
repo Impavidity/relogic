@@ -8,13 +8,13 @@ import os
 
 import torch
 
-from relogic.logickit.base.constants import SRL_LABEL_SEQ_BASED, SRL_LABEL_SPAN_BASED
+from relogic.logickit.base.constants import SRL_LABEL_SEQ_BASED, SRL_LABEL_SPAN_BASED, SRL_PREDICATE_EXTRA_SURFACE
 from relogic.logickit.dataflow import DataFlow, Example, Feature, MiniBatch
 from relogic.logickit.tokenizer.tokenization import BertTokenizer
 from relogic.logickit.tokenizer.fasttext_tokenization import FasttextTokenizer
 from relogic.logickit.utils import create_tensor
 from relogic.structures import enumerate_spans
-
+from transformers.tokenization_utils import PreTrainedTokenizer
 
 class SRLExample(Example):
   """SRLExample contains the attributes and functionality of an SRL example.
@@ -26,13 +26,16 @@ class SRLExample(Example):
       argument_start_index, argument_end_index, argument_text_string, argument_label.
 
   """
-  def __init__(self, text, labels=None, pos_tag_label=None, predicate_sense_label=None, label_candidates=None):
+  def __init__(self, text, predefined_predicate=None, labels=None, pos_tag_label=None, predicate_sense_label=None, label_candidates=None):
     super(SRLExample, self).__init__()
     self.text = text
     self.raw_tokens = text.split()
     self.labels = labels
     # Hard code here
     self.label_padding = 'X'
+    self.predefined_predicate = predefined_predicate
+    if self.predefined_predicate is not None:
+      self.raw_predefined_predicate_tokens = self.predefined_predicate.split()
 
     self.pos_tag_label = pos_tag_label
     self.predicate_sense_label = predicate_sense_label
@@ -43,14 +46,29 @@ class SRLExample(Example):
 
     This process requires the tokenizer. Furthermore, if this example is for
      training and evaluation, the label_format and label_mapping are required.
+
+    History Log: Originally we use adapted tokenizer for determining the token head
+      for the pretokenized sentence. Here we plan to change it with for loop.
+      Then we do not need to adapt it for each tokenizer.
+      ```
+      self.text_tokens, self.text_is_head = tokenizer.tokenize(self.text)
+      ```
+      We will adapt the code from transformer example run_ner.py and utils_ner.py
     """
     use_gold_predicate = kwargs.pop("use_gold_predicate", False)
     use_gold_argument = kwargs.pop("use_gold_argument", False)
+    predicate_reveal_method = kwargs.pop("predicate_reveal_method", SRL_PREDICATE_EXTRA_SURFACE)
     for tokenizer in tokenizers.values():
-      if isinstance(tokenizer, BertTokenizer):
+      if isinstance(tokenizer, PreTrainedTokenizer):
         # BERT process part
-        self.text_tokens, self.text_is_head = tokenizer.tokenize(self.text)
-        self.tokens = ["[CLS]"] + self.text_tokens + ["[SEP]"]
+        self.text_tokens = []
+        self.text_is_head = []
+        for word in self.raw_tokens:
+          word_tokens = tokenizer.tokenize(word)
+          self.text_tokens.extend(word_tokens)
+          self.text_is_head.extend([1] + [0] * (len(word_tokens) - 1))
+        # Currently it only support one group of model (BERT).
+        self.tokens = [tokenizer.cls_token] + self.text_tokens + [tokenizer.sep_token]
         self.segment_ids = [0] * (len(self.text_tokens) + 2)
         self.is_head = [2] + self.text_is_head + [2]
         self.head_index = [
@@ -64,6 +82,23 @@ class SRLExample(Example):
         # Assume we have span (2, 3) = C, exclusive.
         # self.head_index[2] =  3, self.head_index[3] = 4.
         # So the span for tokenized sentence is (3, 4) = C
+
+        # This part is mainly for the arxiv version paper.
+        if predicate_reveal_method == SRL_PREDICATE_EXTRA_SURFACE:
+          # In this case we assume the input only has one predicate
+          # User needs to separate them by themselves.
+
+          assert self.predefined_predicate is not None
+          predicate_text_tokens = []
+          for word in self.raw_predefined_predicate_tokens:
+            word_tokens = tokenizer.tokenize(word)
+            predicate_text_tokens.extend(word_tokens)
+            # self.text_is_head.extend([1] + [0] * (len(word_tokens) - 1))
+            # We ignore the is_head information for predicate for now
+          predicate_text_tokens += [tokenizer.sep_token]
+          self.tokens.extend(predicate_text_tokens)
+          self.segment_ids += [1] * len(predicate_text_tokens)
+
 
         self.input_ids = tokenizer.convert_tokens_to_ids(self.tokens)
         self.input_mask = [1] * len(self.input_ids)
@@ -104,6 +139,10 @@ class SRLExample(Example):
           self.predicate_candidates.append(
               (self.head_index[span[0]], self.head_index[span[1]]))
 
+
+
+
+
         # If this is for model development, then self.labels is not None
         # If this is for deployment, then self.labels is None
         if self.labels is not None:
@@ -134,7 +173,35 @@ class SRLExample(Example):
             self.arg_span_label_ids = [self.arg_span_label_dict[item] for item in self.enumerated_span_candidates]
 
           elif label_format == SRL_LABEL_SEQ_BASED:
-            pass
+            label_mapping = kwargs.get("label_mapping")
+            self.label_padding_id = label_mapping[self.label_padding]
+            self.label_ids = [self.label_padding_id] * len(self.tokens)
+            self.seq_labels = ["O"] * len(self.raw_tokens)
+            for idx in self.head_index[:-1]:
+              # we ignore the index of [SEP]
+              self.label_ids[idx] = label_mapping["O"]
+
+            for label in self.labels:
+              (predicate_start, predicate_end, predicate_text,
+               arg_start, arg_end, argument_text, arg_label) = label
+              self.predicate_index = predicate_start
+              # B I O is used
+              if predicate_text != self.predefined_predicate:
+                continue
+              for idx in range(predicate_start, predicate_end):
+                if idx == predicate_start:
+                  self.label_ids[self.head_index[idx]] = label_mapping["B-V"]
+                  self.seq_labels[idx] = "B-V"
+                else:
+                  self.label_ids[self.head_index[idx]] = label_mapping["I-V"]
+                  self.seq_labels[idx] = "I-V"
+              for idx in range(arg_start, arg_end):
+                if idx == arg_start:
+                  self.label_ids[self.head_index[idx]] = label_mapping["B-" + arg_label]
+                  self.seq_labels[idx] = "B-" + arg_label
+                else:
+                  self.label_ids[self.head_index[idx]] = label_mapping["I-" + arg_label]
+                  self.seq_labels[idx] = "I-" + arg_label
           else:
             raise ValueError()
 
@@ -150,8 +217,6 @@ class SRLExample(Example):
           predicate_sense_mapping = kwargs.get("predicate_sense_mapping")
           self.predicate_sense_label_padding_id = predicate_sense_mapping[self.label_padding]
           self.predicate_sense_label_ids = [self.predicate_sense_label_padding_id] * len(self.input_ids)
-
-
 
 
       elif isinstance(tokenizer, FasttextTokenizer):
@@ -213,11 +278,13 @@ class SRLExample(Example):
     This object can be grouped all predicates together or represents a single predicate.
 
     """
+
     return cls(text=" ".join(example["tokens"]),
                labels=example.get("labels", None),
                pos_tag_label=example.get("pos_tag", None),
                predicate_sense_label=example.get("predicate_sense", None),
-               label_candidates=example.get("label_candidates", None))
+               label_candidates=example.get("label_candidates", None),
+               predefined_predicate=example.get("predefined_predicate", None))
 
   @property
   def len(self):
@@ -360,6 +427,10 @@ class SRLDataFlow(DataFlow):
     self.predicate_sense_label_mapping = json.load(open("data/preprocessed_data/predicate_sense_label_mapping.json"))
     self.use_gold_predicate = hasattr(config, "srl_use_gold_predicate") and config.srl_use_gold_predicate
     self.use_gold_argument = hasattr(config, "srl_use_gold_argument") and config.srl_use_gold_argument
+    if hasattr(config, "predicate_reveal_method"):
+      self.predicate_reveal_method = config.predicate_reveal_method
+    else:
+      self.predicate_reveal_method = None
 
   @property
   def example_class(self):
@@ -384,7 +455,8 @@ class SRLDataFlow(DataFlow):
                     predicate_sense_mapping=self.predicate_sense_label_mapping,
                     label_format=self.config.srl_label_format,
                     use_gold_predicate=self.use_gold_predicate,
-                    use_gold_argument=self.use_gold_argument)
+                    use_gold_argument=self.use_gold_argument,
+                    predicate_reveal_method=self.predicate_reveal_method)
 
   def convert_examples_to_features(self, examples: List[SRLExample]):
     """
@@ -417,16 +489,16 @@ class SRLDataFlow(DataFlow):
       max_label_candidate_length = None
 
     # Classical based variable
-    _max_token_length = max([example._len for example in examples])
-    if label_format is not None:
-      _max_label_length = max([example._label_len for example in examples])
-    else:
-      _max_label_length = None
-
-    _max_arg_candidate_length = max([
-      len(example._enumerated_span_candidates) for example in examples])
-    _max_predicate_candidate_length = max(
-      [len(example._predicate_candidates) for example in examples])
+    # _max_token_length = max([example._len for example in examples])
+    # if label_format is not None:
+    #   _max_label_length = max([example._label_len for example in examples])
+    # else:
+    #   _max_label_length = None
+    #
+    # _max_arg_candidate_length = max([
+    #   len(example._enumerated_span_candidates) for example in examples])
+    # _max_predicate_candidate_length = max(
+    #   [len(example._predicate_candidates) for example in examples])
 
     for idx, example in enumerate(examples):
       # Bert based feature process
@@ -434,7 +506,9 @@ class SRLDataFlow(DataFlow):
       input_ids = example.input_ids + padding
       input_mask = example.input_mask + padding
       segment_ids = example.segment_ids + padding
-      is_head = example.is_head + [2] * (max_token_length - example.len)
+      is_head = example.is_head + [2] * (max_token_length - len(example.is_head))
+      # Because we do not have is_head for extra predicate part, so we need to recalculate the
+      # padding for is_head
 
       arg_candidates = example.enumerated_span_candidates + [
           (1, 0)
@@ -545,5 +619,6 @@ class SRLDataFlow(DataFlow):
                      _label_ids=None, #_label_ids,
                      _arg_candidates=None, # _arg_candidates,
                      _predicate_candidates=None, #_predicate_candidates,
-                     _token_length=example._len))
+                     _token_length=0# example._len
+                     ))
     return features

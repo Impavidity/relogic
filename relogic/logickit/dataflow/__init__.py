@@ -1,4 +1,4 @@
-from relogic.logickit.base.constants import (SRL_TASK, ECP_TASK, POINTWISE_TASK, IR_TASK, NER_TASK,
+from relogic.logickit.base.constants import (JOINT_SRL_TASK, PIPE_SRL_TASK, ECP_TASK, POINTWISE_TASK, IR_TASK, NER_TASK,
   SEQUENCE_LABELING_TASK, PARALLEL_MAPPING_TASK, PAIRWISE_TASK, PARALLEL_TEACHER_STUDENT_TASK,
   SEQUENCE_CLASSIFICATION_TASK, ENTITY_TYPE_CLASSIFICATION, DEP_PARSING_TASK, MIXSENT_TASK, LANGUAGE_IDENTIFICATION_IR,
   POS_TASK, DOCIR_TASK, LANGUAGE_IDENTIFICATION_SEQ)
@@ -18,7 +18,8 @@ from relogic.logickit.dataflow.doc_pointwise import (DocPointwiseDataFlow,
 from relogic.common.prefix_map import PrefixMap
 
 task_to_dataflow_class_map = {
-  SRL_TASK: SRLDataFlow,
+  PIPE_SRL_TASK: SRLDataFlow,
+  JOINT_SRL_TASK: SRLDataFlow,
   ECP_TASK: ECPDataFlow,
   POINTWISE_TASK: PointwiseDataFlow,
   IR_TASK: PointwiseDataFlow,

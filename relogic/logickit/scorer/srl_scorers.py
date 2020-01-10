@@ -71,10 +71,12 @@ class SRLF1Scorer(F1Score):
 
     self._n_correct, self._n_predicted, self._n_gold = 0, 0, 0
     for example, preds in zip(self._examples, self._preds):
+      example: SRLExample
       preds_tags = preds.argmax(-1).data.cpu().numpy()
       confidences = [max(softmax(token_level)) for token_level in preds.data.cpu().numpy()]
       sent_spans, sent_labels = get_span_labels(
-        sentence_tags = example.label)
+        sentence_tags = example.seq_labels,
+        )
       sent_spans = set(filter(lambda item: item[0] != example.predicate_index, sent_spans))
       span_preds, pred_labels = get_span_labels(
         sentence_tags=preds_tags,
@@ -86,14 +88,14 @@ class SRLF1Scorer(F1Score):
       self._n_gold += len(sent_spans)
       self._n_predicted += len(span_preds)
       if self.dump_to_file_path:
-        if len(example.raw_text) != len(sent_labels) or len(example.raw_text) != len(pred_labels):
-          print(len(example.raw_text), example.raw_text)
+        if len(example.raw_tokens) != len(sent_labels) or len(example.raw_tokens) != len(pred_labels):
+          print(len(example.raw_tokens), example.raw_tokens)
           print(len(sent_labels), sent_labels)
           print(len(pred_labels), pred_labels)
           exit()
         self.dump_to_file_handler.write(json.dumps({
-          "text": example.raw_text,
-          "predicate_text": example.predicate_text,
+          "text": example.raw_tokens,
+          "predicate_text": example.predefined_predicate,
           "predicate_index": example.predicate_index,
           "label": sent_labels,
           "predicted": pred_labels

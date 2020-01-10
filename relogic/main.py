@@ -173,6 +173,7 @@ def main():
   parser.add_argument("--srl_compute_pos_tag_loss", default=False, action="store_true")
   parser.add_argument("--srl_use_gold_predicate", default=False, action="store_true")
   parser.add_argument("--srl_use_gold_argument", default=False, action="store_true")
+  parser.add_argument("--predicate_reveal_method", default=None, type=str)
 
   # Dependency Parsing
   parser.add_argument("--dep_parsing_mlp_dim", default=300, type=int)
