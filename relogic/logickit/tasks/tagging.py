@@ -1,5 +1,5 @@
 from relogic.logickit.tasks.task import Task
-from relogic.logickit.modules.srl_module import SRLModule
+from relogic.logickit.modules.srl_module import SRLModule, PipeSRLModule
 from relogic.logickit.modules.tagging_module import TaggingModule
 from relogic.logickit.modules.predicate_sense_module import PredicateSenseModule
 from relogic.logickit.modules.joint_srl_module import JointSRLModule
@@ -24,8 +24,10 @@ class Tagging(Task):
       return JointSRLModule(self.config, self.name, self.n_classes)
     elif self.name in ['predicate_sense']:
       return PredicateSenseModule(self.config, self.name, self.n_classes)
-    elif self.name in [PIPE_SRL_TASK, NER_TASK, POS_TASK]:
+    elif self.name in [NER_TASK, POS_TASK]:
       return SequenceLabelingModule(self.config, self.name, self.n_classes)
+    elif self.name in [PIPE_SRL_TASK]:
+      return PipeSRLModule(self.config, self.name, self.n_classes)
     else:
       return TaggingModule(self.config, self.name, self.n_classes)
       # raise ValueError("Task name {} is not defined".format(self.name))

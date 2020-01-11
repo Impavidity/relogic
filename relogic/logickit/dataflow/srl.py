@@ -10,7 +10,6 @@ import torch
 
 from relogic.logickit.base.constants import SRL_LABEL_SEQ_BASED, SRL_LABEL_SPAN_BASED, SRL_PREDICATE_EXTRA_SURFACE
 from relogic.logickit.dataflow import DataFlow, Example, Feature, MiniBatch
-from relogic.logickit.tokenizer.tokenization import BertTokenizer
 from relogic.logickit.tokenizer.fasttext_tokenization import FasttextTokenizer
 from relogic.logickit.utils import create_tensor
 from relogic.structures import enumerate_spans
@@ -21,21 +20,32 @@ class SRLExample(Example):
 
   Args:
     text (str): A sentence string.
-    labels (List[Tuple]): A list of labels. Each label is a Tuple containing
+    labels (List[Tuple] or List[Str]): A list of labels. Each label is a Tuple containing
       predicate_start_index, predicate_end_index, predicate_text_string,
       argument_start_index, argument_end_index, argument_text_string, argument_label.
 
+      If it is sequence labeling, then the labels are a sequence of labels string.
+
   """
-  def __init__(self, text, predefined_predicate=None, labels=None, pos_tag_label=None, predicate_sense_label=None, label_candidates=None):
+  def __init__(self,
+               text,
+               predicate_text=None,
+               predicate_index=None,
+               labels=None,
+               pos_tag_label=None,
+               predicate_sense_label=None,
+               label_candidates=None):
     super(SRLExample, self).__init__()
     self.text = text
     self.raw_tokens = text.split()
     self.labels = labels
     # Hard code here
     self.label_padding = 'X'
-    self.predefined_predicate = predefined_predicate
-    if self.predefined_predicate is not None:
-      self.raw_predefined_predicate_tokens = self.predefined_predicate.split()
+    self.predicate_text = predicate_text
+    if self.predicate_text is not None:
+      self.raw_predicate_text_tokens = self.predicate_text.split()
+    self.predicate_index = predicate_index
+    # We assume the index has only one value
 
     self.pos_tag_label = pos_tag_label
     self.predicate_sense_label = predicate_sense_label
@@ -88,9 +98,9 @@ class SRLExample(Example):
           # In this case we assume the input only has one predicate
           # User needs to separate them by themselves.
 
-          assert self.predefined_predicate is not None
+          assert self.predicate_text is not None
           predicate_text_tokens = []
-          for word in self.raw_predefined_predicate_tokens:
+          for word in self.raw_predicate_text_tokens:
             word_tokens = tokenizer.tokenize(word)
             predicate_text_tokens.extend(word_tokens)
             # self.text_is_head.extend([1] + [0] * (len(word_tokens) - 1))
@@ -98,6 +108,8 @@ class SRLExample(Example):
           predicate_text_tokens += [tokenizer.sep_token]
           self.tokens.extend(predicate_text_tokens)
           self.segment_ids += [1] * len(predicate_text_tokens)
+          assert self.predicate_index is not None
+          self.predicate_idx = self.head_index[self.predicate_index]
 
 
         self.input_ids = tokenizer.convert_tokens_to_ids(self.tokens)
@@ -139,10 +151,6 @@ class SRLExample(Example):
           self.predicate_candidates.append(
               (self.head_index[span[0]], self.head_index[span[1]]))
 
-
-
-
-
         # If this is for model development, then self.labels is not None
         # If this is for deployment, then self.labels is None
         if self.labels is not None:
@@ -176,32 +184,10 @@ class SRLExample(Example):
             label_mapping = kwargs.get("label_mapping")
             self.label_padding_id = label_mapping[self.label_padding]
             self.label_ids = [self.label_padding_id] * len(self.tokens)
-            self.seq_labels = ["O"] * len(self.raw_tokens)
-            for idx in self.head_index[:-1]:
+            assert len(self.labels) == len(self.head_index[:-1])
+            for idx, label in zip(self.head_index[:-1], self.labels):
               # we ignore the index of [SEP]
-              self.label_ids[idx] = label_mapping["O"]
-
-            for label in self.labels:
-              (predicate_start, predicate_end, predicate_text,
-               arg_start, arg_end, argument_text, arg_label) = label
-              self.predicate_index = predicate_start
-              # B I O is used
-              if predicate_text != self.predefined_predicate:
-                continue
-              for idx in range(predicate_start, predicate_end):
-                if idx == predicate_start:
-                  self.label_ids[self.head_index[idx]] = label_mapping["B-V"]
-                  self.seq_labels[idx] = "B-V"
-                else:
-                  self.label_ids[self.head_index[idx]] = label_mapping["I-V"]
-                  self.seq_labels[idx] = "I-V"
-              for idx in range(arg_start, arg_end):
-                if idx == arg_start:
-                  self.label_ids[self.head_index[idx]] = label_mapping["B-" + arg_label]
-                  self.seq_labels[idx] = "B-" + arg_label
-                else:
-                  self.label_ids[self.head_index[idx]] = label_mapping["I-" + arg_label]
-                  self.seq_labels[idx] = "I-" + arg_label
+              self.label_ids[idx] = label_mapping[label]
           else:
             raise ValueError()
 
@@ -284,7 +270,8 @@ class SRLExample(Example):
                pos_tag_label=example.get("pos_tag", None),
                predicate_sense_label=example.get("predicate_sense", None),
                label_candidates=example.get("label_candidates", None),
-               predefined_predicate=example.get("predefined_predicate", None))
+               predicate_text=example.get("predicate_text", None),
+               predicate_index=example.get("predicate_index", None))
 
   @property
   def len(self):
@@ -331,6 +318,7 @@ class SRLFeature(Feature):
     self.predicate_candidates = kwargs.pop("predicate_candidates")
     self.arg_candidate_label_ids = kwargs.pop("arg_candidate_label_ids")
     self.predicate_candidate_label_ids = kwargs.pop("predicate_candidate_label_ids")
+    self.predicate_idx = kwargs.pop("predicate_idx")
 
     # Label embeddings
     self.label_candidates = kwargs.pop("label_candidates")
@@ -366,6 +354,8 @@ class SRLMiniBatch(MiniBatch):
                                           torch.long, device)
     inputs["input_head"] = create_tensor(self.input_features, "is_head",
                                          torch.long, device)
+    inputs["predicate_idx"] = create_tensor(self.input_features, "predicate_idx",
+                                            torch.long, device)
     if use_label:
       label_ids = create_tensor(self.input_features, "label_ids",
                                           torch.long, device)
@@ -412,9 +402,9 @@ class SRLMiniBatch(MiniBatch):
     #     self.input_features, "_arg_candidates", torch.long, device)
     # inputs["_predicate_candidates"] = create_tensor(
     #   self.input_features, "_predicate_candidates", torch.long, device)
-    inputs["extra_args"] = {
-      "selected_non_final_layers": [1, 9, 18]
-    }
+    # inputs["extra_args"] = {
+    #   "selected_non_final_layers": [1, 9, 18]
+    # }
 
     return inputs
 
@@ -517,7 +507,10 @@ class SRLDataFlow(DataFlow):
           (1, 0)
       ] * (max_predicate_candidate_length - len(example.predicate_candidates))
 
-
+      if example.predicate_index is not None:
+        predicate_idx = example.predicate_idx
+      else:
+        predicate_idx = None
 
       # For label processing, there are three choice
       # 1. None if it is for prediction
@@ -615,6 +608,7 @@ class SRLDataFlow(DataFlow):
                      label_candidates = label_candidates_list,
                      label_candidates_mask = label_candidates_mask_list,
                      pos_tag_label_ids=pos_tag_label_ids,
+                     predicate_idx=predicate_idx,
                      _input_token_ids=None, # _input_token_ids,
                      _label_ids=None, #_label_ids,
                      _arg_candidates=None, # _arg_candidates,

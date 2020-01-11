@@ -75,7 +75,7 @@ class SRLF1Scorer(F1Score):
       preds_tags = preds.argmax(-1).data.cpu().numpy()
       confidences = [max(softmax(token_level)) for token_level in preds.data.cpu().numpy()]
       sent_spans, sent_labels = get_span_labels(
-        sentence_tags = example.seq_labels,
+        sentence_tags = example.labels,
         )
       sent_spans = set(filter(lambda item: item[0] != example.predicate_index, sent_spans))
       span_preds, pred_labels = get_span_labels(
@@ -95,7 +95,7 @@ class SRLF1Scorer(F1Score):
           exit()
         self.dump_to_file_handler.write(json.dumps({
           "text": example.raw_tokens,
-          "predicate_text": example.predefined_predicate,
+          "predicate_text": example.predicate_text,
           "predicate_index": example.predicate_index,
           "label": sent_labels,
           "predicted": pred_labels
