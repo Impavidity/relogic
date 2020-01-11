@@ -71,6 +71,30 @@ Basically there model are based on contextual encoder such as BERT. For more inf
 
 ### Relation Extraction
 ### Semantic Role Labeling
+
+The Semantic Role Labeler is trained on CoNLL 2005, CoNLL 2009 and CoNLL 2012. Currently the model of CoNLL 2012 is 
+available.
+
+#### How to use
+
+```python
+from relogic.pipelines.core import Pipeline
+
+pipeline = Pipeline(
+  component_names=["predicate_detection", "srl"],
+  component_model_names= {"predicate_detection" : "spacy" ,"srl": "srl-conll12"})
+
+from relogic.structures.sentence import Sentence
+
+sent = Sentence(
+  text="The Lexington-Concord Sesquicentennial half dollar is a fifty-cent piece struck by the United States Bureau of the Mint in 1925 as a commemorative coin in honor of the 150th anniversary of the Battles of Lexington and Concord.")
+
+pipeline.execute([sent])
+```
+
+You will observe the `srl_labels` in Sentence and their labels sequence matches with the sequence of the predicates, 
+which is predicted with spacy pos tagger (we simply regard VERB as predicate).
+
 ### Cross-lingual Entity Matching over Knowledge Graphs 
 ### Reading Comprehension
 ### End to End QA with Reading Comprehension

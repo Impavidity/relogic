@@ -11,7 +11,7 @@ import torch
 from relogic.logickit.base.constants import SRL_LABEL_SEQ_BASED, SRL_LABEL_SPAN_BASED, SRL_PREDICATE_EXTRA_SURFACE
 from relogic.logickit.dataflow import DataFlow, Example, Feature, MiniBatch
 from relogic.logickit.tokenizer.fasttext_tokenization import FasttextTokenizer
-from relogic.logickit.utils import create_tensor
+from relogic.logickit.utils import create_tensor, get_span_labels
 from relogic.structures import enumerate_spans
 from transformers.tokenization_utils import PreTrainedTokenizer
 
@@ -255,7 +255,9 @@ class SRLExample(Example):
   def from_structure(cls, structure):
     """Implementation of converting structure into SRLExample."""
 
-    return cls(text=structure.text)
+    return cls(text=structure.tokenized_text,
+               predicate_text=structure.predicate_text,
+               predicate_index=structure.predicate_index)
 
   @classmethod
   def from_json(cls, example):
@@ -413,6 +415,7 @@ class SRLDataFlow(DataFlow):
   """DataFlow implementation based on SRL task."""
   def __init__(self, config, task_name, tokenizers, label_mapping):
     super(SRLDataFlow, self).__init__(config, task_name, tokenizers, label_mapping)
+    self._inv_label_mapping = {v: k for k, v in label_mapping.items()}
     self.pos_tag_label_mapping = json.load(open("data/preprocessed_data/pos_tag.json"))
     self.predicate_sense_label_mapping = json.load(open("data/preprocessed_data/predicate_sense_label_mapping.json"))
     self.use_gold_predicate = hasattr(config, "srl_use_gold_predicate") and config.srl_use_gold_predicate
@@ -516,7 +519,7 @@ class SRLDataFlow(DataFlow):
       # 1. None if it is for prediction
       # 2. Sequence Labeling format, then it is just List[str]. This is predicate based.
       # 3. Span format, then it is List[Tuple[int, int, int, int, int]]
-      if label_format is None:
+      if label_format is None or self.config.mode in ["deployment"]:
         label_ids = None
         arg_candidate_label_ids = None
         predicate_candidate_label_ids = None
@@ -616,3 +619,18 @@ class SRLDataFlow(DataFlow):
                      _token_length=0# example._len
                      ))
     return features
+
+  def decode_to_labels(self, preds, mb: MiniBatch):
+    labels = []
+    for example, pred_logits in zip(mb.examples, preds[mb.task_name]["logits"]):
+      preds_tags = pred_logits.argmax(-1).data.cpu().numpy()
+      span_preds, pred_labels = get_span_labels(
+        sentence_tags=preds_tags,
+        is_head=example.is_head,
+        segment_id=example.segment_ids,
+        inv_label_mapping=self._inv_label_mapping)
+      span_preds = set(filter(lambda item: item[0] != example.predicate_index, span_preds))
+      # Because the get_span_labels is inclusive
+      span_preds = [(x[0], x[1]+1, x[2]) for x in span_preds]
+      labels.append(span_preds)
+    return labels
