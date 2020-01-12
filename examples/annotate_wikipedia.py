@@ -1,7 +1,7 @@
 import argparse
 import json
 from relogic.structures.document import Document
-
+from tqdm import tqdm
 from relogic.pipelines.core import Pipeline
 
 parser = argparse.ArgumentParser()
@@ -16,7 +16,7 @@ pipeline = Pipeline(
 
 fout = open(args.output_file_path, 'w')
 with open(args.data_file_path) as fin:
-  for line in fin:
+  for line in tqdm(fin):
     example = json.loads(line)
     document = Document(text=example["text"])
     sentences = []

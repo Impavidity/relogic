@@ -37,7 +37,7 @@ class SRLExample(Example):
                label_candidates=None):
     super(SRLExample, self).__init__()
     self.text = text
-    self.raw_tokens = text.split()
+    self.raw_tokens = text.split(" ")
     self.labels = labels
     # Hard code here
     self.label_padding = 'X'
@@ -75,8 +75,12 @@ class SRLExample(Example):
         self.text_is_head = []
         for word in self.raw_tokens:
           word_tokens = tokenizer.tokenize(word)
-          self.text_tokens.extend(word_tokens)
-          self.text_is_head.extend([1] + [0] * (len(word_tokens) - 1))
+          if len(word_tokens) == 0:
+            self.text_tokens.append("[UNK]")
+            self.text_is_head.append(1)
+          else:
+            self.text_tokens.extend(word_tokens)
+            self.text_is_head.extend([1] + [0] * (len(word_tokens) - 1))
         # Currently it only support one group of model (BERT).
         self.tokens = [tokenizer.cls_token] + self.text_tokens + [tokenizer.sep_token]
         self.segment_ids = [0] * (len(self.text_tokens) + 2)
@@ -92,6 +96,7 @@ class SRLExample(Example):
         # Assume we have span (2, 3) = C, exclusive.
         # self.head_index[2] =  3, self.head_index[3] = 4.
         # So the span for tokenized sentence is (3, 4) = C
+        assert (len(self.tokens) == len(self.is_head))
 
         # This part is mainly for the arxiv version paper.
         if predicate_reveal_method == SRL_PREDICATE_EXTRA_SURFACE:

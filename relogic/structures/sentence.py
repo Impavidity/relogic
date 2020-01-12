@@ -4,7 +4,8 @@ from typing import List, Union
 from relogic.structures.structure import Structure
 from relogic.structures.token import Token
 from relogic.structures.span import Span
-
+from transformers.tokenization_bert import BasicTokenizer
+basic_tokenizer = BasicTokenizer(do_lower_case=False)
 
 @dataclass
 class Sentence(Structure):
@@ -20,7 +21,7 @@ class Sentence(Structure):
   srl_labels: List = field(default_factory=list)
 
   def __post_init__(self):
-    pass
+    self.tokens = [Token(token) for token in basic_tokenizer.tokenize(self.text)]
     # if self.text:
     #   # Currently we only use split by tokens
     #   self.tokens = [Token(token) for token in self.text.split()]
