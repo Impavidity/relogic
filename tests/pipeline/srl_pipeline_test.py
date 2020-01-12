@@ -7,8 +7,10 @@ pipeline = Pipeline(
 
 from relogic.structures.sentence import Sentence
 
-sent = Sentence(
+sent1 = Sentence(
   text="The Lexington-Concord Sesquicentennial half dollar is a fifty-cent piece struck by the United States Bureau of the Mint in 1925 as a commemorative coin in honor of the 150th anniversary of the Battles of Lexington and Concord.")
-
-pipeline.execute([sent])
-raise NotImplementedError()
+sent2 = Sentence(
+  text="It was decided that a limited company was to be established, with a share capital of NOK\u00a0100,000.")
+pipeline.execute([sent1, sent2])
+print(sent1)
+print(sent2)

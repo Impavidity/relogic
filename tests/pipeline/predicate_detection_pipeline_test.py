@@ -8,7 +8,7 @@ pipeline = Pipeline(
 from relogic.structures.sentence import Sentence
 
 sent = Sentence(
-  text="Barack Obama went to Paris .")
+  text="Barack Obama can't go to Paris .")
 
 pipeline.execute([sent])
-raise NotImplementedError()
+print(sent)

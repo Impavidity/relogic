@@ -21,7 +21,8 @@ class Sentence(Structure):
   srl_labels: List = field(default_factory=list)
 
   def __post_init__(self):
-    self.tokens = [Token(token) for token in basic_tokenizer.tokenize(self.text)]
+    if self.text:
+      self.tokens = [Token(token) for token in basic_tokenizer.tokenize(self.text)]
     # if self.text:
     #   # Currently we only use split by tokens
     #   self.tokens = [Token(token) for token in self.text.split()]
