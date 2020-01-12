@@ -49,7 +49,7 @@ class Pipeline(object):
 
   def __call__(self, inputs):
     if not isinstance(inputs, List) and isinstance(inputs, Structure):
-      return self.execute([inputs])[0]
+      return self.execute([inputs])
     elif isinstance(inputs, List[Structure]):
       return self.execute(inputs)
     elif isinstance(inputs, str):

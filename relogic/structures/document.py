@@ -2,13 +2,20 @@ from dataclasses import dataclass, field
 from typing import List
 
 from relogic.structures.structure import Structure
+from relogic.structures.paragraph import Paragraph
 from relogic.structures.sentence import Sentence
 
 
 @dataclass
 class Document(Structure):
   idx: int = None
-  sentences: List[Sentence] = field(default_factory=list)
+  text: str = None
+  paragraphs: List[Paragraph] = field(default_factory=list)
 
-  def add_sentence(self, sentence: Sentence):
-    self.sentences.append(sentence)
+  def __post_init__(self):
+    for para in self.text.split("\n"):
+      self.add_paragraph(Paragraph(text=para))
+
+  def add_paragraph(self, paragraph: Paragraph):
+    self.paragraphs.append(paragraph)
+

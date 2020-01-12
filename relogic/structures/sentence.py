@@ -8,6 +8,7 @@ from relogic.structures.span import Span
 
 @dataclass
 class Sentence(Structure):
+  idx : int = None
   text: str = None
   tokens: List[Token] = field(default_factory=list)
   text_: str = None
@@ -52,10 +53,9 @@ class Sentence(Structure):
 
   def convert_to_json(self):
     return {
-      "text": self.text,
-      "srl_labels": self.srl_labels,
-      "predicate_text": self.predicate_text,
-      "predicate_index": self.predicate_index
+      "text": self.tokenized_text,
+      "predicates": self.predicates,
+      "srl_labels": self.srl_labels
     }
 
   def __getitem__(self, item):
