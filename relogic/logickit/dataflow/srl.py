@@ -16,6 +16,7 @@ from relogic.structures import enumerate_spans
 from transformers.tokenization_utils import PreTrainedTokenizer
 
 MAX_SEQ_LENGTH=500
+MAX_VERB_LENGTH=9
 
 class SRLExample(Example):
   """SRLExample contains the attributes and functionality of an SRL example.
@@ -92,6 +93,7 @@ class SRLExample(Example):
         if len(self.text_tokens) > MAX_SEQ_LENGTH:
           self.text_tokens = self.text_tokens[:MAX_SEQ_LENGTH]
           self.text_is_head = self.text_is_head[:MAX_SEQ_LENGTH]
+
         # Currently it only support one group of model (BERT).
         self.tokens = [tokenizer.cls_token] + self.text_tokens + [tokenizer.sep_token]
         self.segment_ids = [0] * (len(self.text_tokens) + 2)
@@ -121,6 +123,9 @@ class SRLExample(Example):
             predicate_text_tokens.extend(word_tokens)
             # self.text_is_head.extend([1] + [0] * (len(word_tokens) - 1))
             # We ignore the is_head information for predicate for now
+          predicate_text_tokens = predicate_text_tokens[:MAX_VERB_LENGTH]
+          # Limit the verb length based on the MAX SEQ LENGTH
+
           predicate_text_tokens += [tokenizer.sep_token]
           self.tokens.extend(predicate_text_tokens)
           self.segment_ids += [1] * len(predicate_text_tokens)

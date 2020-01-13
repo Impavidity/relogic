@@ -48,8 +48,9 @@ class Sentence(Structure):
   @property
   def tokenized_text(self):
     if self.text_ is None:
-      if len(self.tokens) == 0:
-        raise ValueError("The sentence {} is not tokenized.".format(self.text))
+      # if len(self.tokens) == 0:
+        # raise ValueError("The sentence {} is not tokenized.".format(self.text))
+
       self.text_ = " ".join([token.text for token in self.tokens])
     return self.text_
 
