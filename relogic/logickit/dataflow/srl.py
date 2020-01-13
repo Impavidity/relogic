@@ -15,6 +15,8 @@ from relogic.logickit.utils import create_tensor, get_span_labels
 from relogic.structures import enumerate_spans
 from transformers.tokenization_utils import PreTrainedTokenizer
 
+MAX_SEQ_LENGTH=500
+
 class SRLExample(Example):
   """SRLExample contains the attributes and functionality of an SRL example.
 
@@ -51,6 +53,12 @@ class SRLExample(Example):
     self.predicate_sense_label = predicate_sense_label
     self.label_candidates = label_candidates
 
+    self.is_valid = True
+    # I add this tag for long sentence. If the sentence is long, the tokenizer
+    # will cut it off. But if the predicate index is large and the corresponding
+    # position is not in sentence anymore, the example becomes an invalid example.
+    # The return label will be empty.
+
   def process(self, tokenizers, *inputs, **kwargs):
     """Process the SRL example.
 
@@ -81,6 +89,9 @@ class SRLExample(Example):
           else:
             self.text_tokens.extend(word_tokens)
             self.text_is_head.extend([1] + [0] * (len(word_tokens) - 1))
+        if len(self.text_tokens) > MAX_SEQ_LENGTH:
+          self.text_tokens = self.text_tokens[:MAX_SEQ_LENGTH]
+          self.text_is_head = self.text_is_head[:MAX_SEQ_LENGTH]
         # Currently it only support one group of model (BERT).
         self.tokens = [tokenizer.cls_token] + self.text_tokens + [tokenizer.sep_token]
         self.segment_ids = [0] * (len(self.text_tokens) + 2)
@@ -114,7 +125,12 @@ class SRLExample(Example):
           self.tokens.extend(predicate_text_tokens)
           self.segment_ids += [1] * len(predicate_text_tokens)
           assert self.predicate_index is not None
-          self.predicate_idx = self.head_index[self.predicate_index]
+          if self.predicate_index >= len(self.head_index)-1:
+            self.is_valid = False
+            self.predicate_idx = self.head_index[-2]
+            # Just put a random index
+          else:
+            self.predicate_idx = self.head_index[self.predicate_index]
 
 
         self.input_ids = tokenizer.convert_tokens_to_ids(self.tokens)
@@ -131,7 +147,7 @@ class SRLExample(Example):
             if span_tuple not in spans:
               spans.append(span_tuple)
         else:
-          spans = enumerate_spans(sentence=self.raw_tokens, max_span_width=30)
+          spans = enumerate_spans(sentence=self.raw_tokens[:len(self.head_index)-1], max_span_width=30)
 
         self.enumerated_span_candidates: List[Tuple[int, int]] = []
         for span in spans:
@@ -149,7 +165,7 @@ class SRLExample(Example):
             if span_tuple not in spans:
               spans.append(span_tuple)
         else:
-          spans = enumerate_spans(sentence=self.raw_tokens, max_span_width=1)
+          spans = enumerate_spans(sentence=self.raw_tokens[:len(self.head_index)-1], max_span_width=1)
 
         self.predicate_candidates: List[Tuple[int, int]] = []
         for span in spans:
@@ -628,14 +644,18 @@ class SRLDataFlow(DataFlow):
   def decode_to_labels(self, preds, mb: MiniBatch):
     labels = []
     for example, pred_logits in zip(mb.examples, preds[mb.task_name]["logits"]):
-      preds_tags = pred_logits.argmax(-1).data.cpu().numpy()
-      span_preds, pred_labels = get_span_labels(
-        sentence_tags=preds_tags,
-        is_head=example.is_head,
-        segment_id=example.segment_ids,
-        inv_label_mapping=self._inv_label_mapping)
-      span_preds = set(filter(lambda item: item[0] != example.predicate_index, span_preds))
-      # Because the get_span_labels is inclusive
-      span_preds = [(x[0], x[1]+1, x[2]) for x in span_preds]
+      if example.is_valid:
+        preds_tags = pred_logits.argmax(-1).data.cpu().numpy()
+        span_preds, pred_labels = get_span_labels(
+          sentence_tags=preds_tags,
+          is_head=example.is_head,
+          segment_id=example.segment_ids,
+          inv_label_mapping=self._inv_label_mapping)
+        span_preds = set(filter(lambda item: item[0] != example.predicate_index, span_preds))
+        # Because the get_span_labels is inclusive
+        span_preds = [(x[0], x[1]+1, x[2]) for x in span_preds]
+      else:
+        span_preds = []
+
       labels.append(span_preds)
     return labels
