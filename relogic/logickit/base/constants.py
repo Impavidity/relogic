@@ -9,12 +9,15 @@ NEVER_SPLIT = ("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]",
               '[DURATION-OBJ]', '[URL-OBJ]', '[STATE_OR_PROVINCE-OBJ]',
               '[IDEOLOGY-OBJ]', '[CAUSE_OF_DEATH-OBJ]')
 
-SRL_TASK = "joint_srl"
+JOINT_SRL_TASK = "joint_srl"
+PIPE_SRL_TASK = "pipe_srl"
 SRL_LABEL_SPAN_BASED = "srl_label_span_based"
 SRL_LABEL_SEQ_BASED = "srl_label_seq_based"
 SPAN_REPR_KENTON_LEE = "kenton_lee"
 SPAN_REPR_AVE_MAX = "ave_max"
 SPAN_REPR_AVE = "ave"
+SRL_PREDICATE_EXTRA_SURFACE = "srl_predicate_extra_surface"
+
 
 ECP_TASK = "ecp"
 

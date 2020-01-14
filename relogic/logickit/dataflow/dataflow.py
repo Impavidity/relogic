@@ -130,7 +130,7 @@ class DataFlow(object, metaclass=abc.ABCMeta):
         for structure in structures
     ]
     from tqdm import tqdm
-    for example in tqdm(self.examples):
+    for idx, example in tqdm(enumerate(self.examples), desc="Loading data", total=len(self.examples)):
       self.process_example(example)
 
   def update_with_jsons(self, examples):
@@ -145,8 +145,11 @@ class DataFlow(object, metaclass=abc.ABCMeta):
     self.examples = [
         self.example_class.from_json(example) for example in examples
     ]
-    for example in self.examples:
+    from tqdm import tqdm
+    for idx, example in tqdm(enumerate(self.examples), desc="Loading data", total=len(self.examples)):
       self.process_example(example)
+      if idx < 3:
+        print(example.__dict__)
 
   def update_with_file(self, file_name):
     """Read json objects from file.

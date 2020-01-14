@@ -186,6 +186,32 @@ class PredicateDetection(nn.Module):
   def forward(self, input):
     pass
 
+class PipeSRLModule(nn.Module):
+  def __init__(self, config, task_name, n_classes):
+    super().__init__()
+    self.config = config
+    self.indicator_embedding = nn.Embedding(
+      num_embeddings=2,
+      embedding_dim=config.indicator_embedding_size)
+    self.projection = nn.Linear(2 * (config.hidden_size + config.indicator_embedding_size), config.hidden_size)
+    self.activation = nn.SELU()
+    self.to_logits = nn.Linear(config.hidden_size, n_classes)
+
+  def forward(self, *input, **kwargs):
+    features = kwargs.pop("features")
+    predicate_idx = kwargs.pop("predicate_idx")
+    indicator_ids = torch.zeros(features.size()[:2]).to(predicate_idx.device)
+    indicator_ids.scatter_(1, predicate_idx.unsqueeze(-1), 1)
+    indicator_embedding = self.indicator_embedding(indicator_ids.long())
+    input_concat = torch.cat([features, indicator_embedding], dim=-1)
+    concat = torch.cat([input_concat, input_concat[indicator_ids.bool()].unsqueeze(1).repeat(1, input_concat.size(1), 1)], dim=-1)
+    # print(input[is_predicate_mask].size())
+    projected = self.projection(concat)
+    projected = self.activation(projected)
+    logits = self.to_logits(projected)
+    return logits
+
+
 class SRLModule(nn.Module):
   def __init__(self, config, task_name, n_classes):
     super(SRLModule, self).__init__()
