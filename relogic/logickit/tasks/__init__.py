@@ -7,12 +7,13 @@ from relogic.logickit.tasks.unsupervised import Unsupervised
 from relogic.logickit.base.constants import (ECP_TASK, IR_TASK, NER_TASK, PARALLEL_MAPPING_TASK,
                                              PARALLEL_TEACHER_STUDENT_TASK, PAIRWISE_TASK, ENTITY_TYPE_CLASSIFICATION,
                                              DEP_PARSING_TASK, MIXSENT_TASK, LANGUAGE_IDENTIFICATION_IR, POS_TASK, DOCIR_TASK,
-                                             LANGUAGE_IDENTIFICATION_SEQ, PIPE_SRL_TASK, JOINT_SRL_TASK)
+                                             LANGUAGE_IDENTIFICATION_SEQ, PIPE_SRL_TASK, JOINT_SRL_TASK, PREDICATE_DETECTION_TASK)
 from relogic.common.prefix_map import PrefixMap
 
 task_name_to_class_map = {
   POS_TASK: Tagging,
   NER_TASK: Tagging,
+  PREDICATE_DETECTION_TASK: Tagging,
   PIPE_SRL_TASK: Tagging,
   JOINT_SRL_TASK: Tagging,
   IR_TASK: Classification,

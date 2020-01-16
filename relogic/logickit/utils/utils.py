@@ -71,7 +71,7 @@ def get_span_labels(sentence_tags, is_head=None, segment_id=None, inv_label_mapp
     # assert(len(sentence_tags) == len(is_head))
 
     for idx, (head, segment) in enumerate(zip(is_head, segment_id)):
-      if head == 1 and segment == 0:
+      if (head == 1 or head == True) and (segment == 0 or segment == True):
         if sentence_tags[idx] != 'X':
           filtered_sentence_tag.append(sentence_tags[idx])
         else:
@@ -100,7 +100,7 @@ def get_span_labels(sentence_tags, is_head=None, segment_id=None, inv_label_mapp
 def filter_head_prediction(sentence_tags, is_head):
   filtered_sentence_tag = []
   for idx, head in enumerate(is_head):
-    if head == 1:
+    if head == 1 or head == True:
       if sentence_tags[idx] != 'X':
         filtered_sentence_tag.append(sentence_tags[idx])
       else:

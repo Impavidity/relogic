@@ -205,7 +205,10 @@ class Model(BaseModel):
     self.model.train()
 
     inputs = mb.generate_input(device=self.device, use_label=True)
-    if "input_ids" in inputs and inputs["input_ids"].size(0) == 0:
+    if "input_ids" in inputs and inputs["input_ids"] is not None and inputs["input_ids"].size(0) == 0:
+      utils.log("Zero Batch")
+      return 0
+    if "_input_token_ids" in inputs and inputs["_input_token_ids"] is not None and inputs["_input_token_ids"].size(0) == 0:
       utils.log("Zero Batch")
       return 0
 

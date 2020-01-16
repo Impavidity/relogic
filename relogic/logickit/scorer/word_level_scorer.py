@@ -18,7 +18,7 @@ class WordLevelScorer(Scorer, metaclass=abc.ABCMeta):
     for example, preds in zip(mbs.examples, predictions):
       self._examples.append(example)
       self._preds.append(preds)
-      n_words += len(example.tokens)
+      n_words += example.bucketing_len
     self._total_loss += loss * n_words
     self._total_words += n_words
 

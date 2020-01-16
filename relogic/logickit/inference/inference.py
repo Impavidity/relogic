@@ -4,7 +4,7 @@ from relogic.logickit.base import utils
 from relogic.logickit.inference.encoder import get_encoder
 from relogic.logickit.inference.branching_encoder import BranchingBertModel
 from torch.nn import MarginRankingLoss
-from relogic.logickit.modules.contextualizers.highway_lstm import HighwayLSTM
+
 
 from relogic.logickit.base.constants import *
 
@@ -67,6 +67,9 @@ class Inference(nn.Module):
     no_dropout = task_name in READING_COMPREHENSION_TASKS
     langs = kwargs.get("langs", None)
 
+    _input_token_ids = kwargs.get("_input_token_ids")
+    _token_length = kwargs.get("_token_length")
+
     features = self.encoder(
       input_ids=input_ids,
       token_type_ids=segment_ids,
@@ -75,7 +78,9 @@ class Inference(nn.Module):
       selected_non_final_layers=selected_non_final_layers,
       route_path=route_path,
       no_dropout=no_dropout,
-      langs=langs)
+      langs=langs,
+      _input_token_ids=_input_token_ids,
+      _token_length=_token_length)
 
     results = {}
 
@@ -101,16 +106,23 @@ class Inference(nn.Module):
   def get_arguments(self, prefix, kwargs):
     arguments = {}
     task_name = kwargs.pop("task_name", None)
-    arguments["input_ids"] = kwargs.pop(prefix+"input_ids")
-    arguments["input_mask"] = kwargs.pop(prefix+"input_mask")
+
+    # LM features
+    arguments["input_ids"] = kwargs.pop(prefix+"input_ids", None)
+    arguments["input_mask"] = kwargs.pop(prefix+"input_mask", None)
     arguments["input_head"] = kwargs.pop(prefix+"input_head", None)
-    arguments["segment_ids"] = kwargs.pop(prefix+"segment_ids")
+    arguments["segment_ids"] = kwargs.pop(prefix+"segment_ids", None)
     arguments["label_ids"] = kwargs.pop("label_ids", None)
     arguments["extra_args"] = kwargs.pop("extra_args", {})
     arguments["output_all_encoded_layers"] = arguments["extra_args"].get("output_all_encoded_layers", False)
     arguments["route_path"] = arguments["extra_args"].get("route_path", None)
     arguments["selected_non_final_layers"] = arguments["extra_args"].get("selected_non_final_layers", None)
     arguments["no_dropout"] = task_name in READING_COMPREHENSION_TASKS
+
+    # Classic features
+    arguments["_input_token_ids"] = kwargs.pop(prefix+"_input_token_ids", None)
+    arguments["_token_length"] = kwargs.pop(prefix+"_token_length", None)
+    arguments["_label_ids"] = kwargs.pop(prefix+"_label_ids", None)
     return arguments
 
 
@@ -191,7 +203,7 @@ class Inference(nn.Module):
       for task_name in task_names:
         logits = self.decoding(**arguments, **kwargs, features=features, task_name=task_name,
                                encoding_results=encoding_results)
-        if arguments["label_ids"] is not None:
+        if arguments["label_ids"] is not None or arguments["_label_ids"] is not None:
           if task_name not in SKIP_LOSS_TASK:
           # if task_name in ["joint_srl"]:
           #   loss = self.task_dict[task_name].compute_loss()

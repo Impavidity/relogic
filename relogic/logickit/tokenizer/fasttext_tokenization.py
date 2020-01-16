@@ -24,7 +24,8 @@ class FasttextTokenizer(object):
 
 
   def tokenize(self, text):
-    tokens, _ = self.basic_tokenizer.tokenize(text)
+    # tokens, _ = self.basic_tokenizer.tokenize(text)
+    tokens = text.split(" ")
     return tokens
 
   def convert_tokens_to_ids(self, tokens):
