@@ -1,6 +1,6 @@
 import sys
 
-sys.path.insert(0, "../transformers/src/")
+sys.path.insert(0, "transformers/src/")
 
 from relogic.pipelines.core import Pipeline
 from relogic.utils.resources import download
