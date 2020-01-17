@@ -26,6 +26,21 @@ class Example(object, metaclass=abc.ABCMeta):
     """Process function abstract. Need to be implemented in each Subclass"""
     raise NotImplementedError()
 
+  @property
+  def len(self):
+    raise NotImplementedError()
+
+  @property
+  def _len(self):
+    raise NotImplementedError()
+
+  @property
+  def bucketing_len(self):
+    try:
+      return self.len
+    except:
+      return self._len
+
 
 class Feature(object, metaclass=abc.ABCMeta):
   """Basic Feature class."""
@@ -210,10 +225,10 @@ class DataFlow(object, metaclass=abc.ABCMeta):
     else:
       by_bucket = collections.defaultdict(list)
       for i, example in enumerate(self.examples):
-        by_bucket[get_bucket(self.config, example.len)].append(i)
+        by_bucket[get_bucket(self.config, example.bucketing_len)].append(i)
       # save memory by weighting examples so longer sentences
       #   have smaller minibatches
-      weight = lambda ind: np.sqrt(self.examples[ind].len)
+      weight = lambda ind: np.sqrt(self.examples[ind].bucketing_len)
       total_weight = float(sum(weight(i) for i in range(self.size)))
       weight_per_batch = minibatch_size * total_weight / self.size
       cumulative_weight = 0.0

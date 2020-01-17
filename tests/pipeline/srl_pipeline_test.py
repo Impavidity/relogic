@@ -3,7 +3,7 @@ import relogic.utils.crash_on_ipy
 
 pipeline = Pipeline(
   component_names=["predicate_detection", "srl"],
-  component_model_names= {"predicate_detection" : "spacy" ,"srl": "srl-conll12"})
+  component_model_names= {"predicate_detection" : "pd-conll12" ,"srl": "srl-conll12"})
 
 from relogic.structures.sentence import Sentence
 

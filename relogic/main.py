@@ -197,7 +197,7 @@ def main():
 
   # Model
   parser.add_argument("--bert_model", type=str)
-  parser.add_argument("--encoder_type", type=str, default="bert", choices=["bert", "xlm", "xlmr"])
+  parser.add_argument("--encoder_type", type=str, default="bert", choices=["bert", "xlm", "xlmr", "lstm"])
   parser.add_argument("--hidden_size", type=int, default=768)
   parser.add_argument("--projection_size", type=int, default=300)
   parser.add_argument(
@@ -264,6 +264,7 @@ def main():
   parser.add_argument("--param_initialization", default=None, type=str)
   # We allow to set same training steps for different dataset
   # Need to combine to CUDA_VISIBLE_DEVICES
+  parser.add_argument("--only_adam", default=False, action="store_true")
 
   # Analysis
   parser.add_argument("--head_to_mask_file", type=str, default="")

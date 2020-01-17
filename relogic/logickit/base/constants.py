@@ -17,6 +17,7 @@ SPAN_REPR_KENTON_LEE = "kenton_lee"
 SPAN_REPR_AVE_MAX = "ave_max"
 SPAN_REPR_AVE = "ave"
 SRL_PREDICATE_EXTRA_SURFACE = "srl_predicate_extra_surface"
+PREDICATE_DETECTION_TASK = "predicate_detection"
 
 
 ECP_TASK = "ecp"
