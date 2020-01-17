@@ -105,10 +105,12 @@ class SequenceExample(Example):
           label_mapping = kwargs.get("label_mapping")
           self.label_padding_id = label_mapping[self.label_padding]
           self._label_ids = [label_mapping[label] for label in self.labels]
+        else:
+          self._label_ids = None
 
   @classmethod
   def from_structure(cls, structure):
-    return cls(text=structure.text)
+    return cls(text=structure.tokenized_text)
 
   @classmethod
   def from_json(cls, example):
@@ -265,7 +267,7 @@ class SequenceDataFlow(DataFlow):
         else:
           _label_ids = None
       else:
-        _input_token_ids, _token_length, _label_ids = None, None, None
+        _input_token_ids, _token_length, _input_token_mask, _label_ids = None, None, None, None
       features.append(SequenceFeature(
         input_ids=input_ids,
         input_mask=input_mask,
@@ -282,10 +284,11 @@ class SequenceDataFlow(DataFlow):
 
   def decode_to_labels(self, preds, mb: MiniBatch):
     labels = []
-    for example, pred_logits in zip(mb.examples, preds):
+    for example, pred_logits in zip(mb.examples, preds[mb.task_name]["logits"]):
       pred_label_index = pred_logits.argmax(-1).data.cpu().numpy()
       pred_label = [self._inv_label_mapping[y_pred] for y_pred in pred_label_index]
-      pred_label = filter_head_prediction(sentence_tags=pred_label, is_head=example.is_head)
+      is_head = example.is_head if hasattr(example, "is_head") else example._input_token_mask
+      pred_label = filter_head_prediction(sentence_tags=pred_label, is_head=is_head)
       labels.append(pred_label)
     return labels
 
