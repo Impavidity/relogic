@@ -76,13 +76,15 @@ class SRLF1Scorer(F1Score):
       confidences = [max(softmax(token_level)) for token_level in preds.data.cpu().numpy()]
       sent_spans, sent_labels = get_span_labels(
         sentence_tags = example.labels,
+        ignore_label=["V"]
         )
       sent_spans = set(filter(lambda item: item[0] != example.predicate_index, sent_spans))
       span_preds, pred_labels = get_span_labels(
         sentence_tags=preds_tags,
         is_head = example.is_head,
         segment_id = example.segment_ids,
-        inv_label_mapping = self._inv_label_mapping)
+        inv_label_mapping = self._inv_label_mapping,
+        ignore_label=["V"])
       span_preds = set(filter(lambda item: item[0] != example.predicate_index, span_preds))
       self._n_correct += len(sent_spans & span_preds)
       self._n_gold += len(sent_spans)

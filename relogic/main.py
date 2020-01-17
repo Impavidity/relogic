@@ -264,6 +264,7 @@ def main():
   parser.add_argument("--param_initialization", default=None, type=str)
   # We allow to set same training steps for different dataset
   # Need to combine to CUDA_VISIBLE_DEVICES
+  parser.add_argument("--only_adam", default=False, action="store_true")
 
   # Analysis
   parser.add_argument("--head_to_mask_file", type=str, default="")
