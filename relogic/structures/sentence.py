@@ -1,11 +1,15 @@
 from dataclasses import dataclass, field
+import regex as re
 from typing import List, Union
 
 from relogic.structures.structure import Structure
 from relogic.structures.token import Token
 from relogic.structures.span import Span
 from transformers.tokenization_bert import BasicTokenizer
+
 basic_tokenizer = BasicTokenizer(do_lower_case=False)
+
+PAT = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
 
 @dataclass
 class Sentence(Structure):
@@ -20,9 +24,18 @@ class Sentence(Structure):
   predicates: List = field(default_factory=list)
   srl_labels: List = field(default_factory=list)
 
+  tokenizer: str = "space"
+
   def __post_init__(self):
     if self.text:
-      self.tokens = [Token(token) for token in basic_tokenizer.tokenize(self.text)]
+      if self.tokenizer == "space":
+        self.tokens = [Token(token) for token in self.text.split(" ")]
+      elif self.tokenizer == "basic":
+        self.tokens = [Token(token) for token in basic_tokenizer.tokenize(self.text)]
+      elif self.tokenizer == "gpt2":
+        self.tokens = [Token(token.strip(" ")) for token in re.findall(PAT, self.text)]
+      else:
+        raise ValueError("Unknown tokenizer method {}".format(self.tokenizer))
     # if self.text:
     #   # Currently we only use split by tokens
     #   self.tokens = [Token(token) for token in self.text.split()]

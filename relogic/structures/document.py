@@ -12,9 +12,11 @@ class Document(Structure):
   text: str = None
   paragraphs: List[Paragraph] = field(default_factory=list)
 
+  tokenizer: str = "space"
+
   def __post_init__(self):
     for para in self.text.split("\n"):
-      self.add_paragraph(Paragraph(text=para))
+      self.add_paragraph(Paragraph(text=para, tokenizer=self.tokenizer))
 
   def add_paragraph(self, paragraph: Paragraph):
     self.paragraphs.append(paragraph)

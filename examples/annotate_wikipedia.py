@@ -1,6 +1,6 @@
 import argparse
 import json
-from relogic.structures.document import Document
+from relogic.structures.document import Sentence
 from tqdm import tqdm
 from relogic.pipelines.core import Pipeline
 
@@ -12,24 +12,20 @@ args = parser.parse_args()
 
 pipeline = Pipeline(
   component_names=["predicate_detection", "srl"],
-  component_model_names= {"predicate_detection" : "spacy" ,"srl": "srl-conll12"})
+  component_model_names= {"predicate_detection" : "pd-conll12" ,"srl": "srl-conll12"})
 
 fout = open(args.output_file_path, 'w')
 with open(args.data_file_path) as fin:
+  sentences = []
   for line in tqdm(fin):
-    example = json.loads(line)
-    document = Document(text=example["text"])
-    sentences = []
-    for para in document.paragraphs:
-      for sent in para.sentences:
-        sentences.append(sent)
-    pipeline.execute(sentences)
-    fout.write(json.dumps({
-      "id": example["id"],
-      "url": example["url"],
-      "title": example["title"],
-      "sents": [sent.convert_to_json() for sent in sentences]
-    }) + "\n")
+    if line == "\n":
+      pipeline.execute(sentences)
+      for sent in sentences:
+        fout.write(json.dumps(sent.convert_to_json()) + "\n")
+      fout.write("\n")
+    else:
+      sentences.append(Sentence(text=line.strip("\n"), tokenizer="gpt2"))
+
 
 
 

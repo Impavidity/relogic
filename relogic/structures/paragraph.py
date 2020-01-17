@@ -11,9 +11,11 @@ class Paragraph(Structure):
   text: str= None
   sentences: List[Sentence] = field(default_factory=list)
 
+  tokenizer: str = "space"
+
   def __post_init__(self):
     for sent in sent_tokenize(self.text):
-      self.add_sentence(Sentence(text=sent))
+      self.add_sentence(Sentence(text=sent, tokenizer=self.tokenizer))
 
   def add_sentence(self, sentence: Sentence):
     self.sentences.append(sentence)
