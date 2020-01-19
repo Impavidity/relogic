@@ -23,6 +23,7 @@ with open(args.data_file_path) as fin:
       for sent in sentences:
         fout.write(json.dumps(sent.convert_to_json()) + "\n")
       fout.write("\n")
+      sentences = []
     else:
       sentences.append(Sentence(text=line.strip("\n"), tokenizer="gpt2"))
 
