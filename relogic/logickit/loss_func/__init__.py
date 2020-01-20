@@ -4,7 +4,7 @@ from relogic.logickit.tasks.task import Task
 import torch.nn.functional as F
 import torch
 
-def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kwargs):
+def get_loss(task: Task, logits, label_ids, config, extra_args, input_head = None, **kwargs):
   if task.name.startswith(IR_TASK):
     if config.regression:
       return F.binary_cross_entropy_with_logits(logits.squeeze(1), label_ids)

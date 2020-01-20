@@ -190,6 +190,7 @@ def main():
   parser.add_argument("--qrels_file_path", type=str, default=None)
   parser.add_argument("--regression", default=False, action="store_true")
   parser.add_argument("--word_level_interaction", default=False, action="store_true")
+  parser.add_argument("--ir_siamese", default=False, action="store_true")
 
   # Modeling
   parser.add_argument("--use_gcn", dest="use_gcn", default=False, action="store_true")
