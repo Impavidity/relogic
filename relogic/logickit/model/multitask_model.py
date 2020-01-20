@@ -78,7 +78,25 @@ class Model(BaseModel):
     #   print(n)
     optimizers = {}
     optim_type = ""
-    if config.sep_optim:
+
+    if config.only_adam:
+      """
+      This optimization method can only support finetuning all.
+      This is for the adaptation of [CEDR](https://github.com/Georgetown-IR-Lab/cedr).
+      Will extend this for other settings, such as layer fixing
+      """
+      utils.log("Optimizing with Adam with {} and {} learninig rate".format(config.learning_rate, config.adam_learning_rate))
+      modules_parameters = {"params": [p for n, p in param_optimizer if "bert" not in n]}
+      bert_optimizer_grouped_parameters = {'params': [p for n, p in param_optimizer if "bert" in n], 'lr': config.learning_rate}
+      if len(bert_optimizer_grouped_parameters["params"]) == 0:
+        utils.log("There is no BERT module in the model.")
+        optimizers["optimizer"] = torch.optim.Adam([modules_parameters], lr=config.adam_learning_rate)
+      else:
+        optimizers["optimizer"] = torch.optim.Adam(
+          [modules_parameters, bert_optimizer_grouped_parameters], lr=config.adam_learning_rate)
+      optim_type = "only_adam"
+
+    elif config.sep_optim:
       utils.log("Optimizing the module using Adam optimizer ..")
       modules_parameters = [p for n, p in param_optimizer if "bert" not in n]
       bert_optimizer_grouped_parameters = [
@@ -205,7 +223,10 @@ class Model(BaseModel):
     self.model.train()
 
     inputs = mb.generate_input(device=self.device, use_label=True)
-    if "input_ids" in inputs and inputs["input_ids"].size(0) == 0:
+    if "input_ids" in inputs and inputs["input_ids"] is not None and inputs["input_ids"].size(0) == 0:
+      utils.log("Zero Batch")
+      return 0
+    if "_input_token_ids" in inputs and inputs["_input_token_ids"] is not None and inputs["_input_token_ids"].size(0) == 0:
       utils.log("Zero Batch")
       return 0
 

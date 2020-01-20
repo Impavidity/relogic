@@ -173,6 +173,8 @@ def main():
   parser.add_argument("--srl_compute_pos_tag_loss", default=False, action="store_true")
   parser.add_argument("--srl_use_gold_predicate", default=False, action="store_true")
   parser.add_argument("--srl_use_gold_argument", default=False, action="store_true")
+  parser.add_argument("--predicate_reveal_method", default=None, type=str)
+  parser.add_argument("--indicator_embedding_size", default=10, type=int)
 
   # Dependency Parsing
   parser.add_argument("--dep_parsing_mlp_dim", default=300, type=int)
@@ -188,6 +190,7 @@ def main():
   parser.add_argument("--qrels_file_path", type=str, default=None)
   parser.add_argument("--regression", default=False, action="store_true")
   parser.add_argument("--word_level_interaction", default=False, action="store_true")
+  parser.add_argument("--ir_siamese", default=False, action="store_true")
 
   # Modeling
   parser.add_argument("--use_gcn", dest="use_gcn", default=False, action="store_true")
@@ -195,7 +198,7 @@ def main():
 
   # Model
   parser.add_argument("--bert_model", type=str)
-  parser.add_argument("--encoder_type", type=str, default="bert", choices=["bert", "xlm", "xlmr"])
+  parser.add_argument("--encoder_type", type=str, default="bert", choices=["bert", "xlm", "xlmr", "lstm"])
   parser.add_argument("--hidden_size", type=int, default=768)
   parser.add_argument("--projection_size", type=int, default=300)
   parser.add_argument(
@@ -262,6 +265,7 @@ def main():
   parser.add_argument("--param_initialization", default=None, type=str)
   # We allow to set same training steps for different dataset
   # Need to combine to CUDA_VISIBLE_DEVICES
+  parser.add_argument("--only_adam", default=False, action="store_true")
 
   # Analysis
   parser.add_argument("--head_to_mask_file", type=str, default="")

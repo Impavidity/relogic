@@ -6,6 +6,7 @@ import os
 import json
 from types import SimpleNamespace
 from relogic.logickit.training.predictor import Predictor
+from relogic.logickit.base.configuration import Argument
 
 
 
@@ -15,13 +16,17 @@ logger = logging.getLogger(__name__)
 PRETRAINED_MODEL_ARCHIVE_MAP = {
   "ner-zh": "",
   "ner-en": "",
-  "entity-linking": ""
+  "entity-linking": "",
+  "srl-conll12": "https://git.uwaterloo.ca/p8shi/data-server/raw/master/srl_conll12_mlp/default.ckpt",
+  "pd-conll12": "https://git.uwaterloo.ca/p8shi/data-server/raw/master/pd_conll12_lstm/default.ckpt"
 }
 
 PRETRAINED_CONFIG_ARCHIVE_MAP = {
   "ner-zh": "",
   "ner-en": "",
-  "entity-linking": ""
+  "entity-linking": "",
+  "srl-conll12": "https://git.uwaterloo.ca/p8shi/data-server/raw/master/srl_conll12_mlp/general_config.json",
+  "pd-conll12": "https://git.uwaterloo.ca/p8shi/data-server/raw/master/pd_conll12_lstm/general_config.json"
 }
 
 WEIGHTS_NAME = "default.ckpt"
@@ -31,7 +36,8 @@ class Component(object):
   """
 
   """
-  def __init__(self, config, predictor=None):
+  def __init__(self, model_name, config, predictor: Predictor=None):
+    self.model_name = model_name
     self.config = config
     self._predictor = predictor
 
@@ -92,7 +98,13 @@ class Component(object):
         config_file, resolved_config_file))
 
 
-    with open(resolved_config_file) as f:
-      restore_config = SimpleNamespace(**json.load(f))
+    resolved_config_file_dir = os.path.dirname(resolved_config_file)
+    resolved_config_file_name = os.path.basename(resolved_config_file)
+    restore_config = Argument.restore_from_model_path(model_path=resolved_config_file_dir, config_name=resolved_config_file_name)
+    predictor = Predictor(restore_config)
+    resolved_model_file_dir = os.path.dirname(resolved_archive_file)
+    resolved_model_file_name = os.path.basename(resolved_archive_file)
+    predictor.restore(model_path=resolved_model_file_dir, model_name=resolved_model_file_name)
 
-    return cls(config=restore_config, predictor=Predictor(restore_config))
+    # The model name here is not that reasonable, sometimes it will be a self defined path.
+    return cls(model_name=pretrained_model_name_or_path, config=restore_config, predictor=predictor)

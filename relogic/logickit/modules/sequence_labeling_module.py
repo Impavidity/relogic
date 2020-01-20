@@ -13,7 +13,8 @@ class SequenceLabelingModule(nn.Module):
       log("Use cls in sequence labeling")
     else:
       self.mul = 1
-    self.to_logits = nn.Linear(config.hidden_size * self.mul, self.n_classes)
+    self.projection = nn.Linear(config.hidden_size * self.mul, config.projection_size)
+    self.to_logits = nn.Linear(config.projection_size, self.n_classes)
     self.init_weight()
 
   def init_weight(self):
@@ -24,5 +25,5 @@ class SequenceLabelingModule(nn.Module):
     features = kwargs.pop("features")
     if self.mul == 2:
       features = torch.cat([features, features[:, 0].unsqueeze(1).repeat(1, features.size(1), 1)], dim=-1)
-    logits = self.to_logits(features)
+    logits = self.to_logits(self.projection(features))
     return logits

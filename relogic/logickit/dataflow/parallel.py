@@ -5,6 +5,7 @@ import torch
 from relogic.logickit.dataflow import DataFlow, Example, Feature, MiniBatch
 from relogic.logickit.utils import create_tensor
 from relogic.logickit.tokenizer import CustomizedBertTokenizer, RobertaXLMTokenizer
+from transformers.tokenization_utils import PreTrainedTokenizer
 
 
 
@@ -35,7 +36,27 @@ class ParallelExample(Example):
     """Process the sentence pair."""
 
     for tokenizer in tokenizers.values():
-      if isinstance(tokenizer, CustomizedBertTokenizer):
+      if isinstance(tokenizer, PreTrainedTokenizer):
+        self.text_a_tokens = tokenizer.tokenize(self.text_a)
+        self.text_b_tokens = tokenizer.tokenize(self.text_b)
+
+        self.a_tokens = ["[CLS]"] + self.text_a_tokens + ["[SEP]"]
+        self.a_segment_ids = [0] * len(self.a_tokens)
+
+        self.b_tokens = ["[CLS]"] + self.text_b_tokens + ["[SEP]"]
+        self.b_segment_ids = [0] * len(self.b_tokens)
+
+        self.a_input_ids = tokenizer.convert_tokens_to_ids(self.a_tokens)
+        self.b_input_ids = tokenizer.convert_tokens_to_ids(self.b_tokens)
+        self.a_input_mask = [1] * len(self.a_input_ids)
+        self.b_input_mask = [1] * len(self.b_input_ids)
+
+        self.a_is_head = None
+        self.b_is_head = None
+        self.a_selected_indices = None
+        self.b_selected_indices = None
+
+      elif isinstance(tokenizer, CustomizedBertTokenizer):
         self.text_a_tokens, self.text_a_is_head = tokenizer.tokenize(self.text_a)
         self.text_b_tokens, self.text_b_is_head = tokenizer.tokenize(self.text_b)
 
@@ -214,8 +235,12 @@ class ParallelDataFlow(DataFlow):
       b_segment_ids = example.b_segment_ids + b_padding
       a_input_mask = example.a_input_mask + a_padding
       b_input_mask = example.b_input_mask + b_padding
-      a_is_head = example.a_is_head + a_padding
-      b_is_head = example.b_is_head + b_padding
+      if example.a_is_head is not None and example.b_is_head is not None:
+        a_is_head = example.a_is_head + a_padding
+        b_is_head = example.b_is_head + b_padding
+      else:
+        a_is_head = None
+        b_is_head = None
 
       if max_selected_indices_length > 0:
         a_selected_indices = example.a_selected_indices + [0] * (

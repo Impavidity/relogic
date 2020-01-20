@@ -45,8 +45,6 @@ class Predictor(object):
     task: Task = self.tasks[0] if selected_task is None else sel_task
     data: DataFlow = task.dataset
     data.update_with_structures(structures)
-    print(self.config)
-    print("Updated the structures")
     # results = []
     for i, mb in enumerate(data.get_minibatches(self.config.tasks[task.name]["test_batch_size"])):
       # batch_preds = self.model.test(mb)

@@ -4,7 +4,7 @@ from relogic.logickit.tasks.task import Task
 import torch.nn.functional as F
 import torch
 
-def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kwargs):
+def get_loss(task: Task, logits, label_ids, config, extra_args, input_head = None, **kwargs):
   if task.name.startswith(IR_TASK):
     if config.regression:
       return F.binary_cross_entropy_with_logits(logits.squeeze(1), label_ids)
@@ -89,12 +89,20 @@ def get_loss(task: Task, logits, label_ids, input_head, config, extra_args, **kw
       label_loss += loss
 
     return label_loss
-  elif task.name in [NER_TASK, POS_TASK]:
-    active_loss = input_head[:, :logits.size(1)].contiguous().view(-1) == 1
-    # I use logits.size(1) to get the label length. It is OK to filter extra things
+  elif task.name in [NER_TASK, POS_TASK, PIPE_SRL_TASK, PREDICATE_DETECTION_TASK]:
+    if input_head is not None:
+      # Use the BERT based model
+      active_loss = input_head[:, :logits.size(1)].contiguous().view(-1) == 1
+      # I use logits.size(1) to get the label length. It is OK to filter extra things
+    else:
+      # create a mask based on the sequence length
+      active_loss = kwargs.pop("_input_token_mask").view(-1)
+      # We need to assign the value of _label_ids to label_ids
+      label_ids = kwargs.pop("_label_ids")
     active_logits = logits.view(-1, logits.size(-1))[active_loss]
     active_labels = label_ids[:, :logits.size(1)].contiguous().view(-1)[active_loss]
     loss = F.cross_entropy(active_logits, active_labels)
+
     return loss
   elif task.name in [ENTITY_TYPE_CLASSIFICATION]:
     loss = F.binary_cross_entropy_with_logits(logits, label_ids.float())

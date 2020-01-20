@@ -62,7 +62,7 @@ def truncate_seq_pair(tokens_a, tokens_b, max_length):
     else:
       tokens_b.pop()
 
-def get_span_labels(sentence_tags, is_head=None, segment_id=None, inv_label_mapping=None, ignore_label=list(["V"])):
+def get_span_labels(sentence_tags, is_head=None, segment_id=None, inv_label_mapping=None, ignore_label=list([])):
   """Go from token-level labels to list of entities (start, end, class)."""
   if inv_label_mapping:
     sentence_tags = [inv_label_mapping[i] for i in sentence_tags]
@@ -71,7 +71,7 @@ def get_span_labels(sentence_tags, is_head=None, segment_id=None, inv_label_mapp
     # assert(len(sentence_tags) == len(is_head))
 
     for idx, (head, segment) in enumerate(zip(is_head, segment_id)):
-      if head == 1 and segment == 0:
+      if (head == 1 or head == True) and (segment == 0 or segment == True):
         if sentence_tags[idx] != 'X':
           filtered_sentence_tag.append(sentence_tags[idx])
         else:
@@ -92,15 +92,23 @@ def get_span_labels(sentence_tags, is_head=None, segment_id=None, inv_label_mapp
   if sentence_tags[-1] != 'O':
     span_labels.append((start, len(sentence_tags) - 1,
                         None if len(last.split('-', 1)) != 2 else last.split('-', 1)[-1]))
+
+  # This code has problem!
+  # for item in span_labels:
+  #   if item[2] in ignore_label:
+  #     span_labels.remove(item)
+
+  filtered_labels = []
   for item in span_labels:
-    if item[2] in ignore_label:
-      span_labels.remove(item)
-  return set(span_labels), sentence_tags
+    if item[2] not in ignore_label:
+      filtered_labels.append(item)
+
+  return set(filtered_labels), sentence_tags
 
 def filter_head_prediction(sentence_tags, is_head):
   filtered_sentence_tag = []
   for idx, head in enumerate(is_head):
-    if head == 1:
+    if head == 1 or head == True:
       if sentence_tags[idx] != 'X':
         filtered_sentence_tag.append(sentence_tags[idx])
       else:

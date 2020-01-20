@@ -3,13 +3,19 @@ from relogic.structures.sentence import Sentence
 from relogic.components import Component
 from relogic.components.ner_component import NERComponent
 from relogic.components.entity_linking_component import EntityLinkingComponent
+from relogic.components.srl_component import SRLComponent
+from relogic.components.predicate_detection_component import PredicateDetectionComponent
 from relogic.pipelines.constants import *
 from typing import List, Dict
 
 NAME_TO_COMPONENT_CLASS = {
   NER: NERComponent,
-  ENTITY_LINKING: EntityLinkingComponent
+  ENTITY_LINKING: EntityLinkingComponent,
+  SRL: SRLComponent,
+  PREDICATE_DETECTION: PredicateDetectionComponent
 }
+
+
 
 class Pipeline(object):
   """A pipeline model that run different components.
@@ -43,7 +49,7 @@ class Pipeline(object):
 
   def __call__(self, inputs):
     if not isinstance(inputs, List) and isinstance(inputs, Structure):
-      return self.execute([inputs])[0]
+      return self.execute([inputs])
     elif isinstance(inputs, List[Structure]):
       return self.execute(inputs)
     elif isinstance(inputs, str):

@@ -25,7 +25,8 @@ class AccuracyScorer(WordLevelScorer):
       confidences = [max(softmax(token_level)) for token_level in preds.data.cpu().numpy()]
       preds = preds.argmax(-1).data.cpu().numpy()
       preds = [self._inv_label_mapping[y_pred] for y_pred in preds]
-      preds = filter_head_prediction(sentence_tags=preds, is_head=example.is_head)
+      is_head = example.is_head if hasattr(example, "is_head") else example._input_token_mask
+      preds = filter_head_prediction(sentence_tags=preds, is_head=is_head)
       assert len(example.labels) == len(preds)
       for y_true, y_pred in zip(example.labels, preds):
         if y_true not in self.ignore_list:
@@ -86,11 +87,13 @@ class EntityLevelF1Scorer(F1Score):
     for example, preds in zip(self._examples, self._preds):
       preds_tags = preds.argmax(-1).data.cpu().numpy()
       confidences = [max(softmax(token_level)) for token_level in preds.data.cpu().numpy()]
+      is_head = example.is_head if hasattr(example, "is_head") else example._input_token_mask
+      segment_ids = example.segment_ids if hasattr(example, "segment_ids") else example._input_token_mask
       if example.labels is None:
         span_preds, pred_labels = get_span_labels(
           sentence_tags=preds_tags,
-          is_head=example.is_head,
-          segment_id=example.segment_ids,
+          is_head=is_head,
+          segment_id=segment_ids,
           inv_label_mapping=self._inv_label_mapping)
         if self.dump_to_file_path:
           self.dump_to_file_handler.write(
@@ -102,8 +105,8 @@ class EntityLevelF1Scorer(F1Score):
           sentence_tags = example.labels)
         span_preds, pred_labels = get_span_labels(
           sentence_tags=preds_tags,
-          is_head = example.is_head,
-          segment_id = example.segment_ids,
+          is_head = is_head,
+          segment_id = segment_ids,
           inv_label_mapping = self._inv_label_mapping)
         self._n_correct += len(sent_spans & span_preds)
         self._n_gold += len(sent_spans)

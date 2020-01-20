@@ -6,8 +6,6 @@ class EntityLinkingComponent(Component):
   """For given entity mention, this component is to 
   link the mention to a given knowledge graph.
   """
-  def __init__(self, config, predictor):
-    super(EntityLinkingComponent, self).__init__(config, predictor)
   
   def execute(self, inputs: List[Structure]):
     """All entity mentions in the inputs are given.
