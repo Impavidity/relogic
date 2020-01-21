@@ -18,6 +18,8 @@ def get_encoder(encoder_type):
     return XLMRobertaEncoder
   if encoder_type == "lstm":
     return LSTMEncoder
+  if encoder_type == "embedding":
+    return PretrainedWordEmbedding
 
 PRETRAINED_VECTOR_ARCHIVE_MAP = {
   "fasttext-en": "https://git.uwaterloo.ca/p8shi/data-server/raw/master/embeddings/wiki-news-300d-1M.npy"
