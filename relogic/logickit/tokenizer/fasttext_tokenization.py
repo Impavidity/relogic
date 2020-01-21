@@ -8,6 +8,11 @@ logger = logging.getLogger(__name__)
 
 PRETRAINED_VECTOR_ARCHIVE_MAP = {
   'wiki-news-300d-1M': "https://github.com/Impavidity/relogic/raw/master/relogic/logickit/vocabs/wiki-news-300d-1M.txt",
+  'aligned-fasttext-ar': "https://github.com/Impavidity/relogic/raw/master/relogic/logickit/vocabs/aligned-fasttext-ar.txt",
+  'aligned-fasttext-bn': "https://github.com/Impavidity/relogic/raw/master/relogic/logickit/vocabs/aligned-fasttext-bn.txt",
+  'aligned-fasttext-fr': "https://github.com/Impavidity/relogic/raw/master/relogic/logickit/vocabs/aligned-fasttext-fr.txt",
+  'aligned-fasttext-hi': "https://github.com/Impavidity/relogic/raw/master/relogic/logickit/vocabs/aligned-fasttext-hi.txt",
+  'aligned-fasttext-zh': "https://github.com/Impavidity/relogic/raw/master/relogic/logickit/vocabs/aligned-fasttext-zh.txt"
 }
 
 class FasttextTokenizer(object):

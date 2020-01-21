@@ -23,6 +23,83 @@ PRETRAINED_VECTOR_ARCHIVE_MAP = {
   "fasttext-en": "https://git.uwaterloo.ca/p8shi/data-server/raw/master/embeddings/wiki-news-300d-1M.npy"
 }
 
+class PretrainedWordEmbedding(nn.Module):
+  def __init__(self, pretrained_model_name_or_path, embedding_file_path):
+    super().__init__()
+    embedding_data = torch.from_numpy(np.load(embedding_file_path))
+    self.word_embedding = nn.Embedding(embedding_data.size(0), embedding_data.size(1))
+    self.word_embedding.weight.data.copy_(embedding_data)
+    del embedding_data
+    print("Loadding embedding from {}".format(embedding_file_path))
+
+  def forward(self, *inputs, **kwargs):
+    input_token_ids = kwargs.pop("_input_token_ids")
+    input_embedding = self.word_embedding(input_token_ids)
+    return input_embedding
+
+  @classmethod
+  def from_pretrained(cls, pretrained_model_name_or_path, cache_dir=None, output_attentions=False):
+    if pretrained_model_name_or_path in PRETRAINED_VECTOR_ARCHIVE_MAP:
+      embedding_file = PRETRAINED_VECTOR_ARCHIVE_MAP[pretrained_model_name_or_path]
+    else:
+      embedding_file = pretrained_model_name_or_path
+    try:
+      resolved_embedding_file = cached_path(embedding_file, cache_dir=cache_dir)
+    except EnvironmentError:
+      logger.error(
+        "Model name '{}' was not found in model name list ({}). "
+        "We assumed '{}' was a path or url but couldn't find any file "
+        "associated to this path or url.".format(
+          pretrained_model_name_or_path,
+          ', '.join(PRETRAINED_VECTOR_ARCHIVE_MAP.keys()),
+          embedding_file))
+      return None
+    if resolved_embedding_file == embedding_file:
+      logger.info("will load embedding file from {}".format(embedding_file))
+    else:
+      logger.info("will load embedding file {} from cache at {}".format(
+        embedding_file, resolved_embedding_file))
+    return cls(pretrained_model_name_or_path, embedding_file_path=resolved_embedding_file)
+
+
+class CNNEncoder(nn.Module):
+  def __init__(self, pretrained_model_name_or_path, embedding_file_path):
+    super().__init__()
+    self.encoder = None
+    embedding_data = torch.from_numpy(np.load(embedding_file_path))
+    self.word_embedding = nn.Embedding(embedding_data.size(0), embedding_data.size(1))
+    self.word_embedding.weight.data.copy_(embedding_data)
+    del embedding_data
+    print("Loading embedding from {}".format(embedding_file_path))
+
+  def forward(self, *input, **kwargs):
+    pass
+
+  @classmethod
+  def from_pretrained(cls, pretrained_model_name_or_path, cache_dir=None, output_attentions=False):
+    if pretrained_model_name_or_path in PRETRAINED_VECTOR_ARCHIVE_MAP:
+      embedding_file = PRETRAINED_VECTOR_ARCHIVE_MAP[pretrained_model_name_or_path]
+    else:
+      embedding_file = pretrained_model_name_or_path
+    try:
+      resolved_embedding_file = cached_path(embedding_file, cache_dir=cache_dir)
+    except EnvironmentError:
+      logger.error(
+        "Model name '{}' was not found in model name list ({}). "
+        "We assumed '{}' was a path or url but couldn't find any file "
+        "associated to this path or url.".format(
+          pretrained_model_name_or_path,
+          ', '.join(PRETRAINED_VECTOR_ARCHIVE_MAP.keys()),
+          embedding_file))
+      return None
+    if resolved_embedding_file == embedding_file:
+      logger.info("will load embedding file from {}".format(embedding_file))
+    else:
+      logger.info("will load embedding file {} from cache at {}".format(
+        embedding_file, resolved_embedding_file))
+    return cls(pretrained_model_name_or_path, embedding_file_path=resolved_embedding_file)
+
+
 class LSTMEncoder(nn.Module):
   def __init__(self, pretrained_model_name_or_path, embedding_file_path):
     super().__init__()
