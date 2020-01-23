@@ -33,6 +33,7 @@ PAIRWISE_TASK = "pairwise"
 IR_TASK = "ir"
 DOCIR_TASK = "doc_ir"
 IR_SIAMESE_TASK = "ir_siamese"
+IR_SAMCNN_TASK = "ir_samcnn"
 
 
 NER_TASK = "ner"
@@ -50,7 +51,7 @@ LANGUAGE_IDENTIFICATION_SEQ = "language_identification_seq"
 
 
 SINGLETON = []
-SIAMESE = [IR_SIAMESE_TASK]
+SIAMESE = [IR_SIAMESE_TASK, IR_SAMCNN_TASK]
 TRIPLET = [PAIRWISE_TASK]
 
 DISTILL_TASKS = ["parallel_teacher_student", "mixsent"]

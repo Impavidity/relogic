@@ -113,15 +113,16 @@ class Inference(nn.Module):
     arguments["input_head"] = kwargs.pop(prefix+"input_head", None)
     arguments["segment_ids"] = kwargs.pop(prefix+"segment_ids", None)
     # arguments["label_ids"] = kwargs.get("label_ids", None)
-    arguments["extra_args"] = kwargs.pop("extra_args", {})
+    arguments["extra_args"] = kwargs.get("extra_args", {})
     arguments["output_all_encoded_layers"] = arguments["extra_args"].get("output_all_encoded_layers", False)
     arguments["route_path"] = arguments["extra_args"].get("route_path", None)
     arguments["selected_non_final_layers"] = arguments["extra_args"].get("selected_non_final_layers", None)
     arguments["no_dropout"] = task_name in READING_COMPREHENSION_TASKS
 
     # Classic features
-    arguments["_input_token_ids"] = kwargs.pop(prefix+"_input_token_ids", None)
-    arguments["_token_length"] = kwargs.pop(prefix+"_token_length", None)
+    prefix = "_" + prefix
+    arguments["_input_token_ids"] = kwargs.pop(prefix+"input_token_ids", None)
+    arguments["_token_length"] = kwargs.pop(prefix+"token_length", None)
     # arguments["_label_ids"] = kwargs.pop(prefix+"_label_ids", None)
     return arguments
 

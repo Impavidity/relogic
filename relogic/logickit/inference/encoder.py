@@ -31,6 +31,7 @@ class PretrainedWordEmbedding(nn.Module):
     embedding_data = torch.from_numpy(np.load(embedding_file_path))
     self.word_embedding = nn.Embedding(embedding_data.size(0), embedding_data.size(1))
     self.word_embedding.weight.data.copy_(embedding_data)
+    self.word_embedding.weight.requires_grad = False
     del embedding_data
     print("Loadding embedding from {}".format(embedding_file_path))
 

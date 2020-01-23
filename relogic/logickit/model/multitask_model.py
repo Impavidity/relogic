@@ -86,7 +86,10 @@ class Model(BaseModel):
       Will extend this for other settings, such as layer fixing
       """
       utils.log("Optimizing with Adam with {} and {} learninig rate".format(config.learning_rate, config.adam_learning_rate))
-      modules_parameters = {"params": [p for n, p in param_optimizer if "bert" not in n]}
+      if config.fix_embedding:
+        modules_parameters = {"params": [p for n, p in param_optimizer if "bert" not in n and "word_embedding" not in n]}
+      else:
+        modules_parameters = {"params": [p for n, p in param_optimizer if "bert" not in n]}
       bert_optimizer_grouped_parameters = {'params': [p for n, p in param_optimizer if "bert" in n], 'lr': config.learning_rate}
       if len(bert_optimizer_grouped_parameters["params"]) == 0:
         utils.log("There is no BERT module in the model.")

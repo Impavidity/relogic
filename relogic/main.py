@@ -192,13 +192,18 @@ def main():
   parser.add_argument("--word_level_interaction", default=False, action="store_true")
   parser.add_argument("--ir_siamese", default=False, action="store_true")
 
+  # CNN model
+  parser.add_argument("--output_channel", type=int, default=150)
+  parser.add_argument("--kernel_size", type=int, default=2)
+  parser.add_argument("--word_embed_dim", type=int, default=300)
+
   # Modeling
   parser.add_argument("--use_gcn", dest="use_gcn", default=False, action="store_true")
   parser.add_argument("--fix_embedding", default=False, action="store_true")
 
   # Model
   parser.add_argument("--bert_model", type=str)
-  parser.add_argument("--encoder_type", type=str, default="bert", choices=["bert", "xlm", "xlmr", "lstm"])
+  parser.add_argument("--encoder_type", type=str, default="bert", choices=["bert", "xlm", "xlmr", "lstm", "embedding"])
   parser.add_argument("--hidden_size", type=int, default=768)
   parser.add_argument("--projection_size", type=int, default=300)
   parser.add_argument(
@@ -247,7 +252,7 @@ def main():
   parser.add_argument("--max_margin", type=float, default=3)
   parser.add_argument("--warmup_epoch_number", type=int, default=0)
   parser.add_argument("--sgd_learning_rate", type=float, default=0.1)
-  parser.add_argument("--adam_learning_rate", type=float, default=0.001)
+  parser.add_argument("--adam_learning_rate", type=float, default=0.003)
   parser.add_argument("--sep_optim", dest="sep_optim", default=False, action="store_true")
   parser.add_argument("--multi_gpu", dest="multi_gpu", default=False, action="store_true")
   parser.add_argument("--ignore_parameters", default="", type=str)

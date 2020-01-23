@@ -8,7 +8,8 @@ from relogic.logickit.modules.agg_matching_module import AggMatchingModule
 from relogic.logickit.modules.ir_matching import IRMatchingModule
 from relogic.logickit.scorer.ranking_scorer import RecallScorer, CartesianMatchingRecallScorer, RetrievalScorer
 from relogic.logickit.scorer.classification_scorers import RelationF1Scorer, MultiClassAccuracyScorer
-from relogic.logickit.base.constants import IR_TASK, PAIRWISE_TASK, SINGLETON, ENTITY_TYPE_CLASSIFICATION, DOCIR_TASK
+from relogic.logickit.modules.sam_cnn import SamCNN
+from relogic.logickit.base.constants import IR_TASK, PAIRWISE_TASK, SINGLETON, ENTITY_TYPE_CLASSIFICATION, DOCIR_TASK, IR_SAMCNN_TASK
 
 
 class Classification(Task):
@@ -20,6 +21,8 @@ class Classification(Task):
   def get_module(self):
     if self.name in ["matching"]:
       return MatchingModule(self.config, self.name, self.n_classes)
+    elif self.name in [IR_SAMCNN_TASK]:
+      return SamCNN(self.config, self.name, self.n_classes)
     elif self.name.startswith(IR_TASK):
       if self.config.word_level_interaction:
         return IRMatchingModule(self.config, self.name, self.n_classes)

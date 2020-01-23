@@ -190,6 +190,13 @@ class TwinsMiniBatch(MiniBatch):
                                                   torch.long, device)
     inputs["_b_input_token_mask"] = create_tensor(self.input_features, "_b_input_token_mask",
                                                   torch.long, device)
+
+    if use_label:
+      _label_ids = create_tensor(self.input_features, "_label_ids",
+                                 torch.long, device)
+      inputs["_label_ids"] = _label_ids
+    else:
+      inputs["_label_ids"] = None
     return inputs
 
 class TwinsDataFlow(DataFlow):
