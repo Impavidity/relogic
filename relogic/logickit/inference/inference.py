@@ -200,6 +200,7 @@ class Inference(nn.Module):
       arguments = self.get_arguments(prefix="", kwargs=kwargs)
       encoding_results = self.encoding(**arguments)
       features = encoding_results.pop("features")
+      kwargs.pop("extra_args", None)
       task_names = task_name.split(',')
       for task_name in task_names:
         logits = self.decoding(**arguments, **kwargs, features=features, task_name=task_name,

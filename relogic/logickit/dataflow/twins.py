@@ -32,6 +32,9 @@ class TwinsExample(Example):
         self.text_a_tokens = tokenizer.tokenize(self.text_a)
         self.text_b_tokens = tokenizer.tokenize(self.text_b)
 
+        self.text_a_tokens = self.text_a_tokens[:510]
+        self.text_b_tokens = self.text_b_tokens[:510]
+
         self.a_tokens = ["[CLS]"] + self.text_a_tokens + ["[SEP]"]
         self.a_segment_ids = [0] * len(self.a_tokens)
 
@@ -284,3 +287,6 @@ class TwinsDataFlow(DataFlow):
           _b_token_length=_b_token_length,
           _label_ids=_label_ids))
     return features
+
+  def decode_to_labels(self, preds, mbs: TwinsMiniBatch):
+    return preds
