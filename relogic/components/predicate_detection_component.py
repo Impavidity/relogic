@@ -1,16 +1,18 @@
 from relogic.components.component import Component
 from relogic.structures.structure import Structure
 from typing import List
-import spacy
 
-nlp = spacy.load("en_core_web_sm")
 
 class PredicateDetectionComponent(Component):
   """
 
   """
+
+
   @classmethod
   def from_pretrained(cls, pretrained_model_name_or_path, *inputs, **kwargs):
+    import spacy
+
     if pretrained_model_name_or_path == "spacy":
       return PredicateDetectionComponent(model_name=pretrained_model_name_or_path, config=None,
                                          predictor=spacy.load("en_core_web_sm", disable=["parser", "ner"]))
