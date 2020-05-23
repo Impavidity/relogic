@@ -14,8 +14,9 @@ from relogic.logickit.base.configure import configure, update_configure
 from relogic.logickit.training import trainer, training_progress
 from relogic.logickit.serving import Server
 from relogic.logickit.analyzer.heads_importance import compute_heads_importance, mask_heads
+from relogic.logickit.arguments import add_task_specific_args
 
-if "PUDB" not in os.environ or os.environ["PUDB"] == "false":
+if "PUDB" not in os.environ or os.environ["PUDB"] == "true":
   import relogic.utils.crash_on_ipy
 
 
@@ -39,6 +40,9 @@ def train(config):
                               teacher_config.model_name + ".ckpt")
     model_trainer.restore(model_path)
     model_trainer.restore_teacher(model_path)
+  if config.init_model is not None:
+    model_path = config.init_model
+    model_trainer.restore(model_path)
   model_trainer.train(progress)
 
 def finetune(config):
@@ -114,6 +118,20 @@ def main():
   utils.heading("SETUP")
   parser = argparse.ArgumentParser()
 
+
+  # Task and Model type
+  parser.add_argument("--task_names", type=str)
+  args, _ = parser.parse_known_args()
+  task_names = args.task_names
+  if task_names is not None:
+    task_names = args.task_names.split(",")
+  else:
+    task_names = []
+  add_task_specific_args(task_names, parser)
+
+  from relogic.logickit.arguments.generic_arguments import GenericArguments
+  GenericArguments.add_generic_arguments(parser, os.getcwd())
+
   # IO
   parser.add_argument(
     "--mode", default=None, choices=["train", "valid", "eval", "finetune", "analysis", "feature_extraction"])
@@ -130,7 +148,7 @@ def main():
   parser.add_argument("--test_file", type=str, default="test.json")
 
   # Task Definition
-  parser.add_argument("--task_names", type=str)
+
   parser.add_argument("--raw_data_path", type=str)
   parser.add_argument("--label_mapping_path", type=str)
   parser.add_argument("--unsupervised_data", type=str)
@@ -271,6 +289,7 @@ def main():
   # We allow to set same training steps for different dataset
   # Need to combine to CUDA_VISIBLE_DEVICES
   parser.add_argument("--only_adam", default=False, action="store_true")
+  parser.add_argument("--init_model", default=None, type=str)
 
   # Analysis
   parser.add_argument("--head_to_mask_file", type=str, default="")
@@ -287,11 +306,14 @@ def main():
   parser.add_argument("--feature_dump_file", type=str)
   parser.add_argument("--output_features", default=False, action="store_true")
 
+
+
   args = parser.parse_args()
 
   if not args.mode:
     raise ValueError("You need to specify the mode")
   if args.output_dir:
+    print(args.output_dir)
     if os.path.exists(args.output_dir) and os.listdir(
         args.output_dir) and args.mode == "train":
       raise ValueError(

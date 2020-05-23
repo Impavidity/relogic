@@ -26,6 +26,7 @@ class TrainingProgress(object):
       self.history = []
     self.evaluated_steps = set([0])
     self.log_steps = set([])
+    self.save_counter = 0
     # We do not want to evaluate in step 0
 
   def write(self):
@@ -58,12 +59,14 @@ class TrainingProgress(object):
       if avg_score >= best_avg_score:
         best_avg_score = avg_score
         if i == len(self.history) - 1:
-          utils.log("New Score {}, New best model! Saving ...".format(best_avg_score))
-          torch.save(model.state_dict(), os.path.join(self.config.output_dir, self.config.model_name + ".ckpt"))
+          model_path = os.path.join(self.config.output_dir, self.config.model_name + "_{}.ckpt".format(self.save_counter))
+          utils.log("New Score {}, New best model! Saving to {}...".format(best_avg_score, model_path))
+          torch.save(model.state_dict(), model_path)
           general_config_path = os.path.join(self.config.output_dir, "general_config.json")
           with open(general_config_path, "w") as fout:
             fout.write(json.dumps(vars(self.config)))
           # TODO: finish model saving
+          self.save_counter += 1
 
   def evaluated_in_step(self, step):
     return step in self.evaluated_steps

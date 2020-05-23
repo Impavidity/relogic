@@ -19,10 +19,10 @@ class Example(object, metaclass=abc.ABCMeta):
   """Basic Example class."""
 
   def __init__(self):
-    pass
+    self.is_valid = True
 
   @abc.abstractmethod
-  def process(self, tokenizer, *inputs, **kwargs):
+  def process(self, tokenizers, *inputs, **kwargs):
     """Process function abstract. Need to be implemented in each Subclass"""
     raise NotImplementedError()
 
@@ -40,6 +40,19 @@ class Example(object, metaclass=abc.ABCMeta):
       return self.len
     except:
       return self._len
+
+  def tokenization_with_word_boundary(self, raw_tokens, tokenizer):
+    text_tokens = []
+    text_is_head = []
+    for word in raw_tokens:
+      word_tokens = tokenizer.tokenize(word)
+      if len(word_tokens) == 0:
+        text_tokens.append("[UNK]")
+        text_is_head.append(1)
+      else:
+        text_tokens.extend(word_tokens)
+        text_is_head.extend([1] + [0] * (len(word_tokens) - 1))
+    return text_tokens, text_is_head
 
 
 class Feature(object, metaclass=abc.ABCMeta):
@@ -161,10 +174,18 @@ class DataFlow(object, metaclass=abc.ABCMeta):
         self.example_class.from_json(example) for example in examples
     ]
     from tqdm import tqdm
+    valid_example = 0
+    invalid_example = 0
     for idx, example in tqdm(enumerate(self.examples), desc="Loading data", total=len(self.examples)):
       self.process_example(example)
+      if example.is_valid:
+        valid_example += 1
+      else:
+        invalid_example += 1
       if idx < 3:
         print(example.__dict__)
+    # summarize the dataset
+    print(f"Examples total {valid_example+invalid_example}. Valid: {valid_example}. Invalid: {invalid_example}")
 
   def update_with_file(self, file_name):
     """Read json objects from file.
@@ -179,7 +200,7 @@ class DataFlow(object, metaclass=abc.ABCMeta):
         examples.append(json.loads(line))
     self.update_with_jsons(examples)
 
-  def endless_minibatches(self, minibatch_size, sequential=False, bucket=True):
+  def endless_minibatches(self, minibatch_size, sequential=False, bucket=True, sort_in_batch=False):
     """Generate endless minibatches with given batch size."""
 
     if sequential:
@@ -189,10 +210,11 @@ class DataFlow(object, metaclass=abc.ABCMeta):
     else:
       print("Use bucket dataset for {}".format(self.task_name))
     while True:
-      for minibatch in self.get_minibatches(minibatch_size, sequential=sequential, bucket=bucket):
+      for minibatch in self.get_minibatches(minibatch_size,
+                                sequential=sequential, bucket=bucket, sort_in_batch=sort_in_batch):
         yield minibatch
 
-  def get_minibatches(self, minibatch_size, sequential=True, bucket=False):
+  def get_minibatches(self, minibatch_size, sequential=True, bucket=False, sort_in_batch=False):
     """Generate list of batch size based on examples.
 
     There are two modes for generating batches. One is sequential,
@@ -210,8 +232,10 @@ class DataFlow(object, metaclass=abc.ABCMeta):
     if sequential:
       index = 0
       while index < self.size:
-        yield self._make_minibatch(
+        batch = self._make_minibatch(
             np.array(range(index, min(index + minibatch_size, self.size))))
+        if batch is not None:
+          yield batch
         index += minibatch_size
     elif not bucket:
       indices = list(range(self.size))
@@ -219,8 +243,14 @@ class DataFlow(object, metaclass=abc.ABCMeta):
       indices = np.array(indices)
       index = 0
       while index < self.size:
-        yield self._make_minibatch(
+        # batch_indices = indices[index: min(index + minibatch_size, self.size)]
+        # if sort_in_batch:
+        #   batch_indices_value = [(idx, self.examples[idx].len) for idx in batch_indices]
+        #   batch_indices = sorted(batch_indices_value, reverse=True)
+        batch = self._make_minibatch(
             indices[index: min(index + minibatch_size, self.size)])
+        if batch is not None:
+          yield  batch
         index += minibatch_size
     else:
       by_bucket = collections.defaultdict(list)
@@ -249,7 +279,9 @@ class DataFlow(object, metaclass=abc.ABCMeta):
       utils.log("Data Flow {}, There are {} batches".format(
           self.__class__, len(id_batches)))
       for id_batch in id_batches:
-        yield self._make_minibatch(id_batch)
+        batch = self._make_minibatch(id_batch)
+        if batch is not None:
+          yield batch
 
   def _make_minibatch(self, ids):
     """Make a MiniBatch given ids.
@@ -262,7 +294,12 @@ class DataFlow(object, metaclass=abc.ABCMeta):
     Return:
       MiniBatch: The created Minibatch.
     """
-    examples = [self.examples[i] for i in ids]
+    examples = []
+    for i in ids:
+      if self.examples[i].is_valid:
+        examples.append(self.examples[i])
+    if len(examples) == 0:
+      return None
     input_features = self.convert_examples_to_features(examples=examples)
 
     return self.minibatch_class(

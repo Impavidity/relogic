@@ -19,7 +19,7 @@ class LabeledDataLoader(object):
     # TODO: these code can not support multi-label set dataset.
     # Will fix this in the future.
     if self.label_mapping:
-      self.n_classes = len(set(self.label_mapping.values()))
+      self.n_classes = len(self.label_mapping.values())
     else:
       self.n_classes = None
     self.extra_args = {}

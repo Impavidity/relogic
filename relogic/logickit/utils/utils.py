@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from typing import Optional
 from relogic.logickit.base import utils
-
+import itertools
 
 def print_2d_tensor(tensor):
   """ Print a 2D tensor """
@@ -116,7 +116,6 @@ def filter_head_prediction(sentence_tags, is_head):
   return filtered_sentence_tag
 
 def create_tensor(features, attribute, dtype, device):
-
   try:
     return torch.tensor([getattr(f, attribute) for f in features], dtype=dtype).to(device)
   except Exception as e:
@@ -127,6 +126,19 @@ def create_tensor(features, attribute, dtype, device):
     return None
 
 create_tensor.attribute_warning = set([])
+
+def create_tensor_by_stacking(features, attribute, dtype, device):
+  try:
+    return torch.tensor(
+      list(itertools.chain(*[getattr(f, attribute) for f in features])), dtype=dtype).to(device)
+  except Exception as e:
+    if attribute not in create_tensor.attribute_warning:
+      print("Exception in attribute {}".format(attribute))
+      print(e)
+      create_tensor.attribute_warning.add(attribute)
+    return None
+
+create_tensor_by_stacking.attribute_warning = set([])
 
 def get_range_vector(size: int, device) -> torch.Tensor:
   """
@@ -220,7 +232,7 @@ def masked_softmax(vector: torch.Tensor,
     mask = mask.float()
     while mask.dim() < vector.dim():
       mask = mask.unsqueeze(1)
-    masked_vector = vector.masked_fill((1 - mask).byte(), mask_fill_value)
+    masked_vector = vector.masked_fill((1 - mask).bool(), mask_fill_value)
     result = torch.softmax(masked_vector, dim=dim)
   return result
 
@@ -303,3 +315,41 @@ def get_device_of(tensor: torch.Tensor) -> int:
     return -1
   else:
     return tensor.get_device()
+
+def batch_sequence_feature_selection(target: torch.Tensor,
+                                     indices: torch.LongTensor,
+                                     mask: Optional[torch.LongTensor] = None):
+  """
+  Select ``target`` of size ``(batch_size, sequence_length, embedding_size)`` with indices of size
+  ``(batch_size, d)``. The mask is optional of size ``(batch_size, d)``. The return value is of size
+  ``(batch_size, d, embedding_size)``
+  """
+  expanded_indices_shape = (indices.size(0), indices.size(1), target.size(2))
+  selected_target = torch.gather(target, 1, indices.unsqueeze(2).expand(expanded_indices_shape))
+  if mask is not None:
+    selected_target = selected_target * mask.unsqueeze(-1)
+  return selected_target
+
+def logsumexp(tensor: torch.Tensor,
+              dim: int = -1,
+              keepdim: bool = False) -> torch.Tensor:
+  """
+  A numerically stable computation of logsumexp. This is mathematically equivalent to
+  `tensor.exp().sum(dim, keep=keepdim).log()`.  This function is typically used for summing log
+  probabilities.
+
+  Parameters
+  ----------
+  tensor : torch.FloatTensor, required.
+      A tensor of arbitrary size.
+  dim : int, optional (default = -1)
+      The dimension of the tensor to apply the logsumexp to.
+  keepdim: bool, optional (default = False)
+      Whether to retain a dimension of size one at the dimension we reduce over.
+  """
+  max_score, _ = tensor.max(dim, keepdim=keepdim)
+  if keepdim:
+    stable_vec = tensor - max_score
+  else:
+    stable_vec = tensor - max_score.unsqueeze(dim)
+  return max_score + (stable_vec.exp().sum(dim, keepdim=keepdim)).log()

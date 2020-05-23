@@ -80,11 +80,11 @@ class HighwayLSTM(nn.Module):
   def forward(self, inputs, lengths):
     current_inputs = inputs
     for idx, layer in enumerate(self.layers):
-      output, _ = layer(current_inputs, lengths)
-      output = self.dropout(output)
+      output, state = layer(current_inputs, lengths)
+      # output = self.dropout(output)
       if idx > 0:
         gate = self.linear_layers[idx-1](output)
         gate = torch.sigmoid(gate)
         output = gate * output + (1 - gate) * current_inputs
       current_inputs = output
-    return output
+    return output, state

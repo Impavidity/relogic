@@ -12,7 +12,9 @@ PRETRAINED_VECTOR_ARCHIVE_MAP = {
   'aligned-fasttext-bn': "https://github.com/Impavidity/relogic/raw/master/relogic/logickit/vocabs/aligned-fasttext-bn.txt",
   'aligned-fasttext-fr': "https://github.com/Impavidity/relogic/raw/master/relogic/logickit/vocabs/aligned-fasttext-fr.txt",
   'aligned-fasttext-hi': "https://github.com/Impavidity/relogic/raw/master/relogic/logickit/vocabs/aligned-fasttext-hi.txt",
-  'aligned-fasttext-zh': "https://github.com/Impavidity/relogic/raw/master/relogic/logickit/vocabs/aligned-fasttext-zh.txt"
+  'aligned-fasttext-zh': "https://github.com/Impavidity/relogic/raw/master/relogic/logickit/vocabs/aligned-fasttext-zh.txt",
+  "glove-300d-6B": "https://git.uwaterloo.ca/p8shi/data-server/raw/master/embeddings/glove-300d-6B.txt",
+  "glove-300d-42B": "https://git.uwaterloo.ca/p8shi/data-server/raw/master/embeddings/glove-300d-42B.txt",
 }
 
 class FasttextTokenizer(object):

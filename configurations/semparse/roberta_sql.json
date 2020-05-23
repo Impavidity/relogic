@@ -1,0 +1,12 @@
+{
+  "tokenizers": {
+    "roberta": {
+      "pretrained_model_name_or_path": "roberta-base",
+      "do_lower_case": true
+    },
+    "fasttext": {
+      "pretrained_model_name_or_path": "glove-300d-42B",
+      "do_lower_case": true
+    }
+  }
+}

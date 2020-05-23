@@ -5,7 +5,7 @@ from relogic.logickit.utils import utils
 
 
 class AverageSpanExtractor(nn.Module):
-  def __init__(self, input_dim):
+  def __init__(self):
     super(AverageSpanExtractor, self).__init__()
 
   def forward(self,

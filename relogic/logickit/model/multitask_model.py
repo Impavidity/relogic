@@ -55,8 +55,6 @@ class Model(BaseModel):
         size_train_examples += task.train_set.size
         config.num_steps_in_one_epoch += task.train_set.size // config.tasks[task.name]["train_batch_size"]
 
-        # config.train_batch_size = config.train_batch_size // config.gradient_accumulation_steps
-        # config.test_batch_size = config.test_batch_size // config.gradient_accumulation_steps
         config.tasks[task.name]["train_batch_size"] =  config.tasks[task.name]["train_batch_size"] // config.gradient_accumulation_steps
         config.tasks[task.name]["test_batch_size"] = config.tasks[task.name]["test_batch_size"] // config.gradient_accumulation_steps
         # adjust to real training batch size

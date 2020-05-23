@@ -1,5 +1,4 @@
 import torch
-import relogic.utils.crash_on_ipy
 
 def clean(text):
   return text.strip()

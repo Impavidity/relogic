@@ -194,16 +194,17 @@ class Trainer(object):
         # TODO: organize better
         self.model.optimizer.update_loss(supervised_loss_total / max(1, supervised_loss_count))
 
-        utils.log(
-          "step supervised {:} - "
-          "step unsupervised {:} - "
-          "supervised loss: {:.3f} - "
-          "unsupervised loss : {:.3f} - "
+        log_string = "step supervised {:} - " \
+          "step unsupervised {:} - " \
+          "supervised loss: {:.3f} - " \
+          "unsupervised loss : {:.3f} - " \
           "{:.1f} sentences per second".format(
             self.model.global_step_labeled, self.model.global_step_unlabeled,
             supervised_loss_total / max(1, supervised_loss_count),
             unsupervised_loss_total / max(1, unsupervised_loss_count),
-            trained_on_sentences / (time.time() - start_time)))
+            trained_on_sentences / (time.time() - start_time))
+
+        utils.log(log_string)
         unsupervised_loss_total, unsupervised_loss_count = 0, 0
         supervised_loss_total, supervised_loss_count = 0, 0
         progress.add_log_step(self.model.global_step_labeled)
@@ -241,6 +242,8 @@ class Trainer(object):
     for i, mb in enumerate(data.get_minibatches(self.config.tasks[data.task_name]["test_batch_size"])):
       # batch_preds = self.model.test(mb)
       outputs = self.model.test_abstract(mb)
+      if outputs is None:
+        continue
       task_outputs = outputs[task.name]
       scorer.update(mb, task_outputs, task_outputs.get("loss", 0), {})
       # TODO: This code will break a lot!

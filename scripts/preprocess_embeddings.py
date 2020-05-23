@@ -12,7 +12,7 @@ def load_vectors(fname):
     n, d = map(int, fin.readline().split())
   except:
     print("No heading")
-    d = int(input("You need to specify the dim of the vector"))
+    d = int(input("You need to specify the dim of the vector: "))
   data = []
   vocab= ["<PAD>", "<UNK>"]
   # data.append([random.uniform(-0.1, 0.1) for i in range(d)])
@@ -20,6 +20,7 @@ def load_vectors(fname):
   data.append([0 for i in range(d)])
   data.append([0 for i in range(d)])
   index = 2
+  fin = io.open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
   for line in tqdm(fin):
     tokens = line.rstrip().split(' ')
     data.append(list(map(float, tokens[1:])))

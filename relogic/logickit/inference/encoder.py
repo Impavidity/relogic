@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import logging
+from relogic.logickit.modules.span_extractors.average_span_extractor import AverageSpanExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -22,22 +23,71 @@ def get_encoder(encoder_type):
     return PretrainedWordEmbedding
 
 PRETRAINED_VECTOR_ARCHIVE_MAP = {
-  "fasttext-en": "https://git.uwaterloo.ca/p8shi/data-server/raw/master/embeddings/wiki-news-300d-1M.npy"
+  "fasttext-en": "https://git.uwaterloo.ca/p8shi/data-server/raw/master/embeddings/wiki-news-300d-1M.npy",
+  "glove-300d-6B": "https://git.uwaterloo.ca/p8shi/data-server/raw/master/embeddings/glove-300d-6B.npy",
+  "glove-300d-42B": "https://git.uwaterloo.ca/p8shi/data-server/raw/master/embeddings/glove-300d-42B.npy",
 }
+
 
 class PretrainedWordEmbedding(nn.Module):
   def __init__(self, pretrained_model_name_or_path, embedding_file_path):
     super().__init__()
     embedding_data = torch.from_numpy(np.load(embedding_file_path))
+    # self.word_embedding = nn.Embedding.from_pretrained(embedding_data)
     self.word_embedding = nn.Embedding(embedding_data.size(0), embedding_data.size(1))
     self.word_embedding.weight.data.copy_(embedding_data)
-    self.word_embedding.weight.requires_grad = False
+    # self.word_embedding.weight.requires_grad = False
     del embedding_data
     print("Loadding embedding from {}".format(embedding_file_path))
+    self.average_span_extractor = AverageSpanExtractor()
+
+
+  def set_requires_grad(self, mode, dictionary=None):
+    """
+    The mode choices: all_false, partial_false, partial_true, all_true
+    The dictionary is used for partial_false and partial_true.
+    If the mode is partial_false, the ids in the dictionary file will be used to set
+      the corresponding vector's requires_grad as False. And vice versa.
+    The format of the file:
+      id\tword_text\n
+    or
+      id\n
+    Did some search, I find two solutions
+    https://stackoverflow.com/questions/54924582/is-it-possible-to-freeze-only-certain-embedding-weights-in-the-embedding-layer-i
+    https://discuss.pytorch.org/t/updating-part-of-an-embedding-matrix-only-for-out-of-vocab-words/33297/4
+    I will take the second PartiallyFixedEmbedding in the second post.
+    And it did the zero grad on the whole embedding. However, I will create the mask for each inputs.
+    """
+    self.mode = mode
+    if mode == "all_false":
+      self.word_embedding.weight.requires_grad = False
+    elif mode == "all_true":
+      self.word_embedding.weight.requires_grad = True
+    else:
+      raise ValueError(f"Known mode {mode}")
+
 
   def forward(self, *inputs, **kwargs):
     input_token_ids = kwargs.pop("_input_token_ids")
+    input_token_ids_mask = kwargs.pop("_input_token_ids_mask", None)
+
     input_embedding = self.word_embedding(input_token_ids)
+    if input_token_ids_mask is not None:
+      def zero_grad_fixed(gr):
+        return gr * input_token_ids_mask
+      input_embedding.register_hook(zero_grad_fixed)
+
+    level = kwargs.pop("aggregation_level", "word")  # word or span
+    if level == "span":
+      input_token_spans = kwargs.pop("_input_token_spans")
+      input_token_span_masks = kwargs.pop("_input_token_span_masks")
+      # do the span average
+      averaged_span_embedding = self.average_span_extractor(
+        sequence_tensor=input_embedding,
+        span_indices=input_token_spans,
+        span_indices_mask=input_token_span_masks)
+      return averaged_span_embedding
+
     return input_embedding
 
   @classmethod
@@ -66,14 +116,11 @@ class PretrainedWordEmbedding(nn.Module):
 
 
 class CNNEncoder(nn.Module):
-  def __init__(self, pretrained_model_name_or_path, embedding_file_path):
+  def __init__(self, word_embedding_module):
     super().__init__()
+    self.word_embedding_module = word_embedding_module
     self.encoder = None
-    embedding_data = torch.from_numpy(np.load(embedding_file_path))
-    self.word_embedding = nn.Embedding(embedding_data.size(0), embedding_data.size(1))
-    self.word_embedding.weight.data.copy_(embedding_data)
-    del embedding_data
-    print("Loading embedding from {}".format(embedding_file_path))
+
 
   def forward(self, *input, **kwargs):
     pass
@@ -100,29 +147,44 @@ class CNNEncoder(nn.Module):
     else:
       logger.info("will load embedding file {} from cache at {}".format(
         embedding_file, resolved_embedding_file))
-    return cls(pretrained_model_name_or_path, embedding_file_path=resolved_embedding_file)
+
+    embedding_data = torch.from_numpy(np.load(resolved_embedding_file))
+    word_embedding = nn.Embedding(embedding_data.size(0), embedding_data.size(1))
+    word_embedding.weight.data.copy_(embedding_data)
+    del embedding_data
+    print("Loading embedding from {}".format(resolved_embedding_file))
+    return cls(word_embedding_module=word_embedding)
 
 
 class LSTMEncoder(nn.Module):
-  def __init__(self, pretrained_model_name_or_path, embedding_file_path):
+  def __init__(self, word_embedding_module, num_layers=1, input_size=300, hidden_size=128, layer_dropout=0.2):
     super().__init__()
-    self.encoder = HighwayLSTM(num_layers=2, input_size=300, hidden_size=200, layer_dropout=0.2)
-    embedding_data = torch.from_numpy(np.load(embedding_file_path))
-    self.word_embedding = nn.Embedding(embedding_data.size(0), embedding_data.size(1))
-    self.word_embedding.weight.data.copy_(embedding_data)
-    del embedding_data
-    print("Loading embedding from {}".format(embedding_file_path))
+    self.word_embedding = word_embedding_module
+    self.encoder = HighwayLSTM(num_layers=num_layers, input_size=input_size, hidden_size=hidden_size, layer_dropout=layer_dropout)
 
   def forward(self, *inputs, **kwargs):
     input_token_ids = kwargs.pop("_input_token_ids")
-    token_length = kwargs.pop("_token_length")
-    input_embedding = self.word_embedding(input_token_ids)
-    sequence_output = self.encoder(inputs=input_embedding, lengths=token_length)
-    return sequence_output
+    input_token_ids_mask = kwargs.pop("_input_token_ids_mask", None)
+    input_token_length = kwargs.pop("_input_token_length", None)
+    input_token_spans = kwargs.pop("_input_token_spans", None)
+    input_token_span_masks = kwargs.pop("_input_token_span_masks", None)
+    aggregation_level = kwargs.pop("aggregation_level", "word")
+    input_embedding = self.word_embedding(
+      _input_token_ids=input_token_ids,
+      _input_token_ids_mask=input_token_ids_mask,
+      _input_token_spans=input_token_spans,
+      _input_token_span_masks=input_token_span_masks,
+      aggregation_level=aggregation_level)
+    if aggregation_level == "span":
+      input_token_length = input_token_span_masks.sum(-1)
+      # Change the input_token_length to input_span_lengths
+    assert input_token_length is not None
+    sequence_output, state = self.encoder(inputs=input_embedding, lengths=input_token_length)
+    return sequence_output, state, input_embedding
 
 
   @classmethod
-  def from_pretrained(cls, pretrained_model_name_or_path, cache_dir=None, output_attentions=False):
+  def from_pretrained(cls, pretrained_model_name_or_path, cache_dir=None, output_attentions=False, **kwargs):
     if pretrained_model_name_or_path in PRETRAINED_VECTOR_ARCHIVE_MAP:
       embedding_file = PRETRAINED_VECTOR_ARCHIVE_MAP[pretrained_model_name_or_path]
     else:
@@ -143,7 +205,14 @@ class LSTMEncoder(nn.Module):
     else:
       logger.info("will load embedding file {} from cache at {}".format(
         embedding_file, resolved_embedding_file))
-    return cls(pretrained_model_name_or_path, embedding_file_path=resolved_embedding_file)
+
+    embedding_data = torch.from_numpy(np.load(resolved_embedding_file))
+    word_embedding = nn.Embedding(embedding_data.size(0), embedding_data.size(1))
+    word_embedding.weight.data.copy_(embedding_data)
+    del embedding_data
+    print("Loading embedding from {}".format(resolved_embedding_file))
+
+    return cls(word_embedding_module=word_embedding, **kwargs)
 
 class XLMRobertaEncoder(nn.Module):
   def __init__(self, pretrained_model_name_or_path):

@@ -4,10 +4,13 @@ from relogic.logickit.tasks.span_extraction import SpanExtraction, SpanGCN
 from relogic.logickit.tasks.span_extraction import ECPExtraction
 from relogic.logickit.tasks.parsing import Parsing
 from relogic.logickit.tasks.unsupervised import Unsupervised
+from relogic.logickit.tasks.semparse.text_to_sql import TextToSQL
 from relogic.logickit.base.constants import (ECP_TASK, IR_TASK, NER_TASK, PARALLEL_MAPPING_TASK,
                                              PARALLEL_TEACHER_STUDENT_TASK, PAIRWISE_TASK, ENTITY_TYPE_CLASSIFICATION,
                                              DEP_PARSING_TASK, MIXSENT_TASK, LANGUAGE_IDENTIFICATION_IR, POS_TASK, DOCIR_TASK,
-                                             LANGUAGE_IDENTIFICATION_SEQ, PIPE_SRL_TASK, JOINT_SRL_TASK, PREDICATE_DETECTION_TASK)
+                                             LANGUAGE_IDENTIFICATION_SEQ, PIPE_SRL_TASK, JOINT_SRL_TASK, PREDICATE_DETECTION_TASK,
+                                             TEXT_TO_SQL_TASK, RAT_SQL_TASK, EDITNET_SQL_TASK, JOINT_CT_RAT_SQL_TASK,
+                                             SLOT_FILLING_SQL_TASK, SQL_RERANKING_TASK, ZH_JOINT_CT_SQL_TASK)
 from relogic.common.prefix_map import PrefixMap
 
 task_name_to_class_map = {
@@ -27,6 +30,13 @@ task_name_to_class_map = {
   DEP_PARSING_TASK:Parsing,
   LANGUAGE_IDENTIFICATION_IR: Unsupervised,
   LANGUAGE_IDENTIFICATION_SEQ: Unsupervised,
+  TEXT_TO_SQL_TASK: TextToSQL,
+  RAT_SQL_TASK: TextToSQL,
+  EDITNET_SQL_TASK: TextToSQL,
+  JOINT_CT_RAT_SQL_TASK: TextToSQL,
+  SLOT_FILLING_SQL_TASK: TextToSQL,
+  SQL_RERANKING_TASK: TextToSQL,
+  ZH_JOINT_CT_SQL_TASK: TextToSQL,
 }
 
 TASK_NAME_TO_CLASS_MAP = PrefixMap(task_name_to_class_map)

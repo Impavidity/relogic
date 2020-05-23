@@ -1,0 +1,49 @@
+{
+  "relation": {
+    "_PAD_": 0,
+    "same_table": 1,
+    "foreign_key_col_f": 2,
+    "foreign_key_col_r": 3,
+    "primary_key_f": 4,
+    "belongs_to_f": 5,
+    "primary_key_r": 6,
+    "belongs_to_r": 7,
+    "foreign_key_tab_f": 8,
+    "foreign_key_tab_r": 9,
+    "column_identity": 10,
+    "table_identity": 11,
+    "question_dist_-2": 12,
+    "question_dist_-1": 13,
+    "question_dist_0": 14,
+    "question_dist_1": 15,
+    "question_dist_2": 16,
+    "column_column": 17,
+    "column_table": 18,
+    "table_column": 19,
+    "table_table": 20,
+    "question_column_no_match": 21,
+    "question_column_partial_match": 22,
+    "question_column_exact_match": 23,
+    "question_table_no_match": 24,
+    "question_table_partial_match": 25,
+    "question_table_exact_match": 26,
+    "column_question_no_match": 27,
+    "column_question_partial_match": 28,
+    "column_question_exact_match": 29,
+    "table_question_no_match": 30,
+    "table_question_partial_match": 31,
+    "table_question_exact_match": 32
+  },
+  "action": {
+
+  },
+  "column_type_feature_mapping": {
+    "text": 0,
+    "number": 1,
+    "boolean": 2,
+    "time": 3,
+    "others": 4,
+    "primary": 5,
+    "foreign": 6
+  }
+}
