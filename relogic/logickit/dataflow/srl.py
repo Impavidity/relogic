@@ -648,7 +648,6 @@ class SRLDataFlow(DataFlow):
 
   def decode_to_labels(self, preds, mb: MiniBatch):
     labels = []
-    print(preds)
     for example, pred_logits in zip(mb.examples, preds["logits"]):
       if example.is_valid:
         preds_tags = pred_logits.argmax(-1).data.cpu().numpy()
