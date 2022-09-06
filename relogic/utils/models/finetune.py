@@ -3,7 +3,7 @@
 
 from torch import nn
 from relogic.utils.models.base import PushToHubFriendlyModel
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import AutoModel, AutoTokenizer
 
 
 class Model(PushToHubFriendlyModel):
@@ -13,7 +13,7 @@ class Model(PushToHubFriendlyModel):
 
         # Load tokenizer and model.
         self.tokenizer = AutoTokenizer.from_pretrained(args.bert.location, use_fast=False)
-        self.pretrain_model = AutoModelForSeq2SeqLM.from_pretrained(
+        self.pretrain_model = AutoModel.from_pretrained(
             args.bert.location,
         )
         self.config = self.pretrain_model.config
